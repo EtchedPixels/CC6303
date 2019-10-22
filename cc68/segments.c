@@ -51,6 +51,7 @@
 #include "dataseg.h"
 #include "error.h"
 #include "textseg.h"
+#include "textlist.h"
 #include "segments.h"
 
 
@@ -242,6 +243,7 @@ void AddCodeLine (const char* Format, ...)
     vsnprintf(buf, 512, Format, ap);
     CHECK (CS != 0);
     printf("C:%s\n", buf);
+    AppendCode(buf);
     va_end (ap);
 }
 
@@ -252,6 +254,7 @@ void AddCode (struct CodeLabel* JumpTo)
 {
     CHECK (CS != 0);
     printf("!!:%s", CurTok.LI->Line);
+    AppendCode(CurTok.LI->Line);
 }
 
 
@@ -273,6 +276,7 @@ void AddDataLine (const char* Format, ...)
 void OutputSegments (const Segments* S)
 /* Output the given segments to the output file */
 {
+    PrintCode();
 #if 0
     /* Output the function prologue if the segments came from a function */
     CS_OutputPrologue (S->Code);

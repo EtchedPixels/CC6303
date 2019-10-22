@@ -56,8 +56,7 @@ int CodeRangeIsEmpty (const CodeMark* Start, const CodeMark* End)
 /* Return true if the given code range is empty (no code between Start and End) */
 {
     int Empty;
-//RE-ADD WHEN MARK DONE FIXME    PRECONDITION (Start->Pos <= End->Pos);
-    Empty = (Start->Pos == End->Pos);
+    Empty = (Start->Text == End->Text);
     if (Empty) {
         /* Safety */
         CHECK (Start->SP == End->SP);

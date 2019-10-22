@@ -131,11 +131,9 @@ void MarkedExprWithCheck (void (*Func) (ExprDesc*), ExprDesc* Expr)
 */
 {
     CodeMark Start, End;
-        printf("FIXME: GETCODEPOS\n");
-//    GetCodePos (&Start);
+    GetCodePos (&Start);
     ExprWithCheck (Func, Expr);
-        printf("FIXME: GETCODEPOS\n");
-//    GetCodePos (&End);
+    GetCodePos (&End);
     ED_SetCodeRange (Expr, &Start, &End);
 }
 
@@ -488,8 +486,7 @@ static void FunctionCall (ExprDesc* Expr)
             ** stack pointer.
             */
             if (ParamSize == 0) {
-                printf("FIXME: USE OF REMOVECODE\n");
-//                RemoveCode (&Mark);
+                RemoveCode (&Mark);
                 PtrOnStack = 0;
             } else {
                 /* Load from the saved copy */
@@ -832,8 +829,7 @@ static void ArrayRef (ExprDesc* Expr)
                     (ED_IsLocConst (Expr) || ED_IsLocStack (Expr));
 
     /* If we have a constant base, we delay the address fetch */
-    printf("FIXME GETCODEPOS1\n");
-//    GetCodePos (&Mark1);
+    GetCodePos (&Mark1);
     if (!ConstBaseAddr) {
         /* Get a pointer to the array into the primary */
         LoadExpr (CF_NONE, Expr);
@@ -842,8 +838,7 @@ static void ArrayRef (ExprDesc* Expr)
         ** bit, even if this value is greater, since we cannot handle
         ** other than 16bit stuff when doing indexing.
         */
-    printf("FIXME GETCODEPOS2\n");
-//        GetCodePos (&Mark2);
+        GetCodePos (&Mark2);
         g_push (CF_PTR, 0);
     }
 
@@ -911,8 +906,7 @@ static void ArrayRef (ExprDesc* Expr)
         ** since we can generate expression+offset.
         */
         if (!ConstBaseAddr) {
-            printf("FIXME: USE OF REMOVECODE\n");
-//            RemoveCode (&Mark2);
+            RemoveCode (&Mark2);
         } else {
             /* Get an array pointer into the primary */
             LoadExpr (CF_NONE, Expr);
@@ -926,8 +920,7 @@ static void ArrayRef (ExprDesc* Expr)
             Subscript.IVal *= CheckedSizeOf (ElementType);
 
             /* Remove the address load code */
-            printf("FIXME: USE OF REMOVECODE\n");
-//            RemoveCode (&Mark1);
+            RemoveCode (&Mark1);
 
             /* In case of an array, we can adjust the offset of the expression
             ** already in Expr. If the base address was a constant, we can even
@@ -968,8 +961,7 @@ static void ArrayRef (ExprDesc* Expr)
     } else {
 
         /* Array subscript is not constant. Load it into the primary */
-    printf("FIXME GETCODEPOS2\n");
-//        GetCodePos (&Mark2);
+        GetCodePos (&Mark2);
         LoadExpr (CF_NONE, &Subscript);
 
         /* Do scaling */
@@ -1036,8 +1028,7 @@ static void ArrayRef (ExprDesc* Expr)
                 } else {
                     Flags = CF_INT;
                 }
-            printf("FIXME: USE OF REMOVECODE\n");
-//                RemoveCode (&Mark2);
+                RemoveCode (&Mark2);
 
                 /* Get a pointer to the array into the primary. */
                 LoadExpr (CF_NONE, Expr);
@@ -1766,8 +1757,7 @@ void hie10 (ExprDesc* Expr)
             } else {
                 /* Remember the output queue pointer */
                 CodeMark Mark;
-    printf("FIXME GETCODEPOS\n");
-//                GetCodePos (&Mark);
+                GetCodePos (&Mark);
                 hie10 (Expr);
                 /* If the expression is a literal string, release it, so it
                 ** won't be output as data if not used elsewhere.
@@ -1778,8 +1768,7 @@ void hie10 (ExprDesc* Expr)
                 /* Calculate the size */
                 Size = CheckedSizeOf (Expr->Type);
                 /* Remove any generated code */
-    printf("FIXME REMOVECODE\n");
-//                RemoveCode (&Mark);
+                RemoveCode (&Mark);
             }
             ED_MakeConstAbs (Expr, Size, type_size_t);
             ED_MarkAsUntested (Expr);
@@ -1846,14 +1835,12 @@ static void hie_internal (const GenDesc* Ops,   /* List of generators */
         NextToken ();
 
         /* Get the lhs on stack */
-        printf("FIXME: GETCODEPOS1\n");
-//        GetCodePos (&Mark1);
+        GetCodePos (&Mark1);
         ltype = TypeOf (Expr->Type);
         lconst = ED_IsConstAbs (Expr);
         if (lconst) {
             /* Constant value */
-        printf("FIXME: GETCODEPOS2\n");
-//            GetCodePos (&Mark2);
+            GetCodePos (&Mark2);
             /* If the operator is commutative, don't push the left side, if
             ** it's a constant, since we will exchange both operands.
             */
@@ -1863,8 +1850,7 @@ static void hie_internal (const GenDesc* Ops,   /* List of generators */
         } else {
             /* Value not constant */
             LoadExpr (CF_NONE, Expr);
-        printf("FIXME: GETCODEPOS2\n");
-//            GetCodePos (&Mark2);
+            GetCodePos (&Mark2);
             g_push (ltype, 0);
         }
 
@@ -1887,8 +1873,7 @@ static void hie_internal (const GenDesc* Ops,   /* List of generators */
         if (lconst && rconst) {
 
             /* Both operands are constant, remove the generated code */
-            printf("FIXME: USE OF REMOVECODE\n");
-//            RemoveCode (&Mark1);
+            RemoveCode (&Mark1);
 
             /* Get the type of the result */
             Expr->Type = promoteint (Expr->Type, Expr2.Type);
@@ -2014,8 +1999,7 @@ static void hie_internal (const GenDesc* Ops,   /* List of generators */
                     Error ("Modulo operation with zero");
                 }
                 if ((Gen->Flags & GEN_NOPUSH) != 0) {
-            printf("FIXME: USE OF REMOVECODE\n");
-//                    RemoveCode (&Mark2);
+                    RemoveCode (&Mark2);
                     ltype |= CF_REG;    /* Value is in register */
                 }
             }
@@ -2050,8 +2034,7 @@ static void hie_compare (const GenDesc* Ops,    /* List of generators */
     int rconst;                         /* Operand is a constant */
 
 
-        printf("FIXME: GETCODEPOS0\n");
-//    GetCodePos (&Mark0);
+    GetCodePos (&Mark0);
     ExprWithCheck (hienext, Expr);
 
     while ((Gen = FindGen (CurTok.Tok, Ops)) != 0) {
@@ -2069,19 +2052,16 @@ static void hie_compare (const GenDesc* Ops,    /* List of generators */
         }
 
         /* Get the lhs on stack */
-        printf("FIXME: GETCODEPOS1\n");
-//        GetCodePos (&Mark1);
+        GetCodePos (&Mark1);
         ltype = TypeOf (Expr->Type);
         if (ED_IsConstAbs (Expr)) {
             /* Constant value */
-        printf("FIXME: GETCODEPOS2\n");
-//            GetCodePos (&Mark2);
+            GetCodePos (&Mark2);
             g_push (ltype | CF_CONST, Expr->IVal);
         } else {
             /* Value not constant */
             LoadExpr (CF_NONE, Expr);
-        printf("FIXME: GETCODEPOS2\n");
-//            GetCodePos (&Mark2);
+            GetCodePos (&Mark2);
             g_push (ltype, 0);
         }
 
@@ -2146,8 +2126,7 @@ static void hie_compare (const GenDesc* Ops,    /* List of generators */
             WarnConstCompareResult ();
 
             /* Both operands are constant, remove the generated code */
-            printf("FIXME: USE OF REMOVECODE\n");
-//            RemoveCode (&Mark1);
+            RemoveCode (&Mark1);
 
             /* Determine if this is a signed or unsigned compare */
             if (IsClassInt (Expr->Type) && IsSignSigned (Expr->Type) &&
@@ -2196,8 +2175,7 @@ static void hie_compare (const GenDesc* Ops,    /* List of generators */
             if (rconst) {
                 flags |= CF_CONST;
                 if ((Gen->Flags & GEN_NOPUSH) != 0) {
-            printf("FIXME: USE OF REMOVECODE\n");
-//                    RemoveCode (&Mark2);
+                    RemoveCode (&Mark2);
                     ltype |= CF_REG;    /* Value is in register */
                 }
             }
@@ -2542,8 +2520,7 @@ static void parseadd (ExprDesc* Expr)
 
         /* Left hand side is not constant. Get the value onto the stack. */
         LoadExpr (CF_NONE, Expr);              /* --> primary register */
-        printf("FIXME: GETCODEPOS2\n");
-//        GetCodePos (&Mark);
+        GetCodePos (&Mark);
         g_push (TypeOf (Expr->Type), 0);        /* --> stack */
 
         /* Evaluate the rhs */
@@ -2556,8 +2533,7 @@ static void parseadd (ExprDesc* Expr)
             rhst = Expr2.Type;
 
             /* Remove pushed value from stack */
-            printf("FIXME: USE OF REMOVECODE\n");
-//            RemoveCode (&Mark);
+            RemoveCode (&Mark);
 
             /* Check for pointer arithmetic */
             if (IsClassPtr (lhst) && IsClassInt (rhst)) {
@@ -2667,11 +2643,9 @@ static void parsesub (ExprDesc* Expr)
     rscale = 1;                 /* Scale by 1, that is, don't scale */
 
     /* Remember the output queue position, then bring the value onto the stack */
-        printf("FIXME: GETCODEPOS1\n");
-//    GetCodePos (&Mark1);
+    GetCodePos (&Mark1);
     LoadExpr (CF_NONE, Expr);  /* --> primary register */
-        printf("FIXME: GETCODEPOS2\n");
-//    GetCodePos (&Mark2);
+    GetCodePos (&Mark2);
     g_push (TypeOf (lhst), 0);  /* --> stack */
 
     /* Parse the right hand side */
@@ -2694,8 +2668,7 @@ static void parsesub (ExprDesc* Expr)
         if (ED_IsConstAbs (Expr)) {
 
             /* Both sides are constant, remove generated code */
-            printf("FIXME: USE OF REMOVECODE\n");
-//           RemoveCode (&Mark1);
+            RemoveCode (&Mark1);
 
             /* Check for pointer arithmetic */
             if (IsClassPtr (lhst) && IsClassInt (rhst)) {
@@ -2729,8 +2702,7 @@ static void parsesub (ExprDesc* Expr)
             /* Left hand side is not constant, right hand side is.
             ** Remove pushed value from stack.
             */
-            printf("FIXME: USE OF REMOVECODE\n");
-//            RemoveCode (&Mark2);
+            RemoveCode (&Mark2);
 
             if (IsClassPtr (lhst) && IsClassInt (rhst)) {
                 /* Left is pointer, right is int, must scale rhs */
@@ -3133,8 +3105,7 @@ static void hieQuest (ExprDesc* Expr)
         }
 
         /* Remember the current code position */
-        printf("FIXME: GETCODEPOS\n");
-//        GetCodePos (&TrueCodeEnd);
+        GetCodePos (&TrueCodeEnd);
 
         /* Jump around the evaluation of the third expression */
         TrueLab = GetLocalLabel ();
@@ -3184,11 +3155,9 @@ static void hieQuest (ExprDesc* Expr)
             /* Emit conversion code for the second expression, but remember
             ** where it starts end ends.
             */
-        printf("FIXME: GETCODEPOS\n");
-//            GetCodePos (&CvtCodeStart);
+            GetCodePos (&CvtCodeStart);
             TypeConversion (&Expr2, ResultType);
-        printf("FIXME: GETCODEPOS\n");
-//            GetCodePos (&CvtCodeEnd);
+            GetCodePos (&CvtCodeEnd);
 
             /* If we had conversion code, move it to the right place */
             if (!CodeRangeIsEmpty (&CvtCodeStart, &CvtCodeEnd)) {
@@ -3268,8 +3237,7 @@ static void opeq (const GenDesc* Gen, ExprDesc* Expr, const char* Op)
     LoadExpr (CF_NONE, Expr);
 
     /* Bring the lhs on stack */
-        printf("FIXME: GETCODEPOS\n");
-//    GetCodePos (&Mark);
+    GetCodePos (&Mark);
     g_push (flags, 0);
 
     /* Evaluate the rhs */
@@ -3289,8 +3257,7 @@ static void opeq (const GenDesc* Gen, ExprDesc* Expr, const char* Op)
         ** flag set, don't push the lhs.
         */
         if (Gen->Flags & GEN_NOPUSH) {
-            printf("FIXME: USE OF REMOVECODE\n");
-//            RemoveCode (&Mark);
+            RemoveCode (&Mark);
         }
         if (MustScale) {
             /* lhs is a pointer, scale rhs */

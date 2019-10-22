@@ -43,6 +43,9 @@
 /* common */
 #include "attrib.h"
 
+/* cc68 */
+#include "textlist.h"
+
 
 
 /*****************************************************************************/
@@ -53,7 +56,7 @@
 
 /* Marker for an assembler code position */
 typedef struct {
-    unsigned    Pos;            /* Code position */
+    TextList 	*Text;
     int         SP;             /* Stack pointer at this position */
 } CodeMark;
 

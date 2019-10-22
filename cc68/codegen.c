@@ -278,10 +278,8 @@ void g_preamble (void)
         default:            Internal ("Unknown CPU: %d", CPU);
     }
 
-
-    /* Import zero page variables */
-    AddTextLine ("\t.importzp\tsp, sreg, regsave, regbank");
-    AddTextLine ("\t.importzp\ttmp1, tmp2, tmp3, tmp4, ptr1, ptr2, ptr3, ptr4");
+    /* Import dp variables */
+    /* FIXME: */
 }
 
 
@@ -420,8 +418,7 @@ static unsigned MakeByteOffs (unsigned Flags, unsigned Offs)
 void g_defcodelabel (unsigned label)
 /* Define a local code label */
 {
-//FIXME    CS_AddLabel (CS->Code, LocalLabelName (label));
-printf("FIXME: g_defcodelabel %s:", LocalLabelName(label));
+    AddCodeLine("%s:", LocalLabelName(label));
 }
 
 
@@ -512,13 +509,15 @@ void g_importmainargs (void)
 /*****************************************************************************/
 
 
-void g_enter (unsigned flags, unsigned argsize)
+void g_enter (const char *name, unsigned flags, unsigned argsize)
 /* Function prologue */
 {
     /* TODO: We need to end the stack growing and prologue with a push of
     the old frame pointer if we want to try the pulx txs rts trick */
 
     /* Stack the previous frame pointer, save ours as fp for returning */    
+    AddCodeLine(".globl _%s", name);
+    AddCodeLine("_%s:",name);
     AddCodeLine("ldx fp");
     AddCodeLine("pshx");
     AddCodeLine("txs");

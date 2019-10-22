@@ -350,20 +350,6 @@ void NewFunc (SymEntry* Func)
         Error ("Parameter name omitted");
     }
 
-    /* Declare two special functions symbols: __fixargs__ and __argsize__.
-    ** The latter is different depending on the type of the function (variadic
-    ** or not).
-    */
-    AddConstSym ("__fixargs__", type_uint, SC_DEF | SC_CONST, D->ParamSize);
-    if (D->Flags & FD_VARIADIC) {
-        /* Variadic function. The variable must be const. */
-        static const Type T[] = { TYPE(T_UCHAR | T_QUAL_CONST), TYPE(T_END) };
-        AddLocalSym ("__argsize__", T, SC_DEF | SC_REF | SC_AUTO, 0);
-    } else {
-        /* Non variadic */
-        AddConstSym ("__argsize__", type_uchar, SC_DEF | SC_CONST, D->ParamSize);
-    }
-
     /* Function body now defined */
     Func->Flags |= SC_DEF;
 
@@ -373,32 +359,11 @@ void NewFunc (SymEntry* Func)
         /* Mark this as the main function */
         CurrentFunc->Flags |= FF_IS_MAIN;
 
-        /* Main cannot be a fastcall function */
-        if (IsQualFastcall (Func->Type)) {
-            Error ("'main' cannot be declared as __fastcall__");
-        }
-
         /* If cc65 extensions aren't enabled, don't allow a main function that
         ** doesn't return an int.
-        */
+-        */
         if (IS_Get (&Standard) != STD_CC65 && CurrentFunc->ReturnType[0].C != T_INT) {
             Error ("'main' must always return an int");
-        }
-
-        /* Add a forced import of a symbol that is contained in the startup
-        ** code. This will force the startup code to be linked in.
-        */
-        g_importstartup ();
-
-        /* If main() takes parameters, generate a forced import to a function
-        ** that will setup these parameters. This way, programs that do not
-        ** need the additional code will not get it.
-        */
-        if (D->ParamCount > 0 || (D->Flags & FD_VARIADIC) != 0) {
-            g_importmainargs ();
-
-            /* The start-up code doesn't fast-call main(). */
-            Func->Type->C |= T_QUAL_CDECL;
         }
 
         /* Determine if this is a main function in a C99 environment that
@@ -409,32 +374,15 @@ void NewFunc (SymEntry* Func)
             C99MainFunc = 1;
         }
     }
-
     /* Allocate code and data segments for this function */
     Func->V.F.Seg = PushSegments (Func);
 
     /* Allocate a new literal pool */
     PushLiteralPool (Func);
 
-    /* If this is a fastcall function, push the last parameter onto the stack */
-    if ((D->Flags & FD_VARIADIC) == 0 && D->ParamCount > 0 &&
-        (AutoCDecl ?
-         IsQualFastcall (Func->Type) :
-         !IsQualCDecl (Func->Type))) {
-        unsigned Flags;
-
-        /* Generate the push */
-        if (IsTypeFunc (D->LastParam->Type)) {
-            /* Pointer to function */
-            Flags = CF_PTR;
-        } else {
-            Flags = TypeOf (D->LastParam->Type) | CF_FORCECHAR;
-        }
-        g_push (Flags, 0);
-    }
-
+    
     /* Generate function entry code if needed */
-    g_enter (TypeOf (Func->Type), F_GetParamSize (CurrentFunc));
+    g_enter (Func->Name, TypeOf (Func->Type), F_GetParamSize (CurrentFunc));
 
     /* If stack checking code is requested, emit a call to the helper routine */
     if (IS_Get (&CheckStack)) {
@@ -468,8 +416,8 @@ void NewFunc (SymEntry* Func)
     ** statement.
     */
     if (!F_HasVoidReturn (CurrentFunc) && !F_HasReturn (CurrentFunc) && !C99MainFunc) {
-        Warning ("Control reaches end of non-void function");
-    }
+         Warning ("Control reaches end of non-void function");
+     }
 
     /* If this is the main function in a C99 environment returning an int, let
     ** it always return zero. Note: Actual return statements jump to the return
