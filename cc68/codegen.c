@@ -2145,10 +2145,6 @@ void g_swap (unsigned flags)
 void g_call (unsigned Flags, const char* Label, unsigned ArgSize)
 /* Call the specified subroutine name */
 {
-    if ((Flags & CF_FIXARGC) == 0) {
-        /* Pass the argument count */
-        AddCodeLine ("ldaa #$%02X", ArgSize);
-    }
     AddCodeLine ("jsr _%s", Label);
     /* FIXME: we need g_drop to know if the function is void and it can
        skip saving D */
@@ -2164,10 +2160,6 @@ void g_callind (unsigned Flags, unsigned ArgSize, int Offs)
     if ((Flags & CF_LOCAL) == 0) {
         /* Address is in d */
         DToX();
-        if ((Flags & CF_FIXARGC) == 0) {
-            /* Pass arg count */
-            AddCodeLine ("ldab #$%02X", ArgSize);
-        }
         AddCodeLine ("jsr ,x");
     } else {
         /* The address is on stack, offset is on Val */
@@ -2352,6 +2344,8 @@ void g_mul (unsigned flags, unsigned long val)
         return;
     }
 
+    /* FIXME: Spot near powers of two by bit count for add/push/add/pop/add
+       sequences ? */
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */

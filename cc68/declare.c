@@ -58,7 +58,6 @@
 #include "scanner.h"
 #include "standard.h"
 #include "symtab.h"
-#include "wrappedcall.h"
 #include "typeconv.h"
 
 
@@ -1319,8 +1318,6 @@ static FuncDesc* ParseFuncDecl (void)
 {
     unsigned Offs;
     SymEntry* Sym;
-    SymEntry* WrappedCall;
-    unsigned char WrappedCallData;
 
     /* Create a new function descriptor */
     FuncDesc* F = NewFuncDesc ();
@@ -1367,8 +1364,10 @@ static FuncDesc* ParseFuncDecl (void)
     /* Assign offsets. If the function has a variable parameter list,
     ** there's one additional byte (the arg size).
     */
-    Offs = (F->Flags & FD_VARIADIC)? 1 : 0;
+    Offs = 0;		/* Because of the return */
     Sym = F->LastParam;
+    /* FIXME: these are in reverse order so we need to compute the offsets
+       the other way around */
     while (Sym) {
         unsigned Size = CheckedSizeOf (Sym->Type);
         Sym->V.Offs = Offs;
@@ -1379,13 +1378,6 @@ static FuncDesc* ParseFuncDecl (void)
 
     /* Leave the lexical level remembering the symbol tables */
     RememberFunctionLevel (F);
-
-    /* Did we have a WrappedCall for this function? */
-    GetWrappedCall((void **) &WrappedCall, &WrappedCallData);
-    if (WrappedCall) {
-        F->WrappedCall = WrappedCall;
-        F->WrappedCallData = WrappedCallData;
-    }
 
     /* Return the function descriptor */
     return F;
@@ -1468,16 +1460,8 @@ static void Declarator (const DeclSpec* Spec, Declaration* D, declmode_t Mode)
                 Qualifiers &= ~T_QUAL_FASTCALL;
             }
 
-            /* Was there a previous entry? If so, copy WrappedCall info from it */
             PrevEntry = FindGlobalSym (D->Ident);
-            if (PrevEntry && PrevEntry->Flags & SC_FUNC) {
-                FuncDesc* D = PrevEntry->V.F.Func;
-                if (D->WrappedCall && !F->WrappedCall) {
-                    F->WrappedCall = D->WrappedCall;
-                    F->WrappedCallData = D->WrappedCallData;
-                }
-            }
-
+            /* FIXME: do we need PrevEntry any more */
             /* Add the function type. Be sure to bounds check the type buffer */
             NeedTypeSpace (D, 1);
             D->Type[D->Index].C = T_FUNC | Qualifiers;

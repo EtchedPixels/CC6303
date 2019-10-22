@@ -36,3 +36,31 @@ any useful code.
   the assembler
 
 
+## BIG ISSUES
+
+- We can make much better use of X in some situations than the cc65 code
+  based generator really understands. In particular we want to be able to
+  tell the expression evaluation "try and evaluate this into X without using
+  D". In practice that means simple constants and stack offsets. That will
+  improve some handling of helpers. We can't do that much with it because
+  we need to be in D for maths.
+
+- Sorting out psha/b ordering versus x and in memory big endian. Right now
+  it's definitely wrong all over the place
+
+- Sort out stack offsets
+
+- Sort out entry/exit code. It would be nice to be able to dump the pre/post
+  entry code if not used. It would also be nice to generate different
+  methods according to size. With a small stack offset pulx/ins are
+  attractive, with void or u8 returns abx is attractive too
+
+- Fetch pointers via X when we can, especially on 6803. In particular also
+  deal with pre/post-inc of statics (but not alas pre/post inc locals) with
+
+````
+	ldx $foo
+	inx
+	stx $foo
+	dex
+````

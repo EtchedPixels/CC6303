@@ -291,14 +291,15 @@ static unsigned FunctionParamList (FuncDesc* Func)
     SymEntry* Param       = 0;  /* Keep gcc silent */
     unsigned  ParamSize   = 0;  /* Size of parameters pushed */
     unsigned  ParamCount  = 0;  /* Number of parameters pushed */
-    unsigned  FrameSize   = 0;  /* Size of parameter frame */
+    /* Return SP and FP will be below arguments */
+    unsigned  FrameSize   = 4;  /* Size of parameter frame */
     unsigned  FrameParams = 0;  /* Number of params in frame */
     int       FrameOffs   = 0;  /* Offset into parameter frame */
     int       Ellipsis    = 0;  /* Function is variadic */
 
     /* Parse the actual parameter list */
     
-    /* FIXME: For each argument we need to divert the flow and then at
+    /* For each argument we need to divert the flow and then at
        the end of the parameter list undivert the flow that number of
        times so that we push the arguments in normal C order not smallC
        order */
@@ -338,6 +339,8 @@ static unsigned FunctionParamList (FuncDesc* Func)
             */
             Ellipsis = 1;
         }
+
+        PushCode();
 
         /* Evaluate the parameter expression */
         hie1 (&Expr);
@@ -389,6 +392,11 @@ static unsigned FunctionParamList (FuncDesc* Func)
         Error ("Too few arguments in function call");
     }
 
+    /* Now unwind the Code stack so that we end up with the arguments
+       stacked in conventional C order */
+    while(ParamCount--)
+        PopCode();
+
     /* The function returns the size of all parameters pushed onto the stack.
     ** However, if there are parameters missing (which is an error and was
     ** flagged by the compiler) AND a stack frame was preallocated above,
@@ -396,6 +404,9 @@ static unsigned FunctionParamList (FuncDesc* Func)
     ** later. So we correct the value by the parameters that should have been
     ** pushed to avoid an internal compiler error. Since an error was
     ** generated before, no code will be output anyway.
+    **
+    ** FIXME: as we are moving to C calling convention that problem should
+    ** be about to go away
     */
     return ParamSize + FrameSize;
 }
@@ -411,6 +422,7 @@ static void FunctionCall (ExprDesc* Expr)
     CodeMark      Mark;
     int           PtrOffs = 0;    /* Offset of function pointer on stack */
     int           PtrOnStack = 0; /* True if a pointer copy is on stack */
+    int		  NotVoid;	  /* Must preserve D on stack correction */
 
     /* Skip the left paren */
     NextToken ();
@@ -440,8 +452,7 @@ static void FunctionCall (ExprDesc* Expr)
             ED_MakeRValExpr (Expr);
 
             /* Remember the code position */
-            printf("FIXME USE OF GETCODEPOS\n");
-            //GetCodePos (&Mark);
+            GetCodePos (&Mark);
 
             /* Push the pointer onto the stack and remember the offset */
             g_push (CF_PTR, 0);
@@ -472,12 +483,10 @@ static void FunctionCall (ExprDesc* Expr)
     /* We need the closing paren here */
     ConsumeRParen ();
 
+    NotVoid = !(Func->Flags & FF_VOID_RETURN);
+
     /* Special handling for function pointers */
     if (IsFuncPtr) {
-
-        if (Func->WrappedCall) {
-            Warning ("Calling a wrapped function via a pointer, wrapped-call will not be used");
-        }
 
         /* Load the pointer to the function into the primary. */
         if (PtrOnStack) {
@@ -500,9 +509,11 @@ static void FunctionCall (ExprDesc* Expr)
             /* Call the function */
         g_callind (TypeOf (Expr->Type+1), ParamSize, PtrOffs);
 
+        /* Drop parameters, preserve D if needed */
+        g_drop(ParamSize, NotVoid);
         /* If we have a pointer on stack, remove it */
         if (PtrOnStack) {
-            g_drop (SIZEOF_PTR, 1);	/* Check if we can drop D */
+            g_drop (SIZEOF_PTR, NotVoid);
             pop (CF_PTR);
         }
 
@@ -510,52 +521,14 @@ static void FunctionCall (ExprDesc* Expr)
         ++Expr->Type;
 
     } else {
-        /* FIXME: WTF is a wrapped call ? */
         /* Normal function */
-        if (Func->WrappedCall) {
-            char tmp[64];
-            StrBuf S = AUTO_STRBUF_INITIALIZER;
-
-            /* Store the WrappedCall data in tmp4 */
-            sprintf(tmp, "ldy #%u", Func->WrappedCallData);
-            SB_AppendStr (&S, tmp);
-            g_asmcode (&S);
-            SB_Clear(&S);
-
-            SB_AppendStr (&S, "sty tmp4");
-            g_asmcode (&S);
-            SB_Clear(&S);
-
-            /* Store the original function address in ptr4 */
-            SB_AppendStr (&S, "ldy #<(_");
-            SB_AppendStr (&S, (const char*) Expr->Name);
-            SB_AppendChar (&S, ')');
-            g_asmcode (&S);
-            SB_Clear(&S);
-
-            SB_AppendStr (&S, "sty ptr4");
-            g_asmcode (&S);
-            SB_Clear(&S);
-
-            SB_AppendStr (&S, "ldy #>(_");
-            SB_AppendStr (&S, (const char*) Expr->Name);
-            SB_AppendChar (&S, ')');
-            g_asmcode (&S);
-            SB_Clear(&S);
-
-            SB_AppendStr (&S, "sty ptr4+1");
-            g_asmcode (&S);
-            SB_Clear(&S);
-
-            SB_Done (&S);
-
-            g_call (TypeOf (Expr->Type), Func->WrappedCall->Name, ParamSize);
-        } else {
-            g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize);
-        }
-
+        g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize);
+        /* Drop parameters, preserve D if needed */
+        g_drop(ParamSize, NotVoid);
     }
-
+    /* FIXME: optimization - it would be worth tracking how many arguments
+       we have accumulated to clean up - to say 16 bytes and then fix it
+       once ? but need to deal with branches if do so */
     /* The function result is an rvalue in the primary register */
     ED_MakeRValExpr (Expr);
     Expr->Type = GetFuncReturn (Expr->Type);

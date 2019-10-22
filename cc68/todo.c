@@ -30,8 +30,11 @@
 
 TextList CodeHead = {
     &CodeHead,
-    &CodeHead
+    &CodeHead,
+    NULL
 };
+
+TextList *CodeStack = NULL;
 
 void TextListAppendAfter(TextList *head, const char *text)
 {
@@ -77,6 +80,8 @@ void TextListSplice(TextList *at, TextList *start, TextList *end)
     at->next = start;
 }
 
+    
+
 /* This is a bit odd. We return a pointer to the last entry, which means
    m->Text for all the code below is really not the current mark but the
    previous to the current mark (we can't return the current text as it
@@ -116,8 +121,37 @@ void AppendCode(const char *txt)
 void PrintCode(void)
 {
     TextList *t = CodeHead.next;
+    if (CodeStack)
+        Internal("Botched codestack");
     while(t != &CodeHead) {
         printf("C| %s\n", t->str);
         t = t->next;
     }
+}
+
+void PushCode(void)
+{
+    TextList *n = xmalloc(sizeof(TextList));
+    *n = CodeHead;
+    n->stack = CodeStack;
+    CodeStack = n;
+    CodeHead.prev = CodeHead.next = &CodeHead;
+}
+
+void PopCode(void)
+{
+    TextList *t;
+    if (CodeStack == NULL)
+        Internal ("code pop without push");
+    t = CodeStack;
+    CodeStack = CodeStack->stack;
+    /* The popped block end is the new tail so pointers to CodeHead */
+    t->prev->next = &CodeHead;
+    /* The popped block start points to the old tail */
+    t->next->prev = CodeHead.prev;
+    /* Link the popped block (except head) to our tail */
+    CodeHead.prev->next = t->next;
+    /* Link our tail to the end of the added block */
+    CodeHead.prev = t->prev;
+    free(t);
 }
