@@ -516,10 +516,12 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
     the old frame pointer if we want to try the pulx txs rts trick */
 
     /* Stack the previous frame pointer, save ours as fp for returning */    
+    push (CF_INT);		/* Return address */
     AddCodeLine(".globl _%s", name);
     AddCodeLine("_%s:",name);
     AddCodeLine("ldx fp");
     AddCodeLine("pshx");
+    push (CF_INT);		/* FP */
     AddCodeLine("txs");
     AddCodeLine("stx fp");
     /* FIXME: see if initial local building can use fp for speed */
@@ -536,8 +538,10 @@ void g_leave (void)
     AddCodeLine("txs");
     /* Restore the previous frame pointer */
     AddCodeLine("pulx");
+    pop (CF_INT);		/* Frame pointer */
     AddCodeLine("stx fp");
     AddCodeLine("rts");
+    pop (CF_INT);		/* Return address */
 }
 
 
@@ -2092,6 +2096,7 @@ void g_push (unsigned flags, unsigned long val)
                 break;
 
             case CF_LONG:
+                /* FIXME: inline */
                 AddCodeLine ("jsr pusheax");
                 break;
 
