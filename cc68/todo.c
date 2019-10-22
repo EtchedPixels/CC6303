@@ -65,7 +65,7 @@ void TextListRemoveTail(TextList *head, TextList *last)
     TextListRemoveRange(last, head);
 }
 
-void TextListSplice(struct TextList *at, struct TextList *start, struct TextList *end)
+void TextListSplice(TextList *at, TextList *start, TextList *end)
 {
     /* Unhook the nodes */
     start->prev->next = end->next;
@@ -77,14 +77,27 @@ void TextListSplice(struct TextList *at, struct TextList *start, struct TextList
     at->next = start;
 }
 
-void RemoveCode(const CodeMark *m)
-{
-    TextListRemoveTail(&CodeHead, m->Text);
-}
+/* This is a bit odd. We return a pointer to the last entry, which means
+   m->Text for all the code below is really not the current mark but the
+   previous to the current mark (we can't return the current text as it
+   doesn't yet exist) */
 
 void GetCodePos(CodeMark *m)
 {
     m->Text = CodeHead.prev;
+}
+
+/* Turn a mark into the right text pointer remembering that the mark
+   is the previous pointer */
+static TextList *MarkToText(const CodeMark *m)
+{
+    return m->Text->next;
+}
+
+
+void RemoveCode(const CodeMark *m)
+{
+    TextListRemoveTail(&CodeHead, MarkToText(m));
 }
 
 /* Move the code between Start (inclusive) and End (exclusive) to
@@ -92,7 +105,7 @@ void GetCodePos(CodeMark *m)
 */
 void MoveCode(const CodeMark *start,  const CodeMark *end, const CodeMark *target)
 {
-    TextListSplice(target->Text->prev, start->Text, end->Text);
+    TextListSplice(MarkToText(target)->prev, MarkToText(start), MarkToText(end)->prev);
 }
 
 void AppendCode(const char *txt)
@@ -102,7 +115,7 @@ void AppendCode(const char *txt)
 
 void PrintCode(void)
 {
-    struct TextList *t = CodeHead.next;
+    TextList *t = CodeHead.next;
     while(t != &CodeHead) {
         printf("C| %s\n", t->str);
         t = t->next;
