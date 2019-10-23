@@ -291,8 +291,7 @@ static unsigned FunctionParamList (FuncDesc* Func)
     SymEntry* Param       = 0;  /* Keep gcc silent */
     unsigned  ParamSize   = 0;  /* Size of parameters pushed */
     unsigned  ParamCount  = 0;  /* Number of parameters pushed */
-    /* Return SP will be below arguments */
-    unsigned  FrameSize   = 2;  /* Size of parameter frame */
+    unsigned  FrameSize   = 0;  /* Size of parameter frame */
     unsigned  FrameParams = 0;  /* Number of params in frame */
     int       FrameOffs   = 0;  /* Offset into parameter frame */
     int       Ellipsis    = 0;  /* Function is variadic */
@@ -306,6 +305,7 @@ static unsigned FunctionParamList (FuncDesc* Func)
     while (CurTok.Tok != TOK_RPAREN) {
 
         unsigned Flags;
+        unsigned ArgSize;
 
         /* Count arguments */
         ++ParamCount;
@@ -372,13 +372,10 @@ static unsigned FunctionParamList (FuncDesc* Func)
         /* Use the type of the argument for the push */
         Flags |= TypeOf (Expr.Type);
 
-        if (CurTok.Tok == TOK_COMMA && NextTok.Tok != TOK_RPAREN) {
-            unsigned ArgSize = sizeofarg (Flags);
-            /* Push the argument */
-            g_push (Flags, Expr.IVal);
-            /* Calculate total parameter size */
-            ParamSize += ArgSize;
-        }
+        ArgSize = sizeofarg (Flags);
+        g_push (Flags, Expr.IVal);
+        /* Calculate total parameter size */
+        ParamSize += ArgSize;
 
         /* Check for end of argument list */
         if (CurTok.Tok != TOK_COMMA) {
