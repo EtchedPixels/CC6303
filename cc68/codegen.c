@@ -1834,7 +1834,8 @@ void g_save (unsigned flags)
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine ("std regsave");
+            AddCodeLine ("pshb");
+            AddCodeLine ("psha");
             break;
 
         case CF_LONG:
@@ -1862,7 +1863,8 @@ void g_restore (unsigned flags)
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine ("ldd regsave");
+            AddCodeLine ("pula");
+            AddCodeLine ("pulb");
             break;
 
         case CF_LONG:
@@ -2229,7 +2231,10 @@ void g_add (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    AddCodeLine("addb #$%02X", (unsigned char) val);
+                    if (val == 1)
+                        AddCodeLine("incb");
+                    else
+                        AddCodeLine("addb #$%02X", (unsigned char) val);
                     break;
                 }
                 /* Fall through */
@@ -2270,7 +2275,28 @@ void g_rsub (unsigned flags, unsigned long val)
     static const char* const ops[4] = {
         "tosrsubax", "tosrsubax", "tosrsubeax", "tosrsubeax"
     };
-    oper (flags, val, ops);
+    if (flags & CF_CONST) {
+        switch (flags & CF_TYPEMASK) {
+            case CF_CHAR:
+                if (flags & CF_FORCECHAR) {
+                    if (val == 1)
+                        AddCodeLine("decb");
+                    else
+                        AddCodeLine("subb #$%02X", (unsigned char) val);
+                    break;
+                }
+                /* Fall through */
+            case CF_INT:
+                AddCodeLine("subd #$%04X", (unsigned short) val);
+                break;
+            case CF_LONG:
+                flags &= CF_CONST;
+                g_push(flags & ~CF_CONST, 0);
+                oper(flags, val, ops);
+        }
+    } else {
+        oper (flags, val, ops);
+    }
 }
 
 

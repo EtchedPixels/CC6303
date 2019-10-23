@@ -1463,6 +1463,23 @@ static void PreDec (ExprDesc* Expr)
 
 
 
+/*
+ *	FIXME: we need to generate better code here when we can
+ *
+ *	Options include
+ *
+ *	ldd whatever
+ *	(tsx)inx/bcc/inx
+ *
+ *	or once we have better load via x
+ *	ldx foo
+ *	inx
+ *	stx foo
+ *	dex
+ *
+ *	Ditto postdec
+ *
+ */
 static void PostInc (ExprDesc* Expr)
 /* Handle the postincrement operator */
 {
@@ -1487,6 +1504,7 @@ static void PostInc (ExprDesc* Expr)
     /* Emit smaller code if a char variable is at a constant location */
     if ((Flags & CF_CHAR) == CF_CHAR && ED_IsLocConst(Expr)) {
 
+        /* FIXME: review for 8bit local via ,x */
         LoadExpr (CF_NONE, Expr);
         AddCodeLine ("inc %s", ED_GetLabelName(Expr, 0));
 
