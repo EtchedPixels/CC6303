@@ -19,18 +19,15 @@ the MWC assembler bits used there plus my linker and tools.
 
 ## Status
 
-It can just about compile a simple "return 0;" at this point. A lot of
-further code cleanup and the new output side are needed to generate
-any useful code.
+Simple code appears to be producing valid looking if not very good code.
+Lots of more complicating things will blow up, in particular some of the
+handling for initialized local variables needs to be totally different to
+the 6502 approach because we have a real stack.
 
 ## TODO
 
 - Strip out lots more unused cc65 code. There is a lot of unused code,
   and a load of dangling header references and so on left to resolve.
-- Write a new output engine that just keeps a linked list of lines and can
-  do the needed line removals
-- Add the ability to stack/pop code generation so that we can fix the
-  argument ordering
 - Either it or the assembler needs to be able to guesstimate label distances
   so that it can generate inverse branches. Traditionally this would be in
   the assembler
@@ -45,15 +42,11 @@ any useful code.
   improve some handling of helpers. We can't do that much with it because
   we need to be in D for maths.
 
-- Sorting out psha/b ordering versus x and in memory big endian. Right now
-  it's definitely wrong all over the place
-
-- Sort out stack offsets
-
 - Sort out entry/exit code. It would be nice to be able to dump the pre/post
   entry code if not used. It would also be nice to generate different
   methods according to size. With a small stack offset pulx/ins are
-  attractive, with void or u8 returns abx is attractive too
+  attractive, with void or u8 returns abx is attractive too, with a big one
+  a framepointer is best.
 
 - Fetch pointers via X when we can, especially on 6803. In particular also
   deal with pre/post-inc of statics (but not alas pre/post inc locals) with
@@ -64,3 +57,11 @@ any useful code.
 	stx $foo
 	dex
 ````
+- Make sure we can tell if the result of a function is being evaluated or if
+  the function returns void. In those cases we can use D (mostly importantly
+  B) to use abx to fix the stack offsets.
+
+- Is it worth re-implementing register variables. On cc65 they are a big
+  help for some use cases as you have to indirect via ZP to do most things.
+  On 680x ZP variables are just faster memory with short instructions except
+  for some obscure 6303 features (AIM/OIM/etc)

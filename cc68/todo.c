@@ -34,6 +34,31 @@ TextList CodeHead = {
     NULL
 };
 
+TextList RODataHead = {
+    &RODataHead,
+    &RODataHead,
+    NULL
+};
+
+TextList DataHead = {
+    &DataHead,
+    &DataHead,
+    NULL
+};
+
+TextList BSSHead = {
+    &BSSHead,
+    &BSSHead,
+    NULL
+};
+
+/* ABS and global stuff */
+TextList ABSHead = {
+    &ABSHead,
+    &ABSHead,
+    NULL
+};
+
 TextList *CodeStack = NULL;
 
 void TextListAppendAfter(TextList *head, const char *text)
@@ -90,6 +115,7 @@ void TextListSplice(TextList *at, TextList *start, TextList *end)
 void GetCodePos(CodeMark *m)
 {
     m->Text = CodeHead.prev;
+    m->SP = StackPtr;
 }
 
 /* Turn a mark into the right text pointer remembering that the mark
@@ -102,7 +128,8 @@ static TextList *MarkToText(const CodeMark *m)
 
 void RemoveCode(const CodeMark *m)
 {
-    TextListRemoveTail(&CodeHead, MarkToText(m));
+    TextListRemoveTail(&CodeHead, MarkToText(m)->prev);
+    StackPtr = m->SP;
 }
 
 /* Move the code between Start (inclusive) and End (exclusive) to
@@ -123,7 +150,10 @@ void PrintCode(void)
     TextList *t = CodeHead.next;
     if (CodeStack)
         Internal("Botched codestack");
+    printf("\t.code\n");
     while(t != &CodeHead) {
+        if (strchr(t->str, ':') == NULL)
+            printf("\t");
         printf("%s\n", t->str);
         t = t->next;
     }
@@ -146,13 +176,76 @@ void PopCode(void)
         Internal ("code pop without push");
     t = CodeStack;
     CodeStack = CodeStack->stack;
-    /* The popped block end is the new tail so pointers to CodeHead */
-    t->prev->next = &CodeHead;
-    /* The popped block start points to the old tail */
-    t->next->prev = CodeHead.prev;
-    /* Link the popped block (except head) to our tail */
-    CodeHead.prev->next = t->next;
-    /* Link our tail to the end of the added block */
-    CodeHead.prev = t->prev;
+    /* We restore the stacked code and append the new to it */
+    /* Chain the new code onto the old */
+    t->prev->next = CodeHead.next;
+    CodeHead.next->prev = t->prev;
+    /* The stacked code goes at the front */
+    CodeHead.next = t->next;
+    /* The end of chain pointers are still valid */
     free(t);
+}
+
+void AppendROData(const char *txt)
+{
+    TextListAppend(&RODataHead, txt);
+}
+
+void PrintROData(void)
+{
+    TextList *t = RODataHead.next;
+    printf("\t.code\n");	/* No separate rodata in our toolchain */
+    while(t != &RODataHead) {
+        printf("%s\n", t->str);
+        t = t->next;
+    }
+    TextListRemoveRange(&RODataHead, &RODataHead);
+}
+
+void AppendData(const char *txt)
+{
+    TextListAppend(&DataHead, txt);
+}
+
+void PrintData(void)
+{
+    TextList *t = DataHead.next;
+    printf("\t.data\n");
+    while(t != &DataHead) {
+        printf("%s\n", t->str);
+        t = t->next;
+    }
+    TextListRemoveRange(&DataHead, &DataHead);
+}
+
+void AppendBSS(const char *txt)
+{
+    TextListAppend(&BSSHead, txt);
+}
+
+
+void PrintBSS(void)
+{
+    TextList *t = BSSHead.next;
+    printf("\t.bss\n");
+    while(t != &BSSHead) {
+        printf("%s\n", t->str);
+        t = t->next;
+    }
+    TextListRemoveRange(&BSSHead, &BSSHead);
+}
+
+void AppendABS(const char *txt)
+{
+    TextListAppend(&ABSHead, txt);
+}
+
+void PrintABS(void)
+{
+    TextList *t = ABSHead.next;
+    while(t != &ABSHead) {
+        printf("%s\n", t->str);
+        t = t->next;
+    }
+    TextListRemoveRange(&ABSHead, &ABSHead);
 }

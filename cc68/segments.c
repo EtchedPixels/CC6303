@@ -229,7 +229,7 @@ void AddTextLine (const char* Format, ...)
     vsnprintf(buf, 512, Format, ap);
     printf("T:%s\n", buf);
     /* For now */
-    AppendCode(buf);
+    AppendABS(buf);
     CHECK (CS != 0);
     va_end (ap);
 }
@@ -237,7 +237,7 @@ void AddTextLine (const char* Format, ...)
 
 
 void AddCodeLine (const char* Format, ...)
-/* Add a line of code to the current code segment */
+/* Add a line of code to the code segment */
 {
     char buf[512];
     va_list ap;
@@ -252,7 +252,7 @@ void AddCodeLine (const char* Format, ...)
 
 
 void AddCode (struct CodeLabel* JumpTo)
-/* Add a code entry to the current code segment */
+/* Add a code entry to the code segment */
 {
     CHECK (CS != 0);
     printf("!!:%s", CurTok.LI->Line);
@@ -262,7 +262,7 @@ void AddCode (struct CodeLabel* JumpTo)
 
 
 void AddDataLine (const char* Format, ...)
-/* Add a line of data to the current data segment */
+/* Add a line of data to the data segment */
 {
     char buf[512];
     va_list ap;
@@ -270,31 +270,30 @@ void AddDataLine (const char* Format, ...)
     vsnprintf(buf, 512, Format, ap);
     CHECK (CS != 0);
     printf("D:%s\n", buf);
+    /* FIXME: clean this lot out further */
+    switch(CS->CurDSeg) {
+    case SEG_BSS:
+        AppendBSS(buf);
+        break;
+    case SEG_DATA:
+        AppendData(buf);
+        break;
+    case SEG_RODATA:
+        AppendROData(buf);
+        break;
+    }
     va_end (ap);
 }
 
-
-
-void OutputSegments (const Segments* S)
-/* Output the given segments to the output file */
+void AddABSLine (const char* Format, ...)
+/* Add a line of data to the BSS segment */
 {
-    PrintCode();
-#if 0
-    /* Output the function prologue if the segments came from a function */
-    CS_OutputPrologue (S->Code);
-
-    /* Output the text segment */
-    TS_Output (S->Text);
-
-    /* Output the three data segments */
-    DS_Output (S->Data);
-    DS_Output (S->ROData);
-    DS_Output (S->BSS);
-
-    /* Output the code segment */
-    CS_Output (S->Code);
-
-    /* Output the code segment epiloque */
-    CS_OutputEpilogue (S->Code);
-#endif    
+    char buf[512];
+    va_list ap;
+    va_start (ap, Format);
+    vsnprintf(buf, 512, Format, ap);
+    CHECK (CS != 0);
+    printf("B:%s\n", buf);
+    AppendData(buf);
+    va_end (ap);
 }

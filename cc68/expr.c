@@ -343,6 +343,9 @@ static unsigned FunctionParamList (FuncDesc* Func)
         PushCode();
 
         /* Evaluate the parameter expression */
+        /* FIXME: we play a bit fast and loose here. We ought to adjust
+           the stack if it has changed by more than our argument but that
+           can't actually happen right now. Should add a sanity check ? */
         hie1 (&Expr);
 
         /* If we don't have an argument spec, accept anything, otherwise
@@ -508,6 +511,7 @@ static void FunctionCall (ExprDesc* Expr)
 
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
+        StackPtr += ParamSize;
         /* If we have a pointer on stack, remove it */
         if (PtrOnStack) {
             g_drop (SIZEOF_PTR, NotVoid);
@@ -522,6 +526,7 @@ static void FunctionCall (ExprDesc* Expr)
         g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize);
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
+        StackPtr += ParamSize;
     }
     /* FIXME: optimization - it would be worth tracking how many arguments
        we have accumulated to clean up - to say 16 bytes and then fix it

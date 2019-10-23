@@ -150,9 +150,6 @@ int HaveGlobalCode (void);
 void RemoveGlobalCode (void);
 /* Remove all code from the global code segment. Used for error recovery. */
 
-void OutputSegments (const Segments* S);
-/* Output the given segments to the output file */
-
 
 
 /* End of segments.h */

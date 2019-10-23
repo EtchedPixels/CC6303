@@ -69,20 +69,9 @@ int CodeRangeIsEmpty (const CodeMark* Start, const CodeMark* End)
 void WriteAsmOutput (void)
 /* Write the final assembler output to the output file */
 {
-    SymTable* SymTab;
-    SymEntry* Entry;
-
-    /* Output the global data segment */
-    OutputSegments (CS);
-
-    /* Output all global or referenced functions */
-    SymTab = GetGlobalSymTab ();
-    Entry  = SymTab->SymHead;
-    while (Entry) {
-        if (SymIsOutputFunc (Entry)) {
-            /* Function which is defined and referenced or extern */
-            OutputSegments (Entry->V.F.Seg);
-        }
-        Entry = Entry->NextSym;
-    }
+    PrintABS();
+    PrintCode();
+    PrintROData();
+    PrintData();
+    PrintBSS();
 }

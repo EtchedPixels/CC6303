@@ -1592,7 +1592,7 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
             
             /* Fall through */
         case CF_LONG:
-            AddCodeLine ("pshb");	         /* Push the address */
+            AddCodeLine ("pshb ; addeqind");         /* Push the address */
             AddCodeLine ("psha");
             push (CF_PTR);                      /* Correct the internal sp */
             g_getind (flags, offs);             /* Fetch the value */
@@ -1981,7 +1981,7 @@ void g_test (unsigned flags)
 void g_push (unsigned flags, unsigned long val)
 /* Push the primary register or a constant value onto the stack */
 {
-    if (flags & CF_CONST && (flags & CF_TYPEMASK) != CF_LONG) {
+    if ((flags & CF_CONST) && (flags & CF_TYPEMASK) != CF_LONG) {
 
         /* We have a constant 8 or 16 bit value */
         if ((flags & CF_TYPEMASK) == CF_CHAR && (flags & CF_FORCECHAR)) {
@@ -2032,7 +2032,7 @@ void g_push (unsigned flags, unsigned long val)
                 }
                 /* FALL THROUGH */
             case CF_INT:
-                AddCodeLine ("pshb");
+                AddCodeLine ("pshb; g_push");
                 AddCodeLine ("psha");
                 break;
 
@@ -2087,10 +2087,6 @@ void g_call (unsigned Flags, const char* Label, unsigned ArgSize)
 /* Call the specified subroutine name */
 {
     AddCodeLine ("jsr _%s", Label);
-    /* FIXME: we need g_drop to know if the function is void and it can
-       skip saving D */
-    g_drop(ArgSize, 1);
-    StackPtr += ArgSize;
 }
 
 
@@ -2110,10 +2106,6 @@ void g_callind (unsigned Flags, unsigned ArgSize, int Offs)
         AddCodeLine("jsr jumpx");
         /* jumpx is just jmp ,x" */
     }
-    /* FIXME: we need g_drop to know if the function is void and it can
-       skip saving D */
-    g_drop(ArgSize, 1);
-    StackPtr += ArgSize;
 }
 
 
@@ -2234,10 +2226,24 @@ void g_add (unsigned flags, unsigned long val)
     };
 
     if (flags & CF_CONST) {
-        flags &= ~CF_FORCECHAR; /* Handle chars as ints */
-        g_push (flags & ~CF_CONST, 0);
+        switch (flags & CF_TYPEMASK) {
+            case CF_CHAR:
+                if (flags & CF_FORCECHAR) {
+                    AddCodeLine("addb #$%02X", (unsigned char) val);
+                    break;
+                }
+                /* Fall through */
+            case CF_INT:
+                AddCodeLine("addd #$%04X", (unsigned short) val);
+                break;
+            case CF_LONG:
+                flags &= CF_CONST;
+                g_push(flags & ~CF_CONST, 0);
+                oper(flags, val, ops);
+        }
+    } else {
+        oper (flags, val, ops);
     }
-    oper (flags, val, ops);
 }
 
 
@@ -3703,11 +3709,11 @@ void g_ge (unsigned flags, unsigned long val)
 /*****************************************************************************/
 
 
+/* TODO: BSS v DATA v CONST */
 
 void g_res (unsigned n)
 /* Reserve static storage, n bytes */
 {
-    /* BSS.. */
     AddDataLine ("\t.res\t%u,$00", n);
 }
 
