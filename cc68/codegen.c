@@ -21,8 +21,7 @@
  *	port.
  *
  *	The lack of an extra register (aka Y in cc65 land) isn't usually
- *	a problem as we have less need of it, but there are a few places
- *	such as argument count passing it makes harder
+ *	a problem as we have less need of it.
  */
 
 
@@ -191,6 +190,9 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
 {
     unsigned s = sizeofarg(Flags) - 1;
 
+    /* S points below the data so we need to look further up */
+    Offs += 1;
+
     /* Big offsets are ugly and we have to go via D */
     if (Offs + s > 2040) {
         if (save_d) {
@@ -208,8 +210,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
         return 0;
     }
 
-    /* We need to track if X is dirty and if so by what offset to do better.
-       For now generate the tsx each time */
+    /* Generate the tsx each time - we will clean it up in the optimizer */
     AddCodeLine("tsx");
 
     /* We are in range of n,x so do nothing but tsx */
@@ -519,29 +520,16 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
     push (CF_INT);		/* Return address */
     AddCodeLine(".globl _%s", name);
     AddCodeLine("_%s:",name);
-    AddCodeLine("ldx fp");
-    AddCodeLine("pshx");
-    push (CF_INT);		/* FP */
-    AddCodeLine("txs");
-    AddCodeLine("stx fp");
-    /* FIXME: see if initial local building can use fp for speed */
 }
 
 
 
-void g_leave (void)
+void g_leave (int save_d)
 /* Function epilogue */
 {
-    /* Load the frame pointer */
-    AddCodeLine("ldx fp");
-    /* Drop the frame */
-    AddCodeLine("txs");
-    /* Restore the previous frame pointer */
-    AddCodeLine("pulx");
-    pop (CF_INT);		/* Frame pointer */
-    AddCodeLine("stx fp");
+    /* void functions can trash d adjusting the stack */
+    g_drop(-StackPtr, save_d);
     AddCodeLine("rts");
-    pop (CF_INT);		/* Return address */
 }
 
 
@@ -829,57 +817,9 @@ void g_leasp (int Offs)
 #endif    
 }
 
-
-
-void g_leavariadic (int Offs)
-/* Fetch the address of a parameter in a variadic function into the primary
-** register
-*/
-{
-    unsigned ArgSizeOffs;
-
-    /* Calculate the offset relative to sp */
-    Offs -= StackPtr;
-
-    /* Get the offset of the parameter which is stored at sp+0 on function
-    ** entry and check if this offset is reachable with a byte offset.
-    */
-    CHECK (StackPtr <= 0);
-    ArgSizeOffs = -StackPtr;
-
-    /* Get the size of all parameters. */
-    AddCodeLine ("ldy #$%02X", ArgSizeOffs);
-    AddCodeLine ("lda (sp),y");
-
-    /* Add the value of the stackpointer */
-    if (IS_Get (&CodeSizeFactor) > 250) {
-        unsigned L = GetLocalLabel();
-        AddCodeLine ("ldx sp+1");
-        AddCodeLine ("clc");
-        AddCodeLine ("adc sp");
-        AddCodeLine ("bcc %s", LocalLabelName (L));
-        AddCodeLine ("inx");
-        g_defcodelabel (L);
-    } else {
-        AddCodeLine ("ldx #$00");
-        AddCodeLine ("jsr leaaxsp");
-    }
-
-    /* Add the offset to the primary */
-    if (Offs > 0) {
-        g_inc (CF_INT | CF_CONST, Offs);
-    } else if (Offs < 0) {
-        g_dec (CF_INT | CF_CONST, -Offs);
-    }
-}
-
-
-
 /*****************************************************************************/
 /*                             Store into memory                             */
 /*****************************************************************************/
-
-
 
 void g_putstatic (unsigned flags, uintptr_t label, long offs)
 /* Store the primary register into the specified static memory cell */
@@ -954,6 +894,7 @@ void g_putlocal (unsigned Flags, int Offs, long Val)
 
 
 
+/* FIXME: needs a complete review */
 void g_putind (unsigned Flags, unsigned Offs)
 /* Store the specified object type in the primary register at the address
 ** on the top of the stack
@@ -1108,7 +1049,7 @@ static void g_regchar (unsigned Flags)
 {
     unsigned L;
 
-    AddCodeLine ("clraa");
+    AddCodeLine ("clra");
 
     if ((Flags & CF_UNSIGNED) == 0) {
         /* Sign extend */
@@ -1651,8 +1592,8 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
             
             /* Fall through */
         case CF_LONG:
-            AddCodeLine ("psha");	         /* Push the address */
-            AddCodeLine ("pshb");
+            AddCodeLine ("pshb");	         /* Push the address */
+            AddCodeLine ("psha");
             push (CF_PTR);                      /* Correct the internal sp */
             g_getind (flags, offs);             /* Fetch the value */
             g_inc (flags, val);                 /* Increment value in primary */
@@ -2068,8 +2009,8 @@ void g_push (unsigned flags, unsigned long val)
                     AddCodeLine("pshx");
                     break;
                 case CF_LONG:
-                    AddCodeLine("psha");
                     AddCodeLine("pshb");
+                    AddCodeLine("psha");
                     AddCodeLine("pshx");
                     break;
                 default:
@@ -2091,8 +2032,8 @@ void g_push (unsigned flags, unsigned long val)
                 }
                 /* FALL THROUGH */
             case CF_INT:
-                AddCodeLine ("psha");
                 AddCodeLine ("pshb");
+                AddCodeLine ("psha");
                 break;
 
             case CF_LONG:
@@ -3766,6 +3707,7 @@ void g_ge (unsigned flags, unsigned long val)
 void g_res (unsigned n)
 /* Reserve static storage, n bytes */
 {
+    /* BSS.. */
     AddDataLine ("\t.res\t%u,$00", n);
 }
 
@@ -3913,7 +3855,6 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
         }
     } else {
         /* Use the easy way here: memcpy() */
-        /* FIXME: this is one case an 'into X' flag would help */
         g_getimmed (CF_INTOX|CF_STATIC, VarLabel, 0);
         AddCodeLine ("pshx");
         g_getimmed (CF_STATIC|CF_INTOX, InitLabel, 0);

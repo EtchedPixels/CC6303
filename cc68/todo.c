@@ -124,9 +124,10 @@ void PrintCode(void)
     if (CodeStack)
         Internal("Botched codestack");
     while(t != &CodeHead) {
-        printf("C| %s\n", t->str);
+        printf("%s\n", t->str);
         t = t->next;
     }
+    TextListRemoveRange(&CodeHead, &CodeHead);
 }
 
 void PushCode(void)

@@ -174,17 +174,6 @@ static TypeCode OptionalQualifiers (TypeCode Allowed)
                 }
                 break;
 
-            case TOK_FASTCALL:
-                if (Allowed & T_QUAL_FASTCALL) {
-                    if (Q & T_QUAL_FASTCALL) {
-                        DuplicateQualifier ("fastcall");
-                    }
-                    Q |= T_QUAL_FASTCALL;
-                } else {
-                    goto Done;
-                }
-                break;
-
             case TOK_CDECL:
                 if (Allowed & T_QUAL_CDECL) {
                     if (Q & T_QUAL_CDECL) {
@@ -350,12 +339,8 @@ static void FixQualifiers (Type* DataType)
                             Error ("Function's and pointer's calling conventions are different");
                         }
                     } else {
-                        if (Q == T_QUAL_FASTCALL && IsVariadicFunc (T + 1)) {
-                            Error ("Variadic-function pointers cannot be __fastcall__");
-                        } else {
                             /* Move the qualifier from the pointer to the function. */
-                            T[1].C |= Q;
-                        }
+                        T[1].C |= Q;
                     }
                 } else {
                     Error ("Not pointer to a function; can't use a calling convention");
@@ -1135,6 +1120,7 @@ static void ParseOldStyleParamList (FuncDesc* F)
 {
     /* Some fix point tokens that are used for error recovery */
     static const token_t TokenList[] = { TOK_COMMA, TOK_RPAREN, TOK_SEMI };
+    SymEntry *Sym;
 
     /* Parse params */
     while (CurTok.Tok != TOK_RPAREN) {
@@ -1143,8 +1129,10 @@ static void ParseOldStyleParamList (FuncDesc* F)
         if (CurTok.Tok == TOK_IDENT) {
 
             /* Create a symbol table entry with type int */
-            AddLocalSym (CurTok.Ident, type_int, SC_AUTO | SC_PARAM | SC_DEF | SC_DEFTYPE, 0);
+            Sym = AddLocalSym (CurTok.Ident, type_int, SC_AUTO | SC_PARAM | SC_DEF | SC_DEFTYPE, 0);
 
+            if (!F->ParamCount)
+                F->FirstParam = Sym;
             /* Count arguments */
             ++F->ParamCount;
 
@@ -1294,6 +1282,8 @@ static void ParseAnsiParamList (FuncDesc* F)
             }
         }
 
+        if (F->ParamCount == 0)
+            F->FirstParam = Sym;
         /* Count arguments */
         ++F->ParamCount;
 
@@ -1364,16 +1354,14 @@ static FuncDesc* ParseFuncDecl (void)
     /* Assign offsets. If the function has a variable parameter list,
     ** there's one additional byte (the arg size).
     */
-    Offs = 0;		/* Because of the return */
-    Sym = F->LastParam;
-    /* FIXME: these are in reverse order so we need to compute the offsets
-       the other way around */
+    Offs = 2;		/* Because of the return */
+    Sym = F->FirstParam;
     while (Sym) {
         unsigned Size = CheckedSizeOf (Sym->Type);
         Sym->V.Offs = Offs;
         Offs += Size;
         F->ParamSize += Size;
-        Sym = Sym->PrevSym;
+        Sym = Sym->NextSym;
     }
 
     /* Leave the lexical level remembering the symbol tables */
@@ -1454,12 +1442,6 @@ static void Declarator (const DeclSpec* Spec, Declaration* D, declmode_t Mode)
             /* Parse the function declaration */
             F = ParseFuncDecl ();
 
-            /* We cannot specify fastcall for variadic functions */
-            if ((F->Flags & FD_VARIADIC) && (Qualifiers & T_QUAL_FASTCALL)) {
-                Error ("Variadic functions cannot be __fastcall__");
-                Qualifiers &= ~T_QUAL_FASTCALL;
-            }
-
             PrevEntry = FindGlobalSym (D->Ident);
             /* FIXME: do we need PrevEntry any more */
             /* Add the function type. Be sure to bounds check the type buffer */
@@ -1516,9 +1498,6 @@ static void Declarator (const DeclSpec* Spec, Declaration* D, declmode_t Mode)
     }
     if (Qualifiers & T_QUAL_FAR) {
         Error ("Invalid '__far__' qualifier");
-    }
-    if (Qualifiers & T_QUAL_FASTCALL) {
-        Error ("Invalid '__fastcall__' qualifier");
     }
     if (Qualifiers & T_QUAL_CDECL) {
         Error ("Invalid '__cdecl__' qualifier");

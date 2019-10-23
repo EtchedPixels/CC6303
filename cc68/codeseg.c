@@ -68,18 +68,6 @@
 static void CS_PrintFunctionHeader (const CodeSeg* S)
 /* Print a comment with the function signature to the output file */
 {
-    /* Get the associated function */
-    const SymEntry* Func = S->Func;
-
-    /* If this is a global code segment, do nothing */
-    if (Func) {
-        WriteOutput ("; ---------------------------------------------------------------\n"
-                     "; ");
-        PrintFuncSig (OutputFile, Func->Name, Func->Type);
-        WriteOutput ("\n"
-                     "; ---------------------------------------------------------------\n"
-                     "\n");
-    }
 }
 
 
@@ -313,38 +301,6 @@ int CS_RangeHasLabel (CodeSeg* S, unsigned Start, unsigned Count)
 CodeLabel* CS_AddLabel (CodeSeg* S, const char* Name)
 /* Add a code label for the next instruction to follow */
 {
-#if 0
-    /* Calculate the hash from the name */
-    unsigned Hash = HashStr (Name) % CS_LABEL_HASH_SIZE;
-
-    /* Try to find the code label if it does already exist */
-    CodeLabel* L = CS_FindLabel (S, Name, Hash);
-
-    /* Did we find it? */
-    if (L) {
-        /* We found it - be sure it does not already have an owner */
-        if (L->Owner) {
-            Error ("ASM label '%s' is already defined", Name);
-            return L;
-        }
-    } else {
-        /* Not found - create a new one */
-        L = CS_NewCodeLabel (S, Name, Hash);
-    }
-
-    /* Safety. This call is quite costly, but safety is better */
-    if (CollIndex (&S->Labels, L) >= 0) {
-        Error ("ASM label '%s' is already defined", Name);
-        return L;
-    }
-
-    /* We do now have a valid label. Remember it for later */
-    CollAppend (&S->Labels, L);
-
-    /* Return the label */
-    return L;
-    /* FIXME */
-#endif    
 }
 
 
@@ -357,37 +313,13 @@ void CS_OutputPrologue (const CodeSeg* S)
 ** segment is global, do nothing.
 */
 {
-    /* Get the function associated with the code segment */
-    SymEntry* Func = S->Func;
-
-    /* If the code segment is associated with a function, print a function
-    ** header and enter a local scope. Be sure to switch to the correct
-    ** segment before outputing the function label.
-    */
-    if (Func) {
-        /* Get the function descriptor */
-        CS_PrintFunctionHeader (S);
-        WriteOutput (".segment\t\"%s\"\n\n.proc\t_%s", S->SegName, Func->Name);
-        if (IsQualNear (Func->Type)) {
-            WriteOutput (": near");
-        } else if (IsQualFar (Func->Type)) {
-            WriteOutput (": far");
-        }
-        WriteOutput ("\n\n");
-    }
-
 }
 
 
 
 void CS_OutputEpilogue (const CodeSeg* S)
-/* If the given code segment is a code segment for a function, output the
-** assembler epilogue into the file. That is: Close the local function scope.
-*/
 {
-    if (S->Func) {
-        WriteOutput ("\n.endproc\n\n");
-    }
+    /* Nothing to do for the 6803 assembler */
 }
 
 
@@ -395,73 +327,6 @@ void CS_OutputEpilogue (const CodeSeg* S)
 void CS_Output (CodeSeg* S)
 /* Output the code segment data to the output file */
 {
-#if 0
-    unsigned I;
-    const LineInfo* LI;
-
-    /* Get the number of entries in this segment */
-    unsigned Count = CS_GetEntryCount (S);
-
-    /* If the code segment is empty, bail out here */
-    if (Count == 0) {
-        return;
-    }
-
-    /* Generate register info */
-    CS_GenRegInfo (S);
-
-    /* Output the segment directive */
-    WriteOutput (".segment\t\"%s\"\n\n", S->SegName);
-
-    /* Output all entries, prepended by the line information if it has changed */
-    LI = 0;
-    for (I = 0; I < Count; ++I) {
-        /* Get the next entry */
-        const CodeEntry* E = CollConstAt (&S->Entries, I);
-        /* Check if the line info has changed. If so, output the source line
-        ** if the option is enabled and output debug line info if the debug
-        ** option is enabled.
-        */
-        if (E->LI != LI) {
-            /* Line info has changed, remember the new line info */
-            LI = E->LI;
-
-            /* Add the source line as a comment. Beware: When line continuation
-            ** was used, the line may contain newlines.
-            */
-            if (AddSource) {
-                const char* L = LI->Line;
-                WriteOutput (";\n; ");
-                while (*L) {
-                    const char* N = strchr (L, '\n');
-                    if (N) {
-                        /* We have a newline, just write the first part */
-                        WriteOutput ("%.*s\n; ", (int) (N - L), L);
-                        L = N+1;
-                    } else {
-                        /* No Newline, write as is */
-                        WriteOutput ("%s\n", L);
-                        break;
-                    }
-                }
-                WriteOutput (";\n");
-            }
-
-            /* Add line debug info */
-            if (DebugInfo) {
-                WriteOutput ("\t.dbg\tline, \"%s\", %u\n",
-                             GetInputName (LI), GetInputLine (LI));
-            }
-        }
-        /* Output the code */
-        CE_Output (E);
-    }
-
-    /* If debug info is enabled, terminate the last line number information */
-    if (DebugInfo) {
-        WriteOutput ("\t.dbg\tline\n");
-    }
-#endif
 }
 
 

@@ -251,12 +251,10 @@ static void DoCompare (const Type* lhs, const Type* rhs, typecmp_t* Result)
             /* If a calling convention wasn't set explicitly,
             ** then assume the default one.
             */
-            if ((LeftQual & T_QUAL_CCONV) == T_QUAL_NONE) {
-                LeftQual |= (AutoCDecl || IsVariadicFunc (lhs)) ? T_QUAL_CDECL : T_QUAL_FASTCALL;
-            }
-            if ((RightQual & T_QUAL_CCONV) == T_QUAL_NONE) {
-                RightQual |= (AutoCDecl || IsVariadicFunc (rhs)) ? T_QUAL_CDECL : T_QUAL_FASTCALL;
-            }
+            if ((LeftQual & T_QUAL_CCONV) == T_QUAL_NONE)
+                LeftQual |= T_QUAL_CDECL;
+            if ((RightQual & T_QUAL_CCONV) == T_QUAL_NONE)
+                RightQual |= T_QUAL_CDECL;
         }
 
         if (LeftQual != RightQual) {

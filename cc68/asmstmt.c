@@ -262,11 +262,6 @@ static void ParseLVarArg (StrBuf* T, unsigned Arg)
     ** don't have a fixed stack offset, so check it and bail out with an error
     ** if this is the case.
     */
-    if ((Sym->Flags & SC_PARAM) == SC_PARAM && F_IsVariadic (CurrentFunc)) {
-        Error ("Argument %u has no fixed stack offset", Arg);
-        AsmErrorSkip ();
-        return;
-    }
 
     /* Calculate the current offset from SP */
     Offs = Sym->V.Offs - StackPtr;

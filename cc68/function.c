@@ -168,15 +168,6 @@ int F_IsMainFunc (const Function* F)
 }
 
 
-
-int F_IsVariadic (const Function* F)
-/* Return true if this is a variadic function */
-{
-    return (F->Desc->Flags & FD_VARIADIC) != 0;
-}
-
-
-
 int F_IsOldStyle (const Function* F)
 /* Return true if this is an old style (K&R) function */
 {
@@ -435,7 +426,11 @@ void NewFunc (SymEntry* Func)
     F_RestoreRegVars (CurrentFunc);
 
     /* Generate the exit code */
-    g_leave ();
+
+    if (!F_HasReturn(CurrentFunc))
+        g_leave (0);
+    else
+        g_leave (1);
 
     /* Emit references to imports/exports */
     EmitExternals ();

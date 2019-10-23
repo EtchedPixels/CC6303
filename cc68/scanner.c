@@ -85,6 +85,7 @@ static const struct Keyword {
     unsigned char   Tok;        /* The token */
     unsigned char   Std;        /* Token supported in which standards? */
 } Keywords [] = {
+    /* FIXME: remove a lot of the 6502isms here */
     { "_Pragma",        TOK_PRAGMA,     TT_C89 | TT_C99 | TT_CC65  },   /* !! */
     { "__AX__",         TOK_AX,         TT_C89 | TT_C99 | TT_CC65  },
     { "__A__",          TOK_A,          TT_C89 | TT_C99 | TT_CC65  },
@@ -95,7 +96,6 @@ static const struct Keyword {
     { "__attribute__",  TOK_ATTRIBUTE,  TT_C89 | TT_C99 | TT_CC65  },
     { "__cdecl__",      TOK_CDECL,      TT_C89 | TT_C99 | TT_CC65  },
     { "__far__",        TOK_FAR,        TT_C89 | TT_C99 | TT_CC65  },
-    { "__fastcall__",   TOK_FASTCALL,   TT_C89 | TT_C99 | TT_CC65  },
     { "__inline__",     TOK_INLINE,     TT_C89 | TT_C99 | TT_CC65  },
     { "__near__",       TOK_NEAR,       TT_C89 | TT_C99 | TT_CC65  },
     { "asm",            TOK_ASM,                          TT_CC65  },
@@ -113,7 +113,6 @@ static const struct Keyword {
     { "enum",           TOK_ENUM,       TT_C89 | TT_C99 | TT_CC65  },
     { "extern",         TOK_EXTERN,     TT_C89 | TT_C99 | TT_CC65  },
     { "far",            TOK_FAR,                          TT_CC65  },
-    { "fastcall",       TOK_FASTCALL,                     TT_CC65  },
     { "float",          TOK_FLOAT,      TT_C89 | TT_C99 | TT_CC65  },
     { "for",            TOK_FOR,        TT_C89 | TT_C99 | TT_CC65  },
     { "goto",           TOK_GOTO,       TT_C89 | TT_C99 | TT_CC65  },

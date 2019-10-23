@@ -52,7 +52,6 @@
 
 /* Options */
 extern unsigned char    AddSource;              /* Add source lines as comments */
-extern unsigned char    AutoCDecl;              /* Make functions default to __cdecl__ */
 extern unsigned char    DebugInfo;              /* Add debug info to the obj */
 extern unsigned char    PreprocessOnly;         /* Just preprocess the input */
 extern unsigned char    DebugOptOutput;         /* Output debug stuff */

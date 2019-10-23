@@ -375,15 +375,6 @@ static void OptAddSource (const char* Opt attribute ((unused)),
 
 
 
-static void OptAllCDecl (const char* Opt attribute ((unused)),
-                         const char* Arg attribute ((unused)))
-/* Make functions default to cdecl instead of fastcall. */
-{
-    AutoCDecl = 1;
-}
-
-
-
 static void OptBssName (const char* Opt attribute ((unused)), const char* Arg)
 /* Handle the --bss-name option */
 {
@@ -808,7 +799,6 @@ int main (int argc, char* argv[])
     /* Program long options */
     static const LongOpt OptTab[] = {
         { "--add-source",           0,      OptAddSource            },
-        { "--all-cdecl",            0,      OptAllCDecl             },
         { "--bss-name",             1,      OptBssName              },
         { "--check-stack",          0,      OptCheckStack           },
         { "--code-name",            1,      OptCodeName             },

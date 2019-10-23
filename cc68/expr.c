@@ -291,8 +291,8 @@ static unsigned FunctionParamList (FuncDesc* Func)
     SymEntry* Param       = 0;  /* Keep gcc silent */
     unsigned  ParamSize   = 0;  /* Size of parameters pushed */
     unsigned  ParamCount  = 0;  /* Number of parameters pushed */
-    /* Return SP and FP will be below arguments */
-    unsigned  FrameSize   = 4;  /* Size of parameter frame */
+    /* Return SP will be below arguments */
+    unsigned  FrameSize   = 2;  /* Size of parameter frame */
     unsigned  FrameParams = 0;  /* Number of params in frame */
     int       FrameOffs   = 0;  /* Offset into parameter frame */
     int       Ellipsis    = 0;  /* Function is variadic */
@@ -439,14 +439,12 @@ static void FunctionCall (ExprDesc* Expr)
         ** (not a local or global variable), we have to evaluate this
         ** expression now and save the result for later. Since calls to
         ** function pointers may be nested, we must save it onto the stack.
-        ** For fastcall functions we do also need to place a copy of the
-        ** pointer on stack, since we cannot use a/x.
         */
         PtrOnStack = !ED_IsConst (Expr);
         if (PtrOnStack) {
 
-            /* Not a global or local variable, or a fastcall function. Load
-            ** the pointer into the primary and mark it as an expression.
+            /* Not a global or local variable, Load the pointer into the
+             * primary and mark it as an expression.
             */
             LoadExpr (CF_NONE, Expr);
             ED_MakeRValExpr (Expr);
@@ -483,7 +481,9 @@ static void FunctionCall (ExprDesc* Expr)
     /* We need the closing paren here */
     ConsumeRParen ();
 
-    NotVoid = !(Func->Flags & FF_VOID_RETURN);
+    NotVoid = 0;
+
+    /* FIXME: how to get the Func and void flag ? !F_HasVoidReturn(Func); */
 
     /* Special handling for function pointers */
     if (IsFuncPtr) {
@@ -647,19 +647,9 @@ static void Primary (ExprDesc* E)
                     E->Flags = E_LOC_GLOBAL | E_RTYPE_LVAL;
                     E->Name = (uintptr_t) Sym->Name;
                 } else if ((Sym->Flags & SC_AUTO) == SC_AUTO) {
-                    /* Local variable. If this is a parameter for a variadic
-                    ** function, we have to add some address calculations, and the
-                    ** address is not const.
-                    */
-                    if ((Sym->Flags & SC_PARAM) == SC_PARAM && F_IsVariadic (CurrentFunc)) {
-                        /* Variadic parameter */
-                        g_leavariadic (Sym->V.Offs - F_GetParamSize (CurrentFunc));
-                        E->Flags = E_LOC_EXPR | E_RTYPE_LVAL;
-                    } else {
-                        /* Normal parameter */
-                        E->Flags = E_LOC_STACK | E_RTYPE_LVAL;
-                        E->IVal  = Sym->V.Offs;
-                    }
+                    /* Local variable. */
+                    E->Flags = E_LOC_STACK | E_RTYPE_LVAL;
+                    E->IVal  = Sym->V.Offs;
                 } else if ((Sym->Flags & SC_REGISTER) == SC_REGISTER) {
                     /* Register variable, zero page based */
                     E->Flags = E_LOC_REGISTER | E_RTYPE_LVAL;

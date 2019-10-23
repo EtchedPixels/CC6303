@@ -102,9 +102,6 @@ int F_HasReturn (const Function* F);
 int F_IsMainFunc (const Function* F);
 /* Return true if this is the main function */
 
-int F_IsVariadic (const Function* F);
-/* Return true if this is a variadic function */
-
 int F_IsOldStyle (const Function* F);
 /* Return true if this is an old style (K&R) function */
 

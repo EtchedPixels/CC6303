@@ -44,7 +44,6 @@
 
 
 unsigned char AddSource         = 0;    /* Add source lines as comments */
-unsigned char AutoCDecl         = 0;    /* Make functions default to __cdecl__ */
 unsigned char DebugInfo         = 0;    /* Add debug info to the obj */
 unsigned char PreprocessOnly    = 0;    /* Just preprocess the input */
 unsigned char DebugOptOutput    = 0;    /* Output debug stuff */

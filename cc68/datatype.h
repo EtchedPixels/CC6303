@@ -584,16 +584,6 @@ INLINE int IsQualFar (const Type* T)
 #endif
 
 #if defined(HAVE_INLINE)
-INLINE int IsQualFastcall (const Type* T)
-/* Return true if the given type has a fastcall qualifier */
-{
-    return (T->C & T_QUAL_FASTCALL) != 0;
-}
-#else
-#  define IsQualFastcall(T)     (((T)->C & T_QUAL_FASTCALL) != 0)
-#endif
-
-#if defined(HAVE_INLINE)
 INLINE int IsQualCDecl (const Type* T)
 /* Return true if the given type has a cdecl qualifier */
 {
@@ -612,11 +602,6 @@ INLINE int IsQualCConv (const Type* T)
 #else
 #  define IsQualCConv(T)        (((T)->C & T_QUAL_CCONV) != 0)
 #endif
-
-int IsVariadicFunc (const Type* T) attribute ((const));
-/* Return true if this is a function type or pointer to function type with
-** variable parameter list
-*/
 
 #if defined(HAVE_INLINE)
 INLINE TypeCode GetSizeModifier (const Type* T)

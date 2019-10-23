@@ -248,7 +248,6 @@ void PrintType (FILE* F, const Type* T)
         C = PrintTypeComp (F, C, T_QUAL_RESTRICT, "restrict");
         C = PrintTypeComp (F, C, T_QUAL_NEAR, "__near__");
         C = PrintTypeComp (F, C, T_QUAL_FAR, "__far__");
-        C = PrintTypeComp (F, C, T_QUAL_FASTCALL, "__fastcall__");
         C = PrintTypeComp (F, C, T_QUAL_CDECL, "__cdecl__");
 
         /* Signedness. Omit the signedness specifier for long and int */
@@ -330,9 +329,6 @@ void PrintFuncSig (FILE* F, const char* Name, Type* T)
     }
     if (IsQualFar (T)) {
         fprintf (F, " __far__");
-    }
-    if (IsQualFastcall (T)) {
-        fprintf (F, " __fastcall__");
     }
     if (IsQualCDecl (T)) {
         fprintf (F, " __cdecl__");
@@ -563,18 +559,6 @@ Type* ArrayToPtr (Type* T)
     /* Return pointer to first element */
     return PointerTo (GetElementType (T));
 }
-
-
-
-int IsVariadicFunc (const Type* T)
-/* Return true if this is a function type or pointer to function type with
-** variable parameter list
-*/
-{
-    FuncDesc* F = GetFuncDesc (T);
-    return (F->Flags & FD_VARIADIC) != 0;
-}
-
 
 
 FuncDesc* GetFuncDesc (const Type* T)

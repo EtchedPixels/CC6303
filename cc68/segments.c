@@ -228,6 +228,8 @@ void AddTextLine (const char* Format, ...)
     va_start (ap, Format);
     vsnprintf(buf, 512, Format, ap);
     printf("T:%s\n", buf);
+    /* For now */
+    AppendCode(buf);
     CHECK (CS != 0);
     va_end (ap);
 }
