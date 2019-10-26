@@ -81,7 +81,7 @@
 #define CF_TEST         0x0080  /* Test value */
 #define CF_FIXARGC      0x0100  /* Function has fixed arg count */
 #define CF_FORCECHAR    0x0200  /* Handle chars as chars, not ints */
-#define CF_INTOX	0x0400	/* Put the value into X not D */
+#define CF_USINGX	0x0400	/* Working with X not D */
 #define CF_REG          0x0800  /* Value is in primary register */
 
 /* Type of static address */
@@ -260,15 +260,8 @@ void g_getind (unsigned Flags, unsigned Offs);
 ** into the primary register
 */
 
-void g_leasp (int Offs);
+void g_leasp (unsigned Flags, int Offs);
 /* Fetch the address of the specified symbol into the primary register */
-
-void g_leavariadic (int Offs);
-/* Fetch the address of a parameter in a variadic function into the primary
-** register
-*/
-
-
 
 /*****************************************************************************/
 /*                             Store into memory                             */

@@ -88,6 +88,13 @@ void hie0 (ExprDesc* Expr);
 /* Parse comma operator. */
 
 
+void NotViaX(void);
+/* Tell the evaluator to give up doing this via X */
+
+int XFailed(void);
+/* Check if we were unable to do this via X */
+
+int XFailure;
 
 /* End of expr.h */
 

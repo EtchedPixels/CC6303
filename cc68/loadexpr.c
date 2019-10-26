@@ -80,7 +80,7 @@ static void LoadConstant (unsigned Flags, ExprDesc* Expr)
             break;
 
         case E_LOC_STACK:
-            g_leasp (Expr->IVal);
+            g_leasp (Flags, Expr->IVal);
             break;
 
         default:

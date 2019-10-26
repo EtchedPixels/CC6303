@@ -72,6 +72,19 @@ static GenDesc GenXOASGN = { TOK_XOR_ASSIGN,    GEN_NOPUSH,     g_xor };
 static GenDesc GenOASGN  = { TOK_OR_ASSIGN,     GEN_NOPUSH,     g_or  };
 
 
+/* Flesh this out and keep the goals and Mark for the X version in
+   the ExprDesc somewhere. Ideally we want the failure check to
+   remove the old code so we can just regenerate with D. Need to flesh this
+   out and look at XFailure stacking etc before we can use it */
+int XFailure;
+
+
+void NotViaX(void)
+{
+    XFailure = 1;
+}
+
+/* See if we need a stack for the XFailure stuff */
 
 /*****************************************************************************/
 /*                             Helper functions                              */
