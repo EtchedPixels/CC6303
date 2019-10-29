@@ -141,7 +141,7 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
 
         case CF_REGVAR:
             /* Variable in register bank */
-            xsprintf (Buf, sizeof (Buf), "regbank+%u", (unsigned)((Label+Offs) & 0xFFFF));
+            xsprintf (Buf, sizeof (Buf), "_reg%u", (unsigned)((Label+Offs) & 0xFFFF));
             break;
 
         default:
@@ -176,7 +176,7 @@ static void XToD(void)
             AddCodeLine("ldd tmp");
             break;
         default:
-            AddCodeLine("xgdxl XtoD");
+            AddCodeLine("xgdx; XtoD");
             break;
     }
 }
