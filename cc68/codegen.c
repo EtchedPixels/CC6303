@@ -748,10 +748,16 @@ void g_getlocal_x (unsigned Flags, int Offs)
 }
 
 
+/* FIXME: in the case we are generating code for X do these become no-op */
 
 void g_primary_to_x(void)
 {
     DToX();
+}
+
+void g_x_to_primary(void)
+{
+    XToD();
 }
 
 /* For now we use D but there is a good case for optimising a lot of these

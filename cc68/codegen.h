@@ -261,6 +261,9 @@ void g_getlocal_x (unsigned Flags, int Offs);
 void g_primary_to_x (void);
 /* Move the primary into X */
 
+void g_x_to_primary (void);
+/* Move X into the primary */
+
 void g_getind (unsigned Flags, unsigned Offs);
 /* Fetch the specified object type indirect through the primary register
 ** into the primary register

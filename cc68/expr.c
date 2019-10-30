@@ -1372,6 +1372,105 @@ void Store (ExprDesc* Expr, const Type* StoreType)
     ED_MarkAsUntested (Expr);
 }
 
+int CanStoreViaX (unsigned Flags, ExprDesc *Expr)
+{
+    printf("CSVX: ");
+    if (ED_IsBitField(Expr)) {
+        printf("no - bitfield\n");
+        return 0;
+    }
+    if ((Flags & CF_FORCECHAR) && (Flags & CF_TYPEMASK) == CF_CHAR) {
+        printf("No - forcechar.\n");
+        return 0;
+    }
+    /* We can't store X to offset of stack as that needs X */
+    if (ED_GetLoc(Expr) == E_LOC_STACK) {
+        printf("No - stack.\n");
+        return 0;
+    }
+    if (ED_IsLVal(Expr)) {
+        /* Until we fix getloc to be a lot smarter */
+        if (ED_GetLoc(Expr) == E_LOC_EXPR) {
+            printf("no - loc expr\n");
+            return 0;
+        }
+        printf("yes\n");
+        return 1;
+    }
+    /* FIXME: we can do this for a small range of ival */
+    if (ED_IsLocExpr(Expr)) {
+        printf("No Rval Loc expr.\n");
+        return 0;
+    }
+    printf("Yes\n");
+    /* Constant */
+    return 1;
+}
+
+void StoreX (ExprDesc* Expr, const Type* StoreType)
+/* Store the X register into the location denoted by Expr. If StoreType
+** is given, use this type when storing instead of Expr->Type. If StoreType
+** is NULL, use Expr->Type instead.
+*/
+{
+    unsigned Flags;
+
+    /* If StoreType was not given, use Expr->Type instead */
+    if (StoreType == 0) {
+        StoreType = Expr->Type;
+    }
+
+    /* Prepare the code generator flags */
+    Flags = TypeOf (StoreType) | GlobalModeFlags (Expr);
+
+    /* Do the store depending on the location */
+    switch (ED_GetLoc (Expr)) {
+
+        case E_LOC_ABS:
+            /* Absolute: numeric address or const */
+            g_putstatic (Flags|CF_USINGX, Expr->IVal, 0);
+            break;
+
+        case E_LOC_GLOBAL:
+            /* Global variable */
+            g_putstatic (Flags|CF_USINGX, Expr->Name, Expr->IVal);
+            break;
+
+        case E_LOC_STATIC:
+        case E_LOC_LITERAL:
+            /* Static variable or literal in the literal pool */
+            g_putstatic (Flags|CF_USINGX, Expr->Name, Expr->IVal);
+            break;
+
+        case E_LOC_REGISTER:
+            /* Register variable */
+            g_putstatic (Flags|CF_USINGX, Expr->Name, Expr->IVal);
+            break;
+
+        case E_LOC_STACK:
+            Internal("StoreXStack");
+            break;
+
+        case E_LOC_PRIMARY:
+            /* The primary register */
+            g_x_to_primary();
+            break;
+
+        case E_LOC_EXPR:
+            /* For now */
+            Internal("StoreXExpr");
+            /* An expression in the primary register */
+//            g_putind (Flags, Expr->IVal);
+            break;
+
+        default:
+            Internal ("Invalid location in Store(): 0x%04X", ED_GetLoc (Expr));
+    }
+
+    /* Assume that each one of the stores will invalidate CC */
+    ED_MarkAsUntested (Expr);
+}
+
 
 
 static void PreInc (ExprDesc* Expr)
@@ -1572,26 +1671,37 @@ static void PostInc (ExprDesc* Expr)
         AddCodeLine ("inc %s", ED_GetLabelName(Expr, 0));
 
     } else {
-
+        unsigned size = 1;
         /* Push the address if needed */
         PushAddr (Expr);
 
-        /* Fetch the value and save it (since it's the result of the expression) */
-        LoadExpr (CF_NONE, Expr);
-        g_save (Flags | CF_FORCECHAR);
-
-        /* If we have a pointer expression, increment by the size of the type */
-        if (IsTypePtr (Expr->Type)) {
-            g_inc (Flags | CF_CONST | CF_FORCECHAR, CheckedSizeOf (Expr->Type + 1));
+        if (IsTypePtr (Expr->Type))
+            size  = CheckedSizeOf (Expr->Type + 1);
+        /* Optimize some special cases */
+        
+        /* This doesn't work because it ends up in X - we actually need
+           the caller to try this via X */
+#if 0        
+        if (CanLoadViaX(Flags, Expr) && CanStoreViaX(Flags, Expr) && size <= 2) {
+            LoadExprX(CF_NONE, Expr);
+            g_inc(Flags | CF_CONST | CF_FORCECHAR | CF_USINGX, size);
+            StoreX(Expr, 0);
+            g_dec(Flags | CF_CONST | CF_FORCECHAR | CF_USINGX, size);
         } else {
-            g_inc (Flags | CF_CONST | CF_FORCECHAR, 1);
-        }
+#endif
+            /* Fetch the value and save it (since it's the result of the expression) */
+            LoadExpr (CF_NONE, Expr);
+            g_save (Flags | CF_FORCECHAR);
 
-        /* Store the result back */
-        Store (Expr, 0);
+            /* If we have a pointer expression, increment by the size of the type */
+            g_inc (Flags | CF_CONST | CF_FORCECHAR, size);
 
-        /* Restore the original value in the primary register */
-        g_restore (Flags | CF_FORCECHAR);
+            /* Store the result back */
+            Store (Expr, 0);
+
+            /* Restore the original value in the primary register */
+            g_restore (Flags | CF_FORCECHAR);
+//        }
     }
 
     /* The result is always an expression, no reference */
@@ -1739,6 +1849,7 @@ void hie10 (ExprDesc* Expr)
             break;
 
         case TOK_STAR:
+            /* FIXME: we really want to take this via X if we can */
             NextToken ();
             ExprWithCheck (hie10, Expr);
             if (ED_IsLVal (Expr) || !(ED_IsLocConst (Expr) || ED_IsLocStack (Expr))) {
