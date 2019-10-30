@@ -661,10 +661,10 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
             } else {
                 AddCodeLine ("ldd %s+2", lbuf);
                 AddCodeLine ("std sreg");
-                if (flags & CF_USINGX) {
+                if (flags & CF_USINGX)
                     AddCodeLine ("ldx %s", lbuf);
+                else
                     AddCodeLine ("ldd %s", lbuf);
-                }
             }
             break;
 
@@ -681,12 +681,13 @@ void g_getlocal (unsigned Flags, int Offs)
 {
     Offs -= StackPtr;
 
+    NotViaX();
+
     Offs = GenOffset(Flags, Offs, 0, 0);
 
     switch (Flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            NotViaX();
             if ((Flags & CF_FORCECHAR) || (Flags & CF_TEST)) {
                 AddCodeLine ("ldab $%02X,x", Offs);
             } else {
@@ -702,23 +703,15 @@ void g_getlocal (unsigned Flags, int Offs)
             break;
 
         case CF_INT:
-            if (Flags & CF_USINGX)
-                AddCodeLine ("ldx $%02X,x", Offs);
-            else
-                AddCodeLine ("ldd $%02X,x", Offs);
+            AddCodeLine ("ldd $%02X,x", Offs);
             break;
 
         case CF_LONG:
             AddCodeLine ("ldd $%02X,x", Offs + 2);
             AddCodeLine ("std sreg");
-            if (Flags & CF_USINGX)
-                AddCodeLine ("ldx $%02X,x", Offs);
-            else
-                AddCodeLine ("ldd $%02X,x", Offs);
-            if (Flags & CF_TEST) {
-                NotViaX();
+            AddCodeLine ("ldd $%02X,x", Offs);
+            if (Flags & CF_TEST)
                 g_test (Flags);
-            }
             break;
 
         default:
@@ -726,6 +719,40 @@ void g_getlocal (unsigned Flags, int Offs)
     }
 }
 
+void g_getlocal_x (unsigned Flags, int Offs)
+/* Fetch specified local object (local var) into x. */
+{
+    Offs -= StackPtr;
+
+    Offs = GenOffset(Flags, Offs, 0, 0);
+
+    switch (Flags & CF_TYPEMASK) {
+
+        case CF_CHAR:
+            Internal("Char in getlocal_x");
+            break;
+
+        case CF_INT:
+            AddCodeLine ("ldx $%02X,x", Offs);
+            break;
+
+        case CF_LONG:
+            AddCodeLine ("ldd $%02X,x", Offs + 2);
+            AddCodeLine ("std sreg");
+            AddCodeLine ("ldx $%02X,x", Offs);
+            break;
+
+        default:
+            typeerror (Flags);
+    }
+}
+
+
+
+void g_primary_to_x(void)
+{
+    DToX();
+}
 
 /* For now we use D but there is a good case for optimising a lot of these
    paths to use X when they don't need X again shortly */
@@ -831,6 +858,9 @@ void g_leasp (unsigned Flags, int Offs)
     } else {
         /* Hard case - probably better just to go via D */
         NotViaX();
+        /* FIXME: we need to deal with this case so we can do sane codegen when
+        working with X as constant */
+        Internal("FIXME: g_leasp");
     }
 }
 

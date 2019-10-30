@@ -88,7 +88,110 @@ static void LoadConstant (unsigned Flags, ExprDesc* Expr)
     }
 }
 
+/* See if we can load this value type into X: distinct from 'using' X as
+   the input */
+int CanLoadViaX(unsigned Flags, struct ExprDesc *Expr)
+{
+    printf("CLVX:");
+    if (ED_IsBitField(Expr) || ED_NeedsTest(Expr)) {
+        printf("no - bitfield/test.\n");
+        return 0;
+    }
+    if ((Flags & CF_FORCECHAR) && (Flags & CF_TYPEMASK) == CF_CHAR) {
+        printf("No - forcechar.\n");
+        return 0;
+    }
+    if (ED_IsLVal(Expr)) {
+        /* Until we fix getloc to be a lot smarter */
+        if (ED_GetLoc(Expr) == E_LOC_EXPR) {
+            printf("no - loc expr\n");
+            return 0;
+        }
+        printf("yes\n");
+        return 1;
+    }
+    /* FIXME: we can do this for a small range of ival */
+    if (ED_IsLocExpr(Expr)) {
+        printf("No Rval Loc expr.\n");
+        return 0;
+    }
+    printf("Yes\n");
+    /* Constant */
+    return 1;
+}
 
+/* Load an expression into X */
+void LoadExprX (unsigned Flags, struct ExprDesc* Expr)
+{
+    if (ED_IsLVal (Expr)) {
+
+        /* Dereferenced lvalue. If this is a bit field its type is unsigned.
+        ** But if the field is completely contained in the lower byte, we will
+        ** throw away the high byte anyway and may therefore load just the
+        ** low byte.
+        */
+        if (ED_IsBitField (Expr))
+            Internal("BadXType");
+        else
+            Flags |= TypeOf (Expr->Type);
+
+        if (ED_NeedsTest (Expr)) {
+            Flags |= CF_TEST;
+            Internal("BadXTest");
+        }
+
+        switch (ED_GetLoc (Expr)) {
+
+            case E_LOC_ABS:
+                /* Absolute: numeric address or const */
+                g_getstatic (Flags | CF_USINGX | CF_ABSOLUTE, Expr->IVal, 0);
+                break;
+
+            case E_LOC_GLOBAL:
+                /* Global variable */
+                g_getstatic (Flags | CF_EXTERNAL | CF_USINGX , Expr->Name, Expr->IVal);
+                break;
+
+            case E_LOC_STATIC:
+            case E_LOC_LITERAL:
+                /* Static variable or literal in the literal pool */
+                g_getstatic (Flags | CF_STATIC | CF_USINGX, Expr->Name, Expr->IVal);
+                break;
+
+            case E_LOC_REGISTER:
+                /* Register variable */
+                g_getstatic (Flags | CF_REGVAR | CF_USINGX, Expr->Name, Expr->IVal);
+                break;
+
+            case E_LOC_STACK:
+                /* Value on the stack */
+                g_getlocal_x (Flags , Expr->IVal);
+                break;
+
+            case E_LOC_PRIMARY:
+                /* The primary register */
+                if (!(Flags & CF_USINGX))
+                    g_primary_to_x();
+                break;
+
+            case E_LOC_EXPR:
+                /* Reference to address in primary with offset in Expr */
+                g_getind (Flags, Expr->IVal);
+                break;
+
+            default:
+                Internal ("Invalid location in XLoadExpr: 0x%04X", ED_GetLoc (Expr));
+        }
+    } else {
+        /* An rvalue */
+        if (ED_IsLocExpr (Expr)) {
+            Internal("BadXLockExpr");
+        } else {
+            /* Constant of some sort, load it into the primary */
+            LoadConstant (Flags | CF_USINGX, Expr);
+        }
+    }
+}
 
 void LoadExpr (unsigned Flags, struct ExprDesc* Expr)
 /* Load an expression into the primary register if it is not already there. */

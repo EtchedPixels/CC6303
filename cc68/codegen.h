@@ -255,6 +255,12 @@ void g_getstatic (unsigned Flags, uintptr_t Label, long Offs);
 void g_getlocal (unsigned Flags, int Offs);
 /* Fetch specified local object (local var). */
 
+void g_getlocal_x (unsigned Flags, int Offs);
+/* Fetch specified local object (local var) into X . */
+
+void g_primary_to_x (void);
+/* Move the primary into X */
+
 void g_getind (unsigned Flags, unsigned Offs);
 /* Fetch the specified object type indirect through the primary register
 ** into the primary register

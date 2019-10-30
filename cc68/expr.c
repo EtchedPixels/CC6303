@@ -77,11 +77,46 @@ static GenDesc GenOASGN  = { TOK_OR_ASSIGN,     GEN_NOPUSH,     g_or  };
    remove the old code so we can just regenerate with D. Need to flesh this
    out and look at XFailure stacking etc before we can use it */
 int XFailure;
-
+int XDepth;
+CodeMark XCode;
 
 void NotViaX(void)
 {
     XFailure = 1;
+}
+
+/* Begin an attempt to generate the expression via X. This can be called
+   recursively and we will make a final assessment in EndVia the final
+   depth */
+   
+void TryViaX(void)
+{
+    if (XDepth++ == 0) {
+        printf("Begin try via X\n");
+        XFailure = 0;
+        GetCodePos(&XCode);
+    }
+}
+
+/* Complete an attempt to generate code going via X. If we succeeded or have
+   yet to resolve the attempt return 0. If we fail return 1 (maybe cause type
+   later) and throw out the failed code. */
+   
+int EndViaX(void)
+{
+    if (--XDepth == 0) {
+        printf("End via X %d\n", XFailure);
+        if (XFailure) {
+            RemoveCode(&XCode);
+            return XFailure;
+        }
+    }
+    return 0;
+}
+
+int SourceX(void)
+{
+    return XDepth;
 }
 
 /* See if we need a stack for the XFailure stuff */
@@ -383,7 +418,12 @@ static unsigned FunctionParamList (FuncDesc* Func)
         }
 
         /* Load the value into the primary if it is not already there */
-        LoadExpr (Flags, &Expr);
+        if (CanLoadViaX(Flags, &Expr)) {
+            LoadExprX(Flags, &Expr);
+            Flags |= CF_USINGX;
+        } else {
+            LoadExpr (Flags, &Expr);
+        }
 
         /* Use the type of the argument for the push */
         Flags |= TypeOf (Expr.Type);
@@ -791,6 +831,7 @@ static void ArrayRef (ExprDesc* Expr)
     TypeCode    Qualifiers;
     Type*       ElementType;
     Type*       tptr1;
+    int		use_x;
 
 
     /* Skip the bracket */
@@ -809,15 +850,23 @@ static void ArrayRef (ExprDesc* Expr)
     /* If we have a constant base, we delay the address fetch */
     GetCodePos (&Mark1);
     if (!ConstBaseAddr) {
-        /* Get a pointer to the array into the primary */
-        LoadExpr (CF_NONE, Expr);
+        /* Get a pointer to the array into X if we can D if not */
+        if (CanLoadViaX(CF_NONE, Expr)) {
+            LoadExprX (CF_NONE, Expr);
+            use_x = 1;
+        } else {
+            LoadExpr (CF_NONE, Expr);
+        }
 
         /* Get the array pointer on stack. Do not push more than 16
         ** bit, even if this value is greater, since we cannot handle
         ** other than 16bit stuff when doing indexing.
         */
         GetCodePos (&Mark2);
-        g_push (CF_PTR, 0);
+        if (use_x)
+            g_push(CF_PTR|CF_USINGX, 0);
+        else
+            g_push (CF_PTR, 0);
     }
 
     /* TOS now contains ptr to array elements. Get the subscript. */
@@ -884,6 +933,7 @@ static void ArrayRef (ExprDesc* Expr)
         ** since we can generate expression+offset.
         */
         if (!ConstBaseAddr) {
+            printf("K2\n");
             RemoveCode (&Mark2);
         } else {
             /* Get an array pointer into the primary */

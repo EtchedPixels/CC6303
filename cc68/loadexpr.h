@@ -57,7 +57,11 @@ struct ExprDesc;
 void LoadExpr (unsigned Flags, struct ExprDesc* Expr);
 /* Load an expression into the primary register if it is not already there. */
 
+void LoadExprX (unsigned Flags, struct ExprDesc* Expr);
+/* Load an expression into X if it is not already there. */
 
+int CanLoadViaX (unsigned Flags, struct ExprDesc* Expr);
+/* Return true if we can load this expression into X via LoadExprX */
 
 /* End of loadexpr.h */
 
