@@ -2260,9 +2260,9 @@ void g_push (unsigned flags, unsigned long val)
                 /* FALL THROUGH */
             case CF_INT:
                 if (flags & CF_USINGX)
-                    AddCodeLine("pshx; g_push");
+                    AddCodeLine("pshx");
                 else {
-                    AddCodeLine ("pshb; g_push");
+                    AddCodeLine ("pshb");
                     AddCodeLine ("psha");
                 }
                 break;
@@ -4396,9 +4396,9 @@ void g_switch (Collection* Nodes, unsigned DefaultLabel, unsigned Depth)
 void g_statement(void)
 {
     if (XState & XSTATE_VALID)
-        AddCodeLine(".invalid D,P");
+        AddCodeLine("invalid D,P");
     else
-        AddCodeLine(".invalid X,D,P");
+        AddCodeLine("invalid X,D,P");
 }
 
 /*****************************************************************************/
