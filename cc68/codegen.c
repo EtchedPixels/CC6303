@@ -616,10 +616,10 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                 /* FALL THROUGH */
             case CF_INT:
                 if (Flags & CF_USINGX) {
-                    AddCodeLine("ldx #%04X", (unsigned short) Val);
+                    AddCodeLine("ldx #$%04X", (unsigned short) Val);
                     InvalidateX();
                 } else
-                    AddCodeLine ("ldd #%04X", (unsigned short)Val);
+                    AddCodeLine ("ldd #$%04X", (unsigned short)Val);
                 break;
 
             case CF_LONG:
@@ -3346,7 +3346,7 @@ void g_inc (unsigned flags, unsigned long val)
                 }
                 NotViaX();
             }
-            AddCodeLine("addd #%04X", (unsigned short)val);
+            AddCodeLine("addd #$%04X", (unsigned short)val);
             break;
 
         case CF_LONG:
@@ -3354,7 +3354,7 @@ void g_inc (unsigned flags, unsigned long val)
             NotViaX();
             Label = GetLocalLabel();
             if (val <= 0xFFFF) {
-                AddCodeLine("addd #%04X", (unsigned short)val);
+                AddCodeLine("addd #$%04X", (unsigned short)val);
                 AddCodeLine("bcc %s", LocalLabelName (Label));
                 AddCodeLine("ldx sreg");
                 AddCodeLine("inx");
@@ -3435,7 +3435,7 @@ void g_dec (unsigned flags, unsigned long val)
             InvalidateX();
             Label = GetLocalLabel();
             if (val <= 0xFFFF) {
-                AddCodeLine("subd #%04X", (unsigned short)val);
+                AddCodeLine("subd #$%04X", (unsigned short)val);
                 /* FIXME: check bcc or bcs on 680x */
                 AddCodeLine("bcc %s", LocalLabelName (Label));
                 AddCodeLine("ldx sreg");
