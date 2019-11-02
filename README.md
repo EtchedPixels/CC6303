@@ -71,3 +71,6 @@ the 6502 approach because we have a real stack.
 - Store 0,0,1 as 3 bytes in DP then we can load/add/sub 0 into D and X in
   less bytes via direct page
 
+## BROKEN
+
+- Need to push old reg vars when doing new
