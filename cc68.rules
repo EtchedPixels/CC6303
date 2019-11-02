@@ -1,0 +1,29 @@
+#	Trim jumps to next instruction
+jmp %1
+%1:
+=
+%1:
+
+#	Turn pula/pulb/xgdx into pulx. This should be safe without a check
+#	we then load D but might need a hint adding
+pula
+pulb
+xgdx; DtoX
+=
+pulx
+
+#	DP optimized constants
+#
+
+clra
+ldab #$01
+=
+ldd one
+
+addd #$0001
+=
+addd one
+
+subd #$0001
+=
+subd one
