@@ -4,6 +4,112 @@ jmp %1
 =
 %1:
 
+# Double exchanges
+xgdx; XtoD
+xgdx; DtoX
+=
+;
+
+# Double exchanges
+xgdx
+xgdx
+=
+;
+
+# Make exchange and push more efficient
+xgdx; XtoD
+pshb
+psha
+=
+pshx
+xgdx; XtoD
+
+xgdx; DtoX
+pshb
+psha
+=
+pshx
+xgdx; XtoD
+
+# Store and reload
+std %1
+ldd %1
+=
+std %1
+
+stx %1
+ldx %1
+=
+stx %1
+
+
+# Some classes of compare
+# Simple check on 8bit versus 0 (safe only due to compiler behaviour)
+clra
+ldab %1
+jne %2
+L%3
+ldd %4
+=
+ldab %1
+jne %2
+L%3
+ldd %4
+
+clra
+ldab %1
+jne %2
+ldd %3
+=
+ldab %1
+jne %2
+
+# Pointless stack
+pshb
+pulb
+=
+;
+
+pshx
+pulx
+=
+;
+
+pshb
+psha
+pula
+pulb
+=
+;
+
+pula
+pulb
+pshb
+psha
+ldd %1
+=
+ldd %1
+
+pula
+pulb
+pshb
+psha
+clra
+ldab %1
+=
+clra
+ldab %1
+
+pula
+pulb
+pshb
+psha
+clra
+clrb
+=
+clra
+clrb
+
 #	Turn pula/pulb/xgdx into pulx. This should be safe without a check
 #	we then load D but might need a hint adding
 pula
@@ -14,7 +120,6 @@ pulx
 
 #	DP optimized constants
 #
-
 clra
 ldab #$01
 =
@@ -24,6 +129,116 @@ addd #$0001
 =
 addd one
 
+ldd #$0000
+=
+clra
+clrb
+
 subd #$0001
 =
 subd one
+
+ldx #$0000
+=
+ldx zero
+
+ldx #$0001
+=
+ldx one
+
+# Fix up some of the X cases
+# Push and then invalidate D so can use X
+ldd %1
+pshb
+psha
+invalid X,D,P
+=
+ldx %1
+pshx
+invalid X,D,P
+
+# Push and then invalidate D so can use X single arg entry
+ldd %1
+pshb
+psha
+des
+invalid X,D,P
+=
+ldx %1
+pshx
+des
+invalid X,D,P
+
+# Push and then invalidate D so can use X single arg entry, with label
+ldd %1
+pshb
+psha
+%2:
+invalid X,D,P
+=
+ldx %1
+pshx
+%2:
+invalid X,D,P
+
+ldd %1
+pshb
+psha
+des
+%2:
+invalid X,D,P
+=
+ldx %1
+pshx
+des
+%2:
+invalid X,D,P
+
+# Pattern sometimes found when setting up from stack
+ldd %1,x
+pshb
+psha
+des
+tsx
+ldd %2,x
+=
+ldx %1,x
+pshx
+des
+tsx
+ldd %2,x
+
+ldd %1,x
+pshb
+psha
+tsx
+ldd %2,x
+=
+ldx %1,x
+pshx
+tsx
+ldd %2,x
+
+
+# Clean up trailing references from things like p++;
+ldd %1
+L%2
+ldd %3
+=
+L%2
+ldd %3
+
+ldd %1
+ldd %2
+=
+;
+
+# Clean up invalid markers
+invalid D,P
+=
+;invalid DP
+
+invalid X,D,P
+=
+;invalid XDP
+
