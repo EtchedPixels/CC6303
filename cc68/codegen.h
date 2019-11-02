@@ -97,7 +97,7 @@
 /* Forward */
 struct StrBuf;
 
-
+extern unsigned XState;
 
 /*****************************************************************************/
 /*                         Files, pre- and postamble                         */

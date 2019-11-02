@@ -1452,7 +1452,7 @@ void StoreX (ExprDesc* Expr, const Type* StoreType)
             break;
 
         case E_LOC_PRIMARY:
-            /* The primary register */
+            /* The primary register actually means X in this case ? FIXME */
             g_x_to_primary();
             break;
 

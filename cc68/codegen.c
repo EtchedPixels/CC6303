@@ -152,6 +152,40 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
     return Buf;
 }
 
+/* X versus S tracking */
+
+unsigned XState;
+#define XSTATE_VALID	0x8000
+
+static int GenTSX(void)
+{
+    if (!(XState & XSTATE_VALID)) {
+        AddCodeLine("tsx");
+        XState = XSTATE_VALID;
+        return 0;
+    }
+    return (int8_t)(XState & 0xFF);
+}
+
+static void ModifyX(int Bias)
+{
+    int16_t offset;
+    if (!(XState & XSTATE_VALID))
+        return;
+    offset = ((int8_t)(XState & 0xFF)) + Bias;
+    if (offset < -128 || offset > 127) {
+        XState = 0;
+        return;
+    }
+    XState &= 0xFF00;
+    XState |= offset & 0xFF;
+}
+
+static void InvalidateX(void)
+{
+    XState = 0;
+}
+
 /* Get D into X, may mash D */
 static void DToX(void)
 {
@@ -164,6 +198,7 @@ static void DToX(void)
             AddCodeLine("xgdx; DtoX");	/* Comments to help optimizer tracking */
             break;
     }
+    InvalidateX();
 }
     
 
@@ -181,6 +216,8 @@ static void XToD(void)
     }
 }
 
+
+    
 /* Generate an offset from the stack into X. We try and minimise the
    required code by using off,x for smaller offsets and maths only
    for bigger ones. The maths for really big offsets is horrible so don't
@@ -189,6 +226,7 @@ static void XToD(void)
 static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
 {
     unsigned s = sizeofarg(Flags) - 1;
+    int curoffs;
 
     /* S points below the data so we need to look further up */
     Offs += 1;
@@ -210,12 +248,23 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
         return 0;
     }
 
-    /* Generate the tsx each time - we will clean it up in the optimizer */
-    AddCodeLine("tsx");
+    /* Generate the tsx if needed */
+    curoffs = GenTSX();
 
     /* We are in range of n,x so do nothing but tsx */
-    if (Offs + s <= 255 && !exact)
-        return Offs;
+    if (curoffs + Offs + s <= 255 && !exact)
+        return curoffs + Offs;
+
+    /* If we are in the range of the current S then it's usually
+       cheaper to TSX than adjust */
+    if (Offs + s <= 255 && !exact) {
+        InvalidateX();
+        curoffs = GenTSX();
+        return curoffs + Offs;
+    }
+
+    /* Calculate the actual target */    
+    Offs += curoffs;
 
     /* Repeatedly add 255 until we are in range or it is cheaper to use
        inx for the rest */
@@ -234,19 +283,23 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
         }
         if (save_d)
             AddCodeLine("pulb");
+        InvalidateX();
     }
     /* Make sure we are fully reachable */
     switch(Offs + s) {
     case 258:
         AddCodeLine("inx");
+        ModifyX(1);
         Offs--;
         /* Falls through */
     case 257:
         AddCodeLine("inx");
+        ModifyX(1);
         Offs--;
         /* Falls through */
     case 256:
         AddCodeLine("inx");
+        ModifyX(1);
         Offs--;
         /* Falls through */
     default: ;
@@ -416,6 +469,8 @@ void g_defcodelabel (unsigned label)
 /* Define a local code label */
 {
     AddCodeLine("%s:", LocalLabelName(label));
+    /* Overly pessimistic but we don't know what our branch will come from */
+    InvalidateX();
 }
 
 
@@ -558,9 +613,10 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                 }
                 /* FALL THROUGH */
             case CF_INT:
-                if (Flags & CF_USINGX)
+                if (Flags & CF_USINGX) {
                     AddCodeLine("ldx #%04X", (unsigned short) Val);
-                else
+                    InvalidateX();
+                } else
                     AddCodeLine ("ldd #%04X", (unsigned short)Val);
                 break;
 
@@ -576,6 +632,7 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                     AddCodeLine("ldd #$%04X", W2);
                     AddCodeLine("std sreg");
                     AddCodeLine("ldx #$%04X", W1);
+                    InvalidateX();
                 } else {
                     /* Load the value */
                     if (W2 == 0) {
@@ -607,9 +664,10 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
         const char* Label = GetLabelName (Flags, Val, Offs);
 
         /* Load the address into the primary */
-        if (Flags & CF_USINGX)
+        if (Flags & CF_USINGX) {
             AddCodeLine("ldx #%s", Label);
-        else
+            InvalidateX();
+        } else
             AddCodeLine ("ldd #%s", Label);
     }
 }
@@ -646,8 +704,10 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
             break;
 
         case CF_INT:
-            if (flags & CF_USINGX)
-                AddCodeLine ("ldx %s", lbuf);
+            if (flags & CF_USINGX) {
+                    InvalidateX();
+                    AddCodeLine ("ldx %s", lbuf);
+            }
             else
                 AddCodeLine ("ldd %s", lbuf);
             break;
@@ -661,9 +721,10 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
             } else {
                 AddCodeLine ("ldd %s+2", lbuf);
                 AddCodeLine ("std sreg");
-                if (flags & CF_USINGX)
+                if (flags & CF_USINGX) {
+                    InvalidateX();
                     AddCodeLine ("ldx %s", lbuf);
-                else
+                } else
                     AddCodeLine ("ldd %s", lbuf);
             }
             break;
@@ -725,6 +786,8 @@ void g_getlocal_x (unsigned Flags, int Offs)
     Offs -= StackPtr;
 
     Offs = GenOffset(Flags, Offs, 0, 0);
+
+    InvalidateX();
 
     switch (Flags & CF_TYPEMASK) {
 
@@ -849,6 +912,7 @@ void g_leasp (unsigned Flags, int Offs)
 
     /* FIXME: probably > 1018 - work this out properly */
     if (Offs < 1018) {
+        InvalidateX();	/* FIXME: rework off existing X if we can */
         AddCodeLine("tsx");
         if (Offs >= 255) {
             AddCodeLine("ldab #$255");
@@ -889,9 +953,10 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
             break;
 
         case CF_INT:
-            if (flags & CF_USINGX)
+            if (flags & CF_USINGX) {
+                InvalidateX();
                 AddCodeLine ("stx %s", lbuf);
-            else
+            } else
                 AddCodeLine ("std %s", lbuf);
             break;
 
@@ -900,6 +965,7 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
                 AddCodeLine ("stx %s", lbuf);
                 AddCodeLine ("ldx sreg");
                 AddCodeLine ("stx %s+2", lbuf);
+                InvalidateX();
             } else {
                 AddCodeLine ("std %s", lbuf);
                 AddCodeLine ("ldd sreg");
@@ -1053,6 +1119,7 @@ void g_putind (unsigned Flags, unsigned Offs)
             typeerror (Flags);
 
     }
+    InvalidateX();
 
     /* Pop the argument which is always a pointer */
     pop (CF_PTR);
@@ -1075,6 +1142,7 @@ void g_toslong (unsigned flags)
         case CF_CHAR:
         case CF_INT:
             NotViaX();	/* For now */
+            InvalidateX();
             if (flags & CF_UNSIGNED) {
                 AddCodeLine ("jsr tosulong");
             } else {
@@ -1103,6 +1171,7 @@ void g_tosint (unsigned flags)
             break;
 
         case CF_LONG:
+            InvalidateX();
             if (flags & CF_USINGX)
                 /* Check ordering (might need to mess about with helper) */
                 AddCodeLine ("pulx");
@@ -1183,6 +1252,7 @@ void g_reglong (unsigned Flags)
                     g_defcodelabel (L);
                 }
                 AddCodeLine("stx sreg");
+                InvalidateX();
                 break;   
             }
             /* FALLTHROUGH */
@@ -1198,6 +1268,7 @@ void g_reglong (unsigned Flags)
                 g_defcodelabel (L);
             }
             AddCodeLine("stx sreg");
+            InvalidateX();
             break;
 
         case CF_LONG:
@@ -1344,6 +1415,7 @@ void g_scale (unsigned flags, long val)
                     break;
 
                 case CF_LONG:
+                    InvalidateX();
                     if (flags & CF_UNSIGNED) {
                         AddCodeLine ("jsr shleax%d", p2);
                     } else {
@@ -1389,12 +1461,15 @@ void g_scale (unsigned flags, long val)
                     if (flags & CF_UNSIGNED) {
                         while (p2--)
                             AddCodeLine("lsrd");
-                    } else 
+                    } else  {
+                        InvalidateX();
                         /* There is no asrd */
                         AddCodeLine ("jsr asrax%d", p2);
+                    }
                     break;
 
                 case CF_LONG:
+                    InvalidateX();
                     if (flags & CF_UNSIGNED) {
                         AddCodeLine ("jsr lsreax%d", p2);
                     } else {
@@ -1542,6 +1617,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
         case CF_INT:
             if (flags & CF_CONST) {
                 if ((flags & CF_USINGX) && val <= 2) {
+                    InvalidateX();
                     AddCodeLine ("ldx %s", lbuf);
                     switch(val) {
                         case 2:
@@ -1581,6 +1657,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
             NotViaX();
             if (flags & CF_CONST) {
                 if (val < 0x10000) {
+                    InvalidateX();
                     AddCodeLine ("ldx #%s", lbuf);
                     if (val == 1) {
                         AddCodeLine ("jsr laddeq1");
@@ -1595,6 +1672,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                 }
             } else {
                 /* No offs case here ? */
+                InvalidateX();
                 AddCodeLine ("ldx #%s", lbuf);
                 AddCodeLine ("jsr laddeq");
             }
@@ -1650,6 +1728,7 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
             if (flags & CF_CONST) {
                 g_getimmed (flags, val, 0);
             }
+            InvalidateX();
             AddCodeLine ("ldx #$%04X", Offs);
             AddCodeLine ("jsr laddeqysp");
             break;
@@ -1676,6 +1755,7 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
 
         case CF_CHAR:
             if (CPU == CPU_6303) {
+                InvalidateX();
                 AddCodeLine("xgdx");
                 AddCodeLine("ldab ,x");
                 AddCodeLine("addb #$%04X", (unsigned char)val);
@@ -1689,6 +1769,7 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
 
         case CF_INT:
             if (CPU == CPU_6303) {
+                InvalidateX();
                 AddCodeLine("xgdx");
                 AddCodeLine("ldd ,x");
                 AddCodeLine("addd #$%04X", (unsigned short)val);
@@ -1753,6 +1834,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
 
         case CF_INT:
             if ((flags & CF_CONST) && (flags & CF_USINGX) && val <= 2) {
+                InvalidateX();
                 AddCodeLine ("ldx %s", lbuf);
                 if (val == 2)
                     AddCodeLine("dex");
@@ -1779,6 +1861,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
             NotViaX();
             if (flags & CF_CONST) {
                 if (val < 0x10000) {
+                    InvalidateX();
                     AddCodeLine ("ldx #%s", lbuf);
                     AddCodeLine ("ldd #$%02X", (unsigned short)val);
                     AddCodeLine ("jsr lsubeqd");
@@ -1788,6 +1871,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
                     g_putstatic (flags, label, offs);
                 }
             } else {
+                InvalidateX();
                 AddCodeLine ("ldx #%s", lbuf);
                 AddCodeLine ("jsr lsubeq");
             }
@@ -1851,6 +1935,7 @@ void g_subeqlocal (unsigned flags, int Offs, unsigned long val)
             if (flags & CF_CONST) {
                 g_getimmed (flags, val, 0);
             }
+            InvalidateX();
             AddCodeLine ("ldx #$%02X", Offs);
             AddCodeLine ("jsr lsubeqysp");
             break;
@@ -1892,6 +1977,7 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
             AddCodeLine ("std $%02X, x", offs);
             break;
         case CF_LONG:
+            InvalidateX();
             AddCodeLine ("jsr pushd");          /* Push the address */
             push (CF_PTR);                      /* Correct the internal sp */
             g_getind (flags, offs);             /* Fetch the value */
@@ -1964,6 +2050,7 @@ void g_save (unsigned flags)
             break;
 
         case CF_LONG:
+            InvalidateX();
             AddCodeLine ("jsr saveeax");
             break;
 
@@ -1994,6 +2081,7 @@ void g_restore (unsigned flags)
             break;
 
         case CF_LONG:
+            InvalidateX();
             AddCodeLine ("jsr resteax");
             break;
 
@@ -2066,6 +2154,7 @@ static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
     }
 
     /* Output the operation */
+    InvalidateX();
     AddCodeLine ("jsr %s", *Subs);
 
     /* The operation will pop it's argument */
@@ -2094,6 +2183,7 @@ void g_test (unsigned flags)
             break;
 
         case CF_LONG:
+            InvalidateX();
             if (flags & CF_UNSIGNED) {
                 AddCodeLine ("jsr utsteax");
             } else {
@@ -2126,6 +2216,7 @@ void g_push (unsigned flags, unsigned long val)
             /* We force this case via X in all cases */
             /* Handle as 16 bit value via X */
             g_getimmed (CF_USINGX|flags, val, 0);
+            InvalidateX();
             AddCodeLine ("pshx");
         }
 
@@ -2177,6 +2268,7 @@ void g_push (unsigned flags, unsigned long val)
             case CF_LONG:
                 /* FIXME: inline */
                 NotViaX();
+                InvalidateX();
                 AddCodeLine ("jsr pusheax");
                 break;
 
@@ -2199,6 +2291,7 @@ void g_swap (unsigned flags)
 */
 {
     NotViaX();
+    InvalidateX();
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
@@ -2226,6 +2319,7 @@ void g_swap (unsigned flags)
 void g_call (unsigned Flags, const char* Label, unsigned ArgSize)
 /* Call the specified subroutine name */
 {
+    InvalidateX();
     AddCodeLine ("jsr _%s", Label);
 }
 
@@ -2234,6 +2328,7 @@ void g_call (unsigned Flags, const char* Label, unsigned ArgSize)
 void g_callind (unsigned Flags, unsigned ArgSize, int Offs)
 /* Call subroutine indirect */
 {
+    InvalidateX();
     if ((Flags & CF_LOCAL) == 0) {
         /* Address is in d */
         if ((Flags & CF_USINGX) == 0)
@@ -2281,12 +2376,15 @@ void g_lateadjustSP (unsigned label)
     AddCodeLine ("sts tmp");
     AddCodeLine ("ldd tmp");
     AddCodeLine ("addd %s", LocalLabelName (label));
+    InvalidateX();
 }
 
 void g_drop (unsigned Space, int save_d)
 /* Drop space allocated on the stack */
 /* We have ABX but nothing the other way */
 {
+    /* There are a few cases we could save X FIXME */
+    InvalidateX();
     /* FIXME: quite a bit bigger than 4 is a win via pulx */
     if (Space > 8) {
         /* Preserve sreg/D */
@@ -2324,6 +2422,8 @@ void g_drop (unsigned Space, int save_d)
 void g_space (int Space, int save_d)
 /* Create or drop space on the stack */
 {
+    /* There are some cases we could save X but not clear they matter FIXME */
+    InvalidateX();
     if (Space < 0) {
         /* This is actually a drop operation */
         g_drop (-Space, save_d);
@@ -2408,12 +2508,14 @@ void g_add (unsigned flags, unsigned long val)
                 AddCodeLine("addd #$%04X", (unsigned short) val);
                 break;
             case CF_LONG:
+                InvalidateX();
                 NotViaX();
                 flags &= CF_CONST;
                 g_push(flags & ~CF_CONST, 0);
                 oper(flags, val, ops);
         }
     } else {
+        InvalidateX();
         oper (flags, val, ops);
     }
 }
@@ -2432,6 +2534,7 @@ void g_sub (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR; /* Handle chars as ints */
         g_push (flags & ~CF_CONST, 0);
     }
+    InvalidateX();
     oper (flags, val, ops);
 }
 
@@ -2487,10 +2590,12 @@ void g_rsub (unsigned flags, unsigned long val)
                 NotViaX();
                 flags &= CF_CONST;
                 g_push(flags & ~CF_CONST, 0);
+                InvalidateX();
                 oper(flags, val, ops);
         }
     } else {
         NotViaX();
+        InvalidateX();
         oper (flags, val, ops);
     }
 }
@@ -2560,6 +2665,7 @@ void g_mul (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
 
             case CF_INT:
+                InvalidateX();
                 switch (val) {
                     case 3:
                         AddCodeLine ("jsr mulax3");
@@ -2598,6 +2704,7 @@ void g_mul (unsigned flags, unsigned long val)
     }
 
     /* Use long way over the stack */
+    InvalidateX();
     oper (flags, val, ops);
 }
 
@@ -2625,6 +2732,7 @@ void g_div (unsigned flags, unsigned long val)
             flags &= ~CF_FORCECHAR;     /* Handle chars as ints */
             g_push (flags & ~CF_CONST, 0);
         }
+        InvalidateX();
         oper (flags, val, ops);
     }
 }
@@ -2719,6 +2827,7 @@ void g_or (unsigned flags, unsigned long val)
     }
 
     /* Use long way over the stack */
+    InvalidateX();
     oper (flags, val, ops);
 }
 
@@ -2784,6 +2893,7 @@ void g_xor (unsigned flags, unsigned long val)
     }
 
     /* Use long way over the stack */
+    InvalidateX();
     oper (flags, val, ops);
 }
 
@@ -2869,6 +2979,7 @@ void g_and (unsigned Flags, unsigned long Val)
     }
 
     /* Use long way over the stack */
+    InvalidateX();
     oper (Flags, Val, ops);
 }
 
@@ -2882,6 +2993,7 @@ void g_asr (unsigned flags, unsigned long val)
     };
 
     NotViaX();
+    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3053,6 +3165,7 @@ void g_asl (unsigned flags, unsigned long val)
                     val -= 8;
                 }
                 if (val > 4) {
+                    InvalidateX();
                     if (flags & CF_UNSIGNED) {
                         AddCodeLine ("jsr shleax4");
                     } else {
@@ -3061,6 +3174,7 @@ void g_asl (unsigned flags, unsigned long val)
                     val -= 4;
                 }
                 if (val > 0) {
+                    InvalidateX();
                     if (flags & CF_UNSIGNED) {
                         AddCodeLine ("jsr shleax%ld", val);
                     } else {
@@ -3082,6 +3196,7 @@ void g_asl (unsigned flags, unsigned long val)
     }
 
     /* Use long way over the stack */
+    InvalidateX();
     oper (flags, val, ops);
 }
 
@@ -3107,6 +3222,7 @@ void g_neg (unsigned Flags)
             break;
 
         case CF_LONG:
+            InvalidateX();
             AddCodeLine ("jsr negeax");
             break;
 
@@ -3121,6 +3237,7 @@ void g_bneg (unsigned flags)
 /* Primary = !Primary */
 {
     NotViaX();
+    InvalidateX();
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
@@ -3161,6 +3278,7 @@ void g_com (unsigned Flags)
             break;
 
         case CF_LONG:
+            InvalidateX();
             AddCodeLine ("jsr compleax");
             break;
 
@@ -3200,17 +3318,20 @@ void g_inc (unsigned flags, unsigned long val)
             if (flags & CF_USINGX) {
                 if (val == 1) {
                     AddCodeLine("inx");
+                    ModifyX(1);
                     break;
                 }
                 if (val == 2) {
                     AddCodeLine("inx");
                     AddCodeLine("inx");
-                     break;
+                    ModifyX(2);
+                    break;
                 }
                 if (val == 3) {
                     AddCodeLine("inx");
                     AddCodeLine("inx");
                     AddCodeLine("inx");
+                    ModifyX(3);
                     break;
                 }
                 if (val == 4) {
@@ -3218,6 +3339,7 @@ void g_inc (unsigned flags, unsigned long val)
                     AddCodeLine("inx");
                     AddCodeLine("inx");
                     AddCodeLine("inx");
+                    ModifyX(4);
                     break;
                 }
                 NotViaX();
@@ -3226,6 +3348,7 @@ void g_inc (unsigned flags, unsigned long val)
             break;
 
         case CF_LONG:
+            InvalidateX();
             NotViaX();
             Label = GetLocalLabel();
             if (val <= 0xFFFF) {
@@ -3276,17 +3399,20 @@ void g_dec (unsigned flags, unsigned long val)
             if (flags & CF_USINGX) {
                 if (val == 1) {
                     AddCodeLine("dex");
+                    ModifyX(-1);
                     break;
                 }
                 if (val == 2) {
                     AddCodeLine("dex");
                     AddCodeLine("dex");
-                     break;
+                    ModifyX(-2);
+                    break;
                 }
                 if (val == 3) {
                     AddCodeLine("dex");
                     AddCodeLine("dex");
                     AddCodeLine("dex");
+                    ModifyX(-3);
                     break;
                 }
                 if (val == 4) {
@@ -3294,6 +3420,7 @@ void g_dec (unsigned flags, unsigned long val)
                     AddCodeLine("dex");
                     AddCodeLine("dex");
                     AddCodeLine("dex");
+                    ModifyX(-4);
                     break;
                 }
                 NotViaX();
@@ -3303,6 +3430,7 @@ void g_dec (unsigned flags, unsigned long val)
 
         case CF_LONG:
             NotViaX();
+            InvalidateX();
             Label = GetLocalLabel();
             if (val <= 0xFFFF) {
                 AddCodeLine("subd #%04X", (unsigned short)val);
@@ -3341,6 +3469,7 @@ void g_eq (unsigned flags, unsigned long val)
 
     /* FIXME look at x for NULL case only */
     NotViaX();
+    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3379,7 +3508,6 @@ void g_eq (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     }
-
     /* Use long way over the stack */
     oper (flags, val, ops);
 }
@@ -3397,6 +3525,7 @@ void g_ne (unsigned flags, unsigned long val)
 
     /* FIXME look at x for NULL case only */
     NotViaX();
+    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3452,6 +3581,7 @@ void g_lt (unsigned flags, unsigned long val)
     unsigned Label;
 
     NotViaX();
+    InvalidateX();	/*FIXME: for now */
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3612,6 +3742,7 @@ void g_le (unsigned flags, unsigned long val)
 
 
     NotViaX();
+    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3728,6 +3859,7 @@ void g_gt (unsigned flags, unsigned long val)
 
 
     NotViaX();
+    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3859,6 +3991,7 @@ void g_ge (unsigned flags, unsigned long val)
     unsigned Label;
 
     NotViaX();
+    InvalidateX();
 
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -4158,6 +4291,7 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
         }
     } else {
         /* Use the easy way here: memcpy() */
+        InvalidateX();
         g_getimmed (CF_USINGX|CF_STATIC, VarLabel, 0);
         AddCodeLine ("pshx");
         g_getimmed (CF_STATIC|CF_USINGX, InitLabel, 0);

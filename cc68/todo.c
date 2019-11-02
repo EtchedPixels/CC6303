@@ -116,6 +116,7 @@ void GetCodePos(CodeMark *m)
 {
     m->Text = CodeHead.prev;
     m->SP = StackPtr;
+    m->X = XState;
 }
 
 /* Turn a mark into the right text pointer remembering that the mark
@@ -130,6 +131,7 @@ void RemoveCode(const CodeMark *m)
 {
     TextListRemoveTail(&CodeHead, MarkToText(m)->prev);
     StackPtr = m->SP;
+    XState = m->X;
 }
 
 /* Move the code between Start (inclusive) and End (exclusive) to

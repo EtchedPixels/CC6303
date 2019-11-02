@@ -58,6 +58,7 @@
 typedef struct {
     TextList 	*Text;
     int         SP;             /* Stack pointer at this position */
+    unsigned	X;		/* X state */
 } CodeMark;
 
 
