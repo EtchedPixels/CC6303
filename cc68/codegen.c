@@ -571,6 +571,8 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
     push (CF_INT);		/* Return address */
     AddCodeLine(".globl _%s", name);
     AddCodeLine("_%s:",name);
+    /* We have no valid X state on entry */
+    InvalidateX();
 }
 
 
