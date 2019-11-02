@@ -461,6 +461,12 @@ void g_switch (Collection* Nodes, unsigned DefaultLabel, unsigned Depth);
 /* Generate code for a switch statement */
 
 
+/*****************************************************************************/
+/*                             Optimizer hints                               */
+/*****************************************************************************/
+
+void g_statement (void);
+
 
 /*****************************************************************************/
 /*                       User supplied assembler code                        */

@@ -4390,6 +4390,18 @@ void g_switch (Collection* Nodes, unsigned DefaultLabel, unsigned Depth)
 
 
 /*****************************************************************************/
+/*                       Optimizer Hinting                                   */
+/*****************************************************************************/
+
+void g_statement(void)
+{
+    if (XState & XSTATE_VALID)
+        AddCodeLine(".invalid D,P");
+    else
+        AddCodeLine(".invalid X,D,P");
+}
+
+/*****************************************************************************/
 /*                       User supplied assembler code                        */
 /*****************************************************************************/
 

@@ -653,6 +653,8 @@ int Statement (int* PendingToken)
             break;
 
         default:
+            /* Tell the optimizer this is a new block */
+            g_statement();
             /* Remember the current code position */
             GetCodePos (&Start);
             /* Actual statement */
