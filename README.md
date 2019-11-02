@@ -65,3 +65,9 @@ the 6502 approach because we have a real stack.
   help for some use cases as you have to indirect via ZP to do most things.
   On 680x ZP variables are just faster memory with short instructions except
   for some obscure 6303 features (AIM/OIM/etc)
+
+## IDEAS
+
+- Store 0,0,1 as 3 bytes in DP then we can load/add/sub 0 into D and X in
+  less bytes via direct page
+
