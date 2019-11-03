@@ -234,10 +234,10 @@ void g_scale (unsigned flags, long val);
 
 
 
-void g_enter (const char *name, unsigned flags, unsigned argsize);
+void g_enter (const char *name);
 /* Function prologue */
 
-void g_leave (int save_d);
+void g_leave (void);
 /* Function epilogue */
 
 /*****************************************************************************/
@@ -450,6 +450,12 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size);
 /* Initialize a static local variable from static initialization data */
 
 
+/*****************************************************************************/
+/*                            Register Variables                             */
+/*****************************************************************************/
+
+extern void g_save_regvar(int Offs, int Reg, unsigned Size);
+extern void g_restore_regvar(int Offs, int Reg, unsigned Size);
 
 /*****************************************************************************/
 /*                             Switch statement                              */

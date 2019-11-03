@@ -110,6 +110,7 @@ static void ParseRegisterDecl (Declaration* Decl, int Reg)
 
     /* Save the current contents of the register variable on stack */
     F_AllocLocalSpace (CurrentFunc);
+    g_save_regvar(0, Reg, Size);	/* Check - should always be right */
 
     /* Add the symbol to the symbol table. We do that now, because for register
     ** variables the current stack pointer is implicitly used as location for

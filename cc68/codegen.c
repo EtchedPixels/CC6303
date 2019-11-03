@@ -4,7 +4,6 @@
  *	The main differences we have are
  *	- We have a real stack and use it
  *	- Functions clean up their own arguments
- *	- The register stuff is removed as it makes no sense.
  *	- We push arguments in normal C order (TODO)
  *	- We remove the 256 byte stack size limitation using a helper
  *	  that fixes up our offset/base.
@@ -561,13 +560,9 @@ void g_importmainargs (void)
 /*****************************************************************************/
 
 
-void g_enter (const char *name, unsigned flags, unsigned argsize)
+void g_enter (const char *name)
 /* Function prologue */
 {
-    /* TODO: We need to end the stack growing and prologue with a push of
-    the old frame pointer if we want to try the pulx txs rts trick */
-
-    /* Stack the previous frame pointer, save ours as fp for returning */    
     push (CF_INT);		/* Return address */
     AddCodeLine(".globl _%s", name);
     AddCodeLine("_%s:",name);
@@ -577,11 +572,12 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
 
 
 
-void g_leave (int save_d)
+void g_leave(void)
 /* Function epilogue */
 {
-    /* void functions can trash d adjusting the stack */
-    g_drop(-StackPtr, save_d);
+    /* Should always be zero */
+    if (StackPtr)
+        Internal("g_leave: stack unbalanced");
     AddCodeLine("rts");
 }
 
@@ -4305,6 +4301,28 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
 }
 
 
+/* For one byte registers we end up saving an extra byte. It avoids having
+   to touch D so who cares. We don't allow long registers */
+
+void g_save_regvar(int Offset, int Reg, unsigned Size)
+{
+    AddCodeLine(";offset %d\n", Offset);
+    AddCodeLine("ldx #_reg%u", Reg);
+    AddCodeLine("pshx");
+    push(CF_INT);
+    InvalidateX();
+    NotViaX();
+}
+
+void g_restore_regvar(int Offset, int Reg, unsigned Size)
+{
+    AddCodeLine(";offset %d\n", Offset);
+    AddCodeLine("pulx");
+    AddCodeLine("stx #_reg%u", Reg);
+    pop(CF_INT);
+    InvalidateX();
+    NotViaX();
+}
 
 /*****************************************************************************/
 /*                             Switch statement                              */

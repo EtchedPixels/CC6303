@@ -270,27 +270,50 @@ int F_AllocRegVar (Function* F, const Type* Type)
 
 
 
+/* Also pop off any other stuff as we go for a clean exit path */
 static void F_RestoreRegVars (Function* F)
 /* Restore the register variables for the local function if there are any. */
 {
+    unsigned ByteTotal = 0;
     const SymEntry* Sym;
 
-    /* If we don't have register variables in this function, bail out early */
-    if (F->RegOffs == RegisterSpace) {
-        return;
+    /* Get the last symbol from the function symbol table */
+    Sym = F->FuncEntry->V.F.Func->SymTab->SymTail;
+
+    /* Walk through all symbols checking for register variables. Unlike cc65
+       we don't want to batch them as we just stuff them all through X. Do
+       them in reverse order so we can try and pop them nicely */
+
+    /* FIXME: need to accumulate non regvar size */
+    while (Sym) {
+        unsigned Bytes = CheckedSizeOf (Sym->Type);
+        if (SymIsRegVar (Sym)) {
+
+            /* Check for more than one variable */
+            /*int Offs       = Sym->V.R.SaveOffs; */
+            /* Drop the accumulated uninteresting storage */
+            if (ByteTotal) {
+                g_drop(ByteTotal, F_HasReturn(CurrentFunc));
+                StackPtr += ByteTotal;
+                ByteTotal = 0;
+            }
+            /* Pop and restore the reg var */
+            g_restore_regvar(0, Sym->V.R.RegOffs, Bytes);
+        } else {
+            /* Don't try and drop anything that's not a local auto variable */
+            if (SymIsAuto (Sym) && !SymIsParam (Sym)) {
+                /* Accumulate the space to drop */
+                ByteTotal += Bytes;
+            }
+        }
+
+        /* Check next symbol */
+        Sym = Sym->PrevSym;
     }
-
-    /* Save the accumulator if needed */
-    if (!F_HasVoidReturn (F)) {
-        g_save (CF_CHAR | CF_FORCECHAR);
-    }
-
-    /* Get the first symbol from the function symbol table */
-    Sym = F->FuncEntry->V.F.Func->SymTab->SymHead;
-
-    /* Restore the accumulator if needed */
-    if (!F_HasVoidReturn (F)) {
-        g_restore (CF_CHAR | CF_FORCECHAR);
+    /* Drop any remaining uninteresting storage */
+    if (ByteTotal) {
+        g_drop(ByteTotal, F_HasReturn(CurrentFunc));
+        StackPtr += ByteTotal;
     }
 }
 
@@ -373,7 +396,7 @@ void NewFunc (SymEntry* Func)
 
     
     /* Generate function entry code if needed */
-    g_enter (Func->Name, TypeOf (Func->Type), F_GetParamSize (CurrentFunc));
+    g_enter (Func->Name);
 
     /* If stack checking code is requested, emit a call to the helper routine */
     if (IS_Get (&CheckStack)) {
@@ -383,6 +406,38 @@ void NewFunc (SymEntry* Func)
     /* Setup the stack */
     StackPtr = 0;
 
+#if 0
+    /* FIXME: This one is harder to do right */
+    /* Walk through the parameter list and allocate register variable space
+    ** for parameters declared as register. Generate code to swap the contents
+    ** of the register bank with the save area on the stack.
+    */
+    Param = D->SymTab->SymHead;
+    while (Param && (Param->Flags & SC_PARAM) != 0) {
+
+        /* Check for a register variable */
+        if (SymIsRegVar (Param)) {
+
+            /* Allocate space */
+            int Reg = F_AllocRegVar (CurrentFunc, Param->Type);
+
+            /* Could we allocate a register? */
+            if (Reg < 0) {
+                /* No register available: Convert parameter to auto */
+                CvtRegVarToAuto (Param);
+            } else {
+                /* Remember the register offset */
+                Param->V.R.RegOffs = Reg;
+
+                /* Generate swap code */
+                g_swap_regvars (Param->V.R.SaveOffs, Reg, CheckedSizeOf (Param->Type));
+            }
+        }
+
+        /* Next parameter */
+        Param = Param->NextSym;
+    }
+#endif
     /* Need a starting curly brace */
     ConsumeLCurly ();
 
@@ -423,14 +478,13 @@ void NewFunc (SymEntry* Func)
     g_defcodelabel (F_GetRetLab (CurrentFunc));
 
     /* Restore the register variables */
+    /* FIXME: it would be better to combine this with any popping, so we
+       roll the pulx stx into the recovery logic */
     F_RestoreRegVars (CurrentFunc);
 
     /* Generate the exit code */
 
-    if (!F_HasReturn(CurrentFunc))
-        g_leave (0);
-    else
-        g_leave (1);
+    g_leave ();
 
     /* Emit references to imports/exports */
     EmitExternals ();

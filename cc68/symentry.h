@@ -251,6 +251,27 @@ INLINE int SymIsRegVar (const SymEntry* Sym)
 #  define SymIsRegVar(Sym)      (((Sym)->Flags & (SC_REGISTER|SC_TYPE)) == SC_REGISTER)
 #endif
 
+#if defined(HAVE_INLINE)
+INLINE int SymIsAuto (const SymEntry* Sym)
+/* Return true if the given entry is a register variable */
+/* ### HACK! Fix the ugly type flags! */
+{
+    return ((Sym->Flags & (SC_AUTO|SC_TYPE)) == SC_AUTO);
+}
+#else
+#  define SymIsAuto(Sym)      (((Sym)->Flags & (SC_AUTO|SC_TYPE)) == SC_AUTO)
+#endif
+
+#if defined(HAVE_INLINE)
+INLINE int SymIsParam (const SymEntry* Sym)
+/* Return true if the given entry is a parameter */
+{
+    return ((Sym->Flags & SC_PARAM) == SC_PARAM);
+}
+#else
+#  define SymIsRef(Sym)     (((Sym)->Flags & SC_PARAM) == SC_PARAM)
+#endif
+
 int SymIsOutputFunc (const SymEntry* Sym);
 /* Return true if this is a function that must be output */
 
