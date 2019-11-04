@@ -3477,18 +3477,17 @@ void g_eq (unsigned flags, unsigned long val)
 
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    AddCodeLine ("cmpb #$%02X", (unsigned char)val);
+                    if (val)
+                        AddCodeLine ("cmpb #$%02X", (unsigned char)val);
+                    else
+                        AddCodeLine ("tstb");
                     AddCodeLine ("jsr booleq");
                     return;
                 }
                 /* FALLTHROUGH */
 
             case CF_INT:
-                L = GetLocalLabel();
-                AddCodeLine ("cmpa #$%02X", (unsigned char)(val >> 8));
-                AddCodeLine ("bne %s", LocalLabelName (L));
-                AddCodeLine ("cmpb #$%02X", (unsigned char)val);
-                g_defcodelabel (L);
+                AddCodeLine ("subd #$%04X", (unsigned int)val);
                 AddCodeLine ("jsr booleq");
                 return;
 
@@ -3506,6 +3505,22 @@ void g_eq (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     }
+    /* We can optimize some of these in terms of subd 1,x */
+    switch (flags & CF_TYPEMASK) {
+        case CF_CHAR:
+            if (flags & CF_FORCECHAR) {
+                GenTSX();
+                AddCodeLine ("cmpb 1,x");
+                AddCodeLine ("jsr booleq");
+                return;
+            }
+            /* Fall through */
+        case CF_INT:
+            AddCodeLine ("subd 1,x");
+            AddCodeLine ("jsr booleq");
+            return;
+    }
+
     /* Use long way over the stack */
     oper (flags, val, ops);
 }
@@ -3533,18 +3548,17 @@ void g_ne (unsigned flags, unsigned long val)
 
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    AddCodeLine ("cmpb #$%02X", (unsigned char)val);
+                    if (val)
+                        AddCodeLine ("cmpb #$%02X", (unsigned char)val);
+                    else
+                        AddCodeLine ("tstb");
                     AddCodeLine ("jsr boolne");
                     return;
                 }
                 /* FALLTHROUGH */
 
             case CF_INT:
-                L = GetLocalLabel();
-                AddCodeLine ("cmpa #$%02X", (unsigned char)(val >> 8));
-                AddCodeLine ("bne %s", LocalLabelName (L));
-                AddCodeLine ("cmpb #$%02X", (unsigned char)val);
-                g_defcodelabel (L);
+                AddCodeLine ("subd #$%04X", (unsigned int)val);
                 AddCodeLine ("jsr boolne");
                 return;
 
@@ -3561,6 +3575,22 @@ void g_ne (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
+    }
+
+    /* We can optimize some of these in terms of subd 1,x */
+    switch (flags & CF_TYPEMASK) {
+        case CF_CHAR:
+            if (flags & CF_FORCECHAR) {
+                GenTSX();
+                AddCodeLine ("cmpb 1,x");
+                AddCodeLine ("jsr boolne");
+                return;
+            }
+            /* Fall through */
+        case CF_INT:
+            AddCodeLine ("subd 1,x");
+            AddCodeLine ("jsr boolne");
+            return;
     }
 
     /* Use long way over the stack */
