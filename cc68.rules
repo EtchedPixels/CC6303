@@ -233,6 +233,53 @@ ldd %2
 =
 ;
 
+# n++/n-- with unused result
+
+ldd %1
+pshb
+psha
+addd %2
+std %1
+pula
+pulb
+=
+ldd %1
+addd %2
+std %1
+
+# Optimize a few pull sequences where we can see X is not live
+
+pula
+pulb
+L%1:
+tsx
+=
+pulx
+L%1:
+tsx
+
+pula
+pulb
+tsx
+=
+pulx
+tsx
+
+pula
+pulb
+pulx
+=
+pulx
+pulx
+
+pula
+pulb
+invalid X,D,P
+=
+pulx
+;invalid XDP
+
+
 # Clean up invalid markers
 invalid D,P
 =
@@ -242,3 +289,17 @@ invalid X,D,P
 =
 ;invalid XDP
 
+# Some useful tricks with comparisons. Where the comparison sets the flags
+# and the next thing we do is to do a conditional based on them we can
+# eliminate the test function. Look at the others as we clean them up
+# in the compiler
+
+jsr booleq
+jeq %1
+=
+jeq %1
+
+jsr boolne
+jne %1
+=
+jne %1
