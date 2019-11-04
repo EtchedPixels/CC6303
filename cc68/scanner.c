@@ -43,7 +43,6 @@
 /* common */
 #include "chartype.h"
 #include "fp.h"
-#include "tgttrans.h"
 
 /* cc65 */
 #include "datatype.h"
@@ -386,7 +385,7 @@ static void CharConst (void)
     NextTok.Tok  = TOK_CCONST;
 
     /* Translate into target charset */
-    NextTok.IVal = SignExtendChar (TgtTranslateChar (C));
+    NextTok.IVal = SignExtendChar (C);
 
     /* Character constants have type int */
     NextTok.Type = type_int;

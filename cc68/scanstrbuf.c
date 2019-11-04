@@ -35,7 +35,6 @@
 
 /* common */
 #include "chartype.h"
-#include "tgttrans.h"
 
 /* cc65 */
 #include "datatype.h"
@@ -269,7 +268,7 @@ int SB_GetNumber (StrBuf* B, long* Val)
 
         /* Character constant */
         SB_Skip (B);
-        *Val = SignExtendChar (TgtTranslateChar (ParseChar (B)));
+        *Val = SignExtendChar (ParseChar (B));
         if (SB_Peek (B) != '\'') {
             Error ("'\'' expected");
             return 0;
