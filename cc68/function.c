@@ -253,6 +253,10 @@ int F_AllocRegVar (Function* F, const Type* Type)
         /* Get the size of the variable */
         unsigned Size = CheckedSizeOf (Type);
 
+        /* For now we don't handle register long */
+        if (Size > 2)
+            return -1;
+
         /* Do we have space left? */
         if (F->RegOffs >= Size) {
             /* Space left. We allocate the variables from high to low addresses,
@@ -346,7 +350,6 @@ void NewFunc (SymEntry* Func)
 /* Parse argument declarations and function body. */
 {
     int         C99MainFunc = 0;/* Flag for C99 main function returning int */
-    SymEntry*   Param;
 
     /* Get the function descriptor from the function entry */
     FuncDesc* D = Func->V.F.Func;
