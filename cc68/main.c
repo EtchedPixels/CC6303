@@ -50,7 +50,6 @@
 #include "segnames.h"
 #include "strbuf.h"
 #include "target.h"
-#include "tgttrans.h"
 #include "version.h"
 #include "xmalloc.h"
 
@@ -99,7 +98,6 @@ static void Usage (void)
             "  -mm model\t\t\tSet the memory model\n"
             "  -o name\t\t\tName the output file\n"
             "  -r\t\t\t\tEnable register variables\n"
-            "  -t sys\t\t\tSet the target system\n"
             "  -v\t\t\t\tIncrease verbosity\n"
             "\n"
             "Long options:\n"
@@ -131,167 +129,11 @@ static void Usage (void)
             "  --signed-chars\t\tDefault characters are signed\n"
             "  --standard std\t\tLanguage standard (c89, c99, cc65)\n"
             "  --static-locals\t\tMake local variables static\n"
-            "  --target sys\t\t\tSet the target system\n"
             "  --verbose\t\t\tIncrease verbosity\n"
             "  --version\t\t\tPrint the compiler version number\n"
             "  --writable-strings\t\tMake string literals writable\n",
             ProgName);
 }
-
-
-
-static void cbmsys (const char* sys)
-/* Define a CBM system */
-{
-    DefineNumericMacro ("__CBM__", 1);
-    DefineNumericMacro (sys, 1);
-}
-
-
-
-static void SetSys (const char* Sys)
-/* Define a target system */
-{
-    switch (Target = FindTarget (Sys)) {
-
-        case TGT_NONE:
-            break;
-
-        case TGT_MODULE:
-            AbEnd ("Cannot use 'module' as a target for the compiler");
-            break;
-
-        case TGT_ATARI2600:
-            DefineNumericMacro ("__ATARI2600__", 1);
-            break;
-
-        case TGT_ATARI5200:
-            DefineNumericMacro ("__ATARI5200__", 1);
-            break;
-
-        case TGT_ATARI:
-            DefineNumericMacro ("__ATARI__", 1);
-            break;
-
-        case TGT_ATARIXL:
-            DefineNumericMacro ("__ATARI__", 1);
-            DefineNumericMacro ("__ATARIXL__", 1);
-            break;
-
-        case TGT_C16:
-            cbmsys ("__C16__");
-            break;
-
-        case TGT_C64:
-            cbmsys ("__C64__");
-            break;
-
-        case TGT_VIC20:
-            cbmsys ("__VIC20__");
-            break;
-
-        case TGT_C128:
-            cbmsys ("__C128__");
-            break;
-
-        case TGT_PLUS4:
-            cbmsys ("__C16__");
-            DefineNumericMacro ("__PLUS4__", 1);
-            break;
-
-        case TGT_CBM510:
-            cbmsys ("__CBM510__");
-            break;
-
-        case TGT_CBM610:
-            cbmsys ("__CBM610__");
-            break;
-
-        case TGT_PET:
-            cbmsys ("__PET__");
-            break;
-
-        case TGT_BBC:
-            DefineNumericMacro ("__BBC__", 1);
-            break;
-
-        case TGT_APPLE2:
-            DefineNumericMacro ("__APPLE2__", 1);
-            break;
-
-        case TGT_APPLE2ENH:
-            DefineNumericMacro ("__APPLE2__", 1);
-            DefineNumericMacro ("__APPLE2ENH__", 1);
-            break;
-
-        case TGT_GAMATE:
-            DefineNumericMacro ("__GAMATE__", 1);
-            break;
-
-        case TGT_GEOS_CBM:
-            /* Do not handle as a CBM system */
-            DefineNumericMacro ("__GEOS__", 1);
-            DefineNumericMacro ("__GEOS_CBM__", 1);
-            break;
-
-        case TGT_CREATIVISION:
-            DefineNumericMacro ("__CREATIVISION__", 1);
-            break;
-
-        case TGT_GEOS_APPLE:
-            DefineNumericMacro ("__GEOS__", 1);
-            DefineNumericMacro ("__GEOS_APPLE__", 1);
-            break;
-
-        case TGT_LUNIX:
-            DefineNumericMacro ("__LUNIX__", 1);
-            break;
-
-        case TGT_ATMOS:
-            DefineNumericMacro ("__ATMOS__", 1);
-            break;
-
-        case TGT_TELESTRAT:
-            DefineNumericMacro ("__TELESTRAT__", 1);
-            break;
-
-        case TGT_NES:
-            DefineNumericMacro ("__NES__", 1);
-            break;
-
-        case TGT_SUPERVISION:
-            DefineNumericMacro ("__SUPERVISION__", 1);
-            break;
-
-        case TGT_LYNX:
-            DefineNumericMacro ("__LYNX__", 1);
-            break;
-
-        case TGT_SIM6502:
-            DefineNumericMacro ("__SIM6502__", 1);
-            break;
-
-        case TGT_SIM65C02:
-            DefineNumericMacro ("__SIM65C02__", 1);
-            break;
-
-        case TGT_OSIC1P:
-            DefineNumericMacro ("__OSIC1P__", 1);
-            break;
-
-        case TGT_PCENGINE:
-            DefineNumericMacro ("__PCE__", 1);
-            break;
-
-        default:
-            AbEnd ("Unknown target system type %d", Target);
-    }
-
-    /* Initialize the translation tables for the target system */
-    TgtTranslateInit ();
-}
-
-
 
 static void FileNameOption (const char* Opt, const char* Arg, StrBuf* Name)
 /* Handle an option that remembers a file name for later */
@@ -712,14 +554,6 @@ static void OptStaticLocals (const char* Opt attribute ((unused)),
 
 
 
-static void OptTarget (const char* Opt attribute ((unused)), const char* Arg)
-/* Set the target system */
-{
-    SetSys (Arg);
-}
-
-
-
 static void OptVerbose (const char* Opt attribute ((unused)),
                         const char* Arg attribute ((unused)))
 /* Increase verbosity */
@@ -825,7 +659,6 @@ int main (int argc, char* argv[])
         { "--signed-chars",         0,      OptSignedChars          },
         { "--standard",             1,      OptStandard             },
         { "--static-locals",        0,      OptStaticLocals         },
-        { "--target",               1,      OptTarget               },
         { "--verbose",              0,      OptVerbose              },
         { "--version",              0,      OptVersion              },
         { "--writable-strings",     0,      OptWritableStrings      },
@@ -886,10 +719,6 @@ int main (int argc, char* argv[])
 
                 case 'r':
                     OptRegisterVars (Arg, 0);
-                    break;
-
-                case 't':
-                    OptTarget (Arg, GetArg (&I, 2));
                     break;
 
                 case 'u':
@@ -988,11 +817,7 @@ int main (int argc, char* argv[])
 
     /* If no CPU given, use the default CPU for the target */
     if (CPU == CPU_UNKNOWN) {
-        if (Target != TGT_UNKNOWN) {
-            CPU = GetTargetProperties (Target)->DefaultCPU;
-        } else {
             CPU = CPU_6803;
-        }
     }
 
     /* If no memory model was given, use the default */
