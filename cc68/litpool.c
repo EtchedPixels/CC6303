@@ -40,7 +40,6 @@
 #include "attrib.h"
 #include "check.h"
 #include "coll.h"
-#include "tgttrans.h"
 #include "xmalloc.h"
 
 /* cc65 */
@@ -127,8 +126,6 @@ static void OutputLiteral (Literal* L)
 /* Output one literal to the currently active data segment */
 {
     /* Translate the literal into the target charset */
-    TranslateLiteral (L);
-
     /* Define the label for the literal */
     g_defdatalabel (L->Label);
 
@@ -171,16 +168,6 @@ void ReleaseLiteral (Literal* L)
     --L->RefCount;
     CHECK (L->RefCount >= 0);
 }
-
-
-
-void TranslateLiteral (Literal* L)
-/* Translate a literal into the target charset. */
-{
-    TgtTranslateBuf (SB_GetBuf (&L->Data), SB_GetLen (&L->Data));
-}
-
-
 
 unsigned GetLiteralLabel (const Literal* L)
 /* Return the asm label for a literal */
@@ -398,9 +385,6 @@ static void OutputReadOnlyLiterals (Collection* Literals)
         if (L->RefCount == 0 || L->Output) {
             continue;
         }
-
-        /* Translate the literal into the target charset */
-        TranslateLiteral (L);
 
         /* Check if this literal is part of another one. Since the literals
         ** are sorted by size (larger ones first), it can only be part of a

@@ -74,9 +74,6 @@ Literal* UseLiteral (Literal* L);
 void ReleaseLiteral (Literal* L);
 /* Decrement the reference counter for the literal */
 
-void TranslateLiteral (Literal* L);
-/* Translate a literal into the target charset. */
-
 unsigned GetLiteralLabel (const Literal* L);
 /* Return the asm label for a literal */
 
