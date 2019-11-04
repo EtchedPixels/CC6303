@@ -79,10 +79,10 @@
 #include "codeseg.h"
 #include "dataseg.h"
 #include "error.h"
+#include "expr.h"
 #include "global.h"
 #include "segments.h"
 #include "stackptr.h"
-#include "stdfunc.h"
 #include "textseg.h"
 #include "util.h"
 #include "codegen.h"
@@ -2314,7 +2314,7 @@ void g_swap (unsigned flags)
 
 
 
-void g_call (unsigned Flags, const char* Label, unsigned ArgSize)
+void g_call (const char* Label)
 /* Call the specified subroutine name */
 {
     InvalidateX();
@@ -2323,7 +2323,7 @@ void g_call (unsigned Flags, const char* Label, unsigned ArgSize)
 
 
 
-void g_callind (unsigned Flags, unsigned ArgSize, int Offs)
+void g_callind (unsigned Flags, int Offs)
 /* Call subroutine indirect */
 {
     InvalidateX();
@@ -3463,7 +3463,6 @@ void g_eq (unsigned flags, unsigned long val)
         "toseqax", "toseqax", "toseqeax", "toseqeax"
     };
 
-    unsigned L;
 
     /* FIXME look at x for NULL case only */
     NotViaX();
@@ -3511,13 +3510,18 @@ void g_eq (unsigned flags, unsigned long val)
             if (flags & CF_FORCECHAR) {
                 GenTSX();
                 AddCodeLine ("cmpb 1,x");
+                AddCodeLine("ins");
                 AddCodeLine ("jsr booleq");
+                pop(flags);
                 return;
             }
             /* Fall through */
         case CF_INT:
             AddCodeLine ("subd 1,x");
+            AddCodeLine ("pulx");
+            InvalidateX();
             AddCodeLine ("jsr booleq");
+            pop(flags);
             return;
     }
 
@@ -3533,8 +3537,6 @@ void g_ne (unsigned flags, unsigned long val)
     static const char* const ops[4] = {
         "tosneax", "tosneax", "tosneeax", "tosneeax"
     };
-
-    unsigned L;
 
     /* FIXME look at x for NULL case only */
     NotViaX();
@@ -3583,13 +3585,18 @@ void g_ne (unsigned flags, unsigned long val)
             if (flags & CF_FORCECHAR) {
                 GenTSX();
                 AddCodeLine ("cmpb 1,x");
+                AddCodeLine ("ins");
                 AddCodeLine ("jsr boolne");
+                pop(flags);
                 return;
             }
             /* Fall through */
         case CF_INT:
             AddCodeLine ("subd 1,x");
+            AddCodeLine ("pulx");
+            InvalidateX();
             AddCodeLine ("jsr boolne");
+            pop(flags);
             return;
     }
 
@@ -4282,8 +4289,9 @@ void g_initregister (unsigned Label, unsigned Reg, unsigned Size)
 void g_initauto (unsigned Label, unsigned Size)
 /* Initialize a local variable at stack offset zero from static data */
 {
+#if 0
     unsigned CodeLabel = GetLocalLabel ();
-
+    /* FIXME */
     if (Size <= 128) {
         AddCodeLine ("ldy #$%02X", Size-1);
         g_defcodelabel (CodeLabel);
@@ -4300,6 +4308,7 @@ void g_initauto (unsigned Label, unsigned Size)
         AddCmpCodeIfSizeNot256 ("cpy #$%02X", Size);
         AddCodeLine ("bne %s", LocalLabelName (CodeLabel));
     }
+#endif
 }
 
 
