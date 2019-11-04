@@ -1142,9 +1142,20 @@ void g_toslong (unsigned flags)
             NotViaX();	/* For now */
             InvalidateX();
             if (flags & CF_UNSIGNED) {
-                AddCodeLine ("jsr tosulong");
+                /* Push a new upper 16bits of zero */
+                AddCodeLine("ldx #$0000");
+                AddCodeLine("pshx");
             } else {
-                AddCodeLine ("jsr toslong");
+                /* need to sign extend */
+                /* FIXME non 6303 ... */
+                unsigned L = GetLocalLabel();
+                AddCodeLine("clra");
+                AddCodeLine("tim #$0x80,1,x");
+                AddCodeLine("beq %s", LocalLabelName (L));
+                AddCodeLine("coma");
+                g_defcodelabel (L);
+                AddCodeLine("psha");
+                AddCodeLine("psha");
             }
             push (CF_INT);
             break;
@@ -1169,12 +1180,10 @@ void g_tosint (unsigned flags)
             break;
 
         case CF_LONG:
-            InvalidateX();
-            if (flags & CF_USINGX)
-                /* Check ordering (might need to mess about with helper) */
-                AddCodeLine ("pulx");
-            else
-                AddCodeLine ("jsr tosint");
+            /* We have a big endian long at s+4,3,2,1 so we just need to
+               throw out the top. Use ins so we don't trash X */
+            AddCodeLine("ins");
+            AddCodeLine("ins");
             pop (CF_INT);
             break;
 
@@ -1239,7 +1248,7 @@ void g_reglong (unsigned Flags)
             NotViaX();
             if (Flags & CF_FORCECHAR) {
                 /* Conversion is from char */
-                AddCodeLine("ldx #$0");
+                AddCodeLine("ldx #$0000");
                 AddCodeLine("clra");
                 if ((Flags & CF_UNSIGNED) == 0) {
                     L = GetLocalLabel();
@@ -1257,7 +1266,7 @@ void g_reglong (unsigned Flags)
 
         case CF_INT:
             NotViaX();
-            AddCodeLine ("ldx #$00");
+            AddCodeLine ("ldx #$0000");
             if ((Flags & CF_UNSIGNED)  == 0) {
                 L = GetLocalLabel();
                 AddCodeLine ("cmpa #$80");
@@ -1657,12 +1666,9 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                 if (val < 0x10000) {
                     InvalidateX();
                     AddCodeLine ("ldx #%s", lbuf);
-                    if (val == 1) {
-                        AddCodeLine ("jsr laddeq1");
-                    } else {
-                        AddCodeLine ("ldd #$%04X", (int)(val & 0xFFFF));
-                        AddCodeLine ("jsr laddeqa");
-                    }
+                    AddCodeLine ("ldd #$%04X", (int)(val & 0xFFFF));
+                    AddCodeLine ("addd ,x");
+                    AddCodeLine ("std ,x");
                 } else {
                     g_getstatic (flags, label, offs);
                     g_inc (flags, val);
@@ -1859,10 +1865,9 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
             NotViaX();
             if (flags & CF_CONST) {
                 if (val < 0x10000) {
-                    InvalidateX();
-                    AddCodeLine ("ldx #%s", lbuf);
-                    AddCodeLine ("ldd #$%02X", (unsigned short)val);
-                    AddCodeLine ("jsr lsubeqd");
+                    AddCodeLine ("ldd %s", lbuf);
+                    AddCodeLine ("subd #$%04X", (unsigned short)val);
+                    AddCodeLine ("std %s", lbuf);
                 } else {
                     g_getstatic (flags, label, offs);
                     g_dec (flags, val);
@@ -2135,6 +2140,8 @@ static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
 **      1       --> Operate on unsigneds
 **      2       --> Operate on longs
 **      3       --> Operate on unsigned longs
+**
+**  Sets up X for accesses. Don't use oper for magic via X code
 */
 {
     /* Determine the offset into the array */
@@ -2147,13 +2154,15 @@ static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
 
     /* Load the value if it is not already in the primary */
     if (Flags & CF_CONST) {
-        /* Load value */
+        /* Load value - we call the helpers with the value in D, except
+           for longs */
         g_getimmed (Flags, Val, 0);
     }
 
-    /* Output the operation */
-    InvalidateX();
+    /* Output the operation: We set X up so that ,s is usable on stack ops */
+    GenTSX();
     AddCodeLine ("jsr %s", *Subs);
+    InvalidateX();
 
     /* The operation will pop it's argument */
     pop (Flags);
@@ -2502,8 +2511,8 @@ void g_add (unsigned flags, unsigned long val)
                         break;
                     }
                     NotViaX();
-                }
-                AddCodeLine("addd #$%04X", (unsigned short) val);
+                } else
+                    AddCodeLine("addd #$%04X", (unsigned short) val);
                 break;
             case CF_LONG:
                 InvalidateX();
@@ -2513,6 +2522,25 @@ void g_add (unsigned flags, unsigned long val)
                 oper(flags, val, ops);
         }
     } else {
+        /* We can optimize some of these in terms of 1,x */
+        switch (flags & CF_TYPEMASK) {
+            case CF_CHAR:
+                if (flags & CF_FORCECHAR) {
+                    GenTSX();
+                    AddCodeLine ("addb 1,x");
+                    AddCodeLine ("ins");
+                    pop(flags);
+                    return;
+                }
+            /* Fall through */
+            case CF_INT:
+                GenTSX();
+                AddCodeLine ("addd 1,x");
+                AddCodeLine ("pulx");
+                InvalidateX();
+                pop(flags);
+                return;
+        }
         InvalidateX();
         oper (flags, val, ops);
     }
@@ -2529,6 +2557,7 @@ void g_sub (unsigned flags, unsigned long val)
 
     NotViaX();
     if (flags & CF_CONST) {
+        /* Via X ? FIXME */
         flags &= ~CF_FORCECHAR; /* Handle chars as ints */
         g_push (flags & ~CF_CONST, 0);
     }
@@ -2824,6 +2853,27 @@ void g_or (unsigned flags, unsigned long val)
         g_push (flags & ~CF_CONST, 0);
     }
 
+    /* We can optimize some of these in terms of 1,x */
+    switch (flags & CF_TYPEMASK) {
+        case CF_CHAR:
+            if (flags & CF_FORCECHAR) {
+                GenTSX();
+                AddCodeLine ("orb 1,x");
+                AddCodeLine ("ins");
+                pop(flags);
+                return;
+            }
+            /* Fall through */
+        case CF_INT:
+            GenTSX();
+            AddCodeLine ("orb 1,x");
+            AddCodeLine ("ora 2,x");
+            AddCodeLine ("pulx");
+            InvalidateX();
+            pop(flags);
+            return;
+    }
+
     /* Use long way over the stack */
     InvalidateX();
     oper (flags, val, ops);
@@ -2835,6 +2885,7 @@ void g_xor (unsigned flags, unsigned long val)
 /* Primary = TOS ^ Primary */
 {
     static const char* const ops[4] = {
+        /* Only tosxoreax should ever be generated */
         "tosxorax", "tosxorax", "tosxoreax", "tosxoreax"
     };
 
@@ -2881,7 +2932,6 @@ void g_xor (unsigned flags, unsigned long val)
             default:
                 typeerror (flags);
         }
-
         /* If we go here, we didn't emit code. Push the lhs on stack and fall
         ** into the normal, non-optimized stuff. Note: The standard stuff will
         ** always work with ints.
@@ -2889,6 +2939,28 @@ void g_xor (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     }
+
+    /* We can optimize some of these in terms of 1,x */
+    switch (flags & CF_TYPEMASK) {
+        case CF_CHAR:
+            if (flags & CF_FORCECHAR) {
+                GenTSX();
+                AddCodeLine ("eorb 1,x");
+                AddCodeLine ("ins");
+                pop(flags);
+                return;
+            }
+            /* Fall through */
+        case CF_INT:
+            GenTSX();
+            AddCodeLine ("eorb 1,x");
+            AddCodeLine ("eora 2,x");
+            AddCodeLine ("pulx");
+            InvalidateX();
+            pop(flags);
+            return;
+    }
+
 
     /* Use long way over the stack */
     InvalidateX();
@@ -2930,12 +3002,12 @@ void g_and (unsigned Flags, unsigned long Val)
                             AddCodeLine ("andb #$%02X", (unsigned char)Val);
                         }
                     } else if ((Val & 0xFFFF) == 0xFF00) {
-                        AddCodeLine ("clrb #$00");
+                        AddCodeLine ("clrb");
                     } else if ((Val & 0xFF00) == 0xFF00) {
                         AddCodeLine ("andb #$%02X", (unsigned char)Val);
                     } else if ((Val & 0x00FF) == 0x0000) {
                         AddCodeLine ("anda #$%02X", (unsigned char)(Val >> 8));
-                        AddCodeLine ("clrb #$00");
+                        AddCodeLine ("clrb");
                     } else {
                         AddCodeLine ("anda #$%02X", (unsigned char)(Val >> 8));
                         if ((Val & 0x00FF) == 0x0000) {
@@ -2975,6 +3047,27 @@ void g_and (unsigned Flags, unsigned long Val)
         Flags &= ~CF_FORCECHAR;
         g_push (Flags & ~CF_CONST, 0);
     }
+    /* We can optimize some of these in terms of 1,x */
+    switch (Flags & CF_TYPEMASK) {
+        case CF_CHAR:
+            if (Flags & CF_FORCECHAR) {
+                GenTSX();
+                AddCodeLine ("andb 1,x");
+                AddCodeLine ("ins");
+                pop(Flags);
+                return;
+            }
+            /* Fall through */
+        case CF_INT:
+            GenTSX();
+            AddCodeLine ("andb 1,x");
+            AddCodeLine ("anda 2,x");
+            AddCodeLine ("pulx");
+            InvalidateX();
+            pop(Flags);
+            return;
+    }
+
 
     /* Use long way over the stack */
     InvalidateX();
@@ -3006,12 +3099,12 @@ void g_asr (unsigned flags, unsigned long val)
                 if (val >= 8) {
                     if (flags & CF_UNSIGNED) {
                         AddCodeLine ("txa");
-                        AddCodeLine ("ldx #$00");
+                        AddCodeLine ("ldx #$0000");
                     } else {
                         unsigned L = GetLocalLabel();
                         AddCodeLine ("cpx #$80");   /* Sign bit into carry */
                         AddCodeLine ("txa");
-                        AddCodeLine ("ldx #$00");
+                        AddCodeLine ("ldx #$0000");
                         AddCodeLine ("bcc %s", LocalLabelName (L));
                         AddCodeLine ("dex");        /* Make $FF */
                         g_defcodelabel (L);
@@ -3039,7 +3132,7 @@ void g_asr (unsigned flags, unsigned long val)
                 /* FIXME: we could go with oversize shift = 0 better ? */
                 val &= 0x1F;
                 if (val >= 24) {
-                    AddCodeLine ("ldx #$00");
+                    AddCodeLine ("ldx #$0000");
                     AddCodeLine ("lda sreg+1");
                     if ((flags & CF_UNSIGNED) == 0) {
                         unsigned L = GetLocalLabel();
@@ -3517,6 +3610,7 @@ void g_eq (unsigned flags, unsigned long val)
             }
             /* Fall through */
         case CF_INT:
+            GenTSX();
             AddCodeLine ("subd 1,x");
             AddCodeLine ("pulx");
             InvalidateX();
@@ -3592,6 +3686,7 @@ void g_ne (unsigned flags, unsigned long val)
             }
             /* Fall through */
         case CF_INT:
+            GenTSX();
             AddCodeLine ("subd 1,x");
             AddCodeLine ("pulx");
             InvalidateX();
@@ -3719,29 +3814,34 @@ void g_lt (unsigned flags, unsigned long val)
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
                         Label = GetLocalLabel ();
-                        AddCodeLine ("sbb #$%02X", (unsigned char)val);
+                        GenTSX();
+                        AddCodeLine ("sbb 1,x");
                         AddCodeLine ("bvc %s", LocalLabelName (Label));
                         AddCodeLine ("eorb #$80");
                         g_defcodelabel (Label);
                         AddCodeLine ("aslb");          /* Bit 7 -> carry */
-                        AddCodeLine ("clra");
-                        AddCodeLine ("clrb");
+                        AddCodeLine ("ldd #$0000");
                         AddCodeLine ("rolb");
+                        AddCodeLine ("ins");
+                        pop (flags);
                         return;
                     }
                     /* FALLTHROUGH */
 
                 case CF_INT:
                     /* Do a subtraction */
+                    GenTSX();
                     Label = GetLocalLabel ();
-                    AddCodeLine ("subd #$%04X", (unsigned short)val);
+                    AddCodeLine ("subd 1,x");
                     AddCodeLine ("bvc %s", LocalLabelName (Label));
                     AddCodeLine ("eora #$80");
                     g_defcodelabel (Label);
                     AddCodeLine ("asla");          /* Bit 7 -> carry */
-                    AddCodeLine ("clra");
-                    AddCodeLine ("clrb");
+                    AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
+                    AddCodeLine ("pulx");
+                    InvalidateX();
+                    pop (flags);
                     return;
 
                 case CF_LONG:
@@ -3760,6 +3860,7 @@ void g_lt (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
+    } else {
     }
 
     /* Use long way over the stack */
@@ -3877,6 +3978,28 @@ void g_le (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
+    } else {
+        /* We can optimize some of these in terms of 1,x */
+        switch (flags & CF_TYPEMASK) {
+            case CF_CHAR:
+                if (flags & CF_FORCECHAR) {
+                    /* Do a subtraction. Condition is true if carry set */
+                    GenTSX();
+                    AddCodeLine ("cmpb 1,x");
+                    AddCodeLine ("ins");
+                    AddCodeLine("jsr boolle");
+                    pop (flags);
+                    return;
+                }
+                /* FALLTHROUGH */
+            case CF_INT:
+                /* Do a subtraction. Condition is true if carry set */
+                AddCodeLine ("subd 1,x");
+                AddCodeLine ("pulx");
+                AddCodeLine ("jsr boolle");
+                pop (flags);
+                return;
+        }
     }
 
     /* Use long way over the stack */
@@ -4010,6 +4133,28 @@ void g_gt (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
+    } else {
+        /* We can optimize some of these in terms of 1,x */
+        switch (flags & CF_TYPEMASK) {
+            case CF_CHAR:
+                if (flags & CF_FORCECHAR) {
+                    /* Do a subtraction. Condition is true if carry set */
+                    GenTSX();
+                    AddCodeLine ("cmpb 1,x");
+                    AddCodeLine ("ins");
+                    AddCodeLine("jsr boolgt");
+                    pop (flags);
+                    return;
+                }
+                /* FALLTHROUGH */
+            case CF_INT:
+                /* Do a subtraction. Condition is true if carry set */
+                AddCodeLine ("subd 1,x");
+                AddCodeLine ("pulx");
+                AddCodeLine ("jsr boolgt");
+                pop (flags);
+                return;
+        }
     }
 
     /* Use long way over the stack */
@@ -4053,8 +4198,8 @@ void g_ge (unsigned flags, unsigned long val)
                     if (flags & CF_FORCECHAR) {
                         /* Do a subtraction. Condition is true if carry set */
                         AddCodeLine ("cmpb #$%02X", (unsigned char)val);
-                        AddCodeLine ("clra");
-                        AddCodeLine ("clrb");
+                        /* Do not usr clr as it clears carry */
+                        AddCodeLine ("ldd #$0000");
                         AddCodeLine ("rolb");
                         return;
                     }
@@ -4063,8 +4208,7 @@ void g_ge (unsigned flags, unsigned long val)
                 case CF_INT:
                     /* Do a subtraction. Condition is true if carry set */
                     AddCodeLine ("subd #$%04X", (unsigned short)val);
-                    AddCodeLine ("clra");
-                    AddCodeLine ("clrb");
+                    AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
                     return;
 
@@ -4075,8 +4219,7 @@ void g_ge (unsigned flags, unsigned long val)
                     AddCodeLine ("sbcb #$%02X", (unsigned char)(val >> 16));
                     AddCodeLine ("ldab sreg+1");
                     AddCodeLine ("sbcb #$%02X", (unsigned char)(val >> 24));
-                    AddCodeLine ("clra");
-                    AddCodeLine ("clrb");
+                    AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
                     return;
 
@@ -4141,8 +4284,7 @@ void g_ge (unsigned flags, unsigned long val)
                     AddCodeLine ("eora #$80");
                     g_defcodelabel (Label);
                     AddCodeLine ("asla");          /* Bit 7 -> carry */
-                    AddCodeLine ("clra");
-                    AddCodeLine ("clrb");
+                    AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
                     return;
 
@@ -4161,6 +4303,28 @@ void g_ge (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
+    } else {
+        /* We can optimize some of these in terms of 1,x */
+        switch (flags & CF_TYPEMASK) {
+            case CF_CHAR:
+                if (flags & CF_FORCECHAR) {
+                    /* Do a subtraction. Condition is true if carry set */
+                    GenTSX();
+                    AddCodeLine ("cmpb 1,x");
+                    AddCodeLine ("ins");
+                    AddCodeLine("jsr boolge");
+                    pop (flags);
+                    return;
+                }
+                /* FALLTHROUGH */
+            case CF_INT:
+                /* Do a subtraction. Condition is true if carry set */
+                AddCodeLine ("subd 1,x");
+                AddCodeLine ("pulx");
+                AddCodeLine ("jsr boolge");
+                pop (flags);
+                return;
+        }
     }
 
     /* Use long way over the stack */
