@@ -375,10 +375,10 @@ void g_swap (unsigned flags);
 ** of *both* values (must have same size).
 */
 
-void g_call (unsigned Flags, const char* Label, unsigned ArgSize);
+void g_call (const char* Label);
 /* Call the specified subroutine name */
 
-void g_callind (unsigned Flags, unsigned ArgSize, int Offs);
+void g_callind (unsigned Flags, int Offs);
 /* Call subroutine indirect */
 
 void g_jump (unsigned Label);
