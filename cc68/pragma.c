@@ -39,7 +39,6 @@
 /* common */
 #include "chartype.h"
 #include "segnames.h"
-#include "tgttrans.h"
 
 /* cc65 */
 #include "codegen.h"
@@ -67,7 +66,6 @@ typedef enum {
     PRAGMA_ALLOW_EAGER_INLINE,
     PRAGMA_BSS_NAME,
     PRAGMA_BSSSEG,                                      /* obsolete */
-    PRAGMA_CHARMAP,
     PRAGMA_CHECK_STACK,
     PRAGMA_CHECKSTACK,                                  /* obsolete */
     PRAGMA_CODE_NAME,
@@ -103,7 +101,6 @@ static const struct Pragma {
     { "allow-eager-inline",     PRAGMA_ALLOW_EAGER_INLINE },
     { "bss-name",               PRAGMA_BSS_NAME           },
     { "bssseg",                 PRAGMA_BSSSEG             },      /* obsolete */
-    { "charmap",                PRAGMA_CHARMAP            },
     { "check-stack",            PRAGMA_CHECK_STACK        },
     { "checkstack",             PRAGMA_CHECKSTACK         },      /* obsolete */
     { "code-name",              PRAGMA_CODE_NAME          },
@@ -460,52 +457,6 @@ ExitPoint:
 }
 
 
-static void CharMapPragma (StrBuf* B)
-/* Change the character map */
-{
-    long Index, C;
-
-    /* Read the character index */
-    if (!GetNumber (B, &Index)) {
-        return;
-    }
-    if (Index < 0 || Index > 255) {
-        Error ("Character index out of range");
-        return;
-    }
-
-    /* Comma follows */
-    if (!GetComma (B)) {
-        return;
-    }
-
-    /* Read the character code */
-    if (!GetNumber (B, &C)) {
-        return;
-    }
-    if (C < 0 || C > 255) {
-        Error ("Character code out of range");
-        return;
-    }
-
-    /* Warn about remapping character code 0x00
-    ** (except when remapping it back to itself).
-    */
-    if (Index + C != 0 && IS_Get (&WarnRemapZero)) {
-        if (Index == 0) {
-            Warning ("Remapping from 0 is dangerous with string functions");
-        }
-        else if (C == 0) {
-            Warning ("Remapping to 0 can make string functions stop unexpectedly");
-        }
-    }
-
-    /* Remap the character */
-    TgtTranslateSet ((unsigned) Index, (unsigned char) C);
-}
-
-
-
 static void WarnPragma (StrBuf* B)
 /* Enable/disable warnings */
 {
@@ -736,10 +687,6 @@ static void ParsePragma (void)
             /* FALLTHROUGH */
         case PRAGMA_BSS_NAME:
             SegNamePragma (&B, SEG_BSS);
-            break;
-
-        case PRAGMA_CHARMAP:
-            CharMapPragma (&B);
             break;
 
         case PRAGMA_CHECKSTACK:
