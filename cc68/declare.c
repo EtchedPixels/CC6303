@@ -1875,9 +1875,6 @@ static unsigned ParseArrayInit (Type* T, int AllowFlexibleMembers)
             NextToken ();
         }
 
-        /* Translate into target charset */
-        TranslateLiteral (CurTok.SVal);
-
         /* If the array is one too small for the string literal, omit the
         ** trailing zero.
         */
