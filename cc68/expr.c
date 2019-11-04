@@ -33,7 +33,6 @@
 #include "shiftexpr.h"
 #include "stackptr.h"
 #include "standard.h"
-#include "stdfunc.h"
 #include "symtab.h"
 #include "typecmp.h"
 #include "typeconv.h"
@@ -340,8 +339,6 @@ static unsigned FunctionParamList (FuncDesc* Func)
     unsigned  ParamSize   = 0;  /* Size of parameters pushed */
     unsigned  ParamCount  = 0;  /* Number of parameters pushed */
     unsigned  FrameSize   = 0;  /* Size of parameter frame */
-    unsigned  FrameParams = 0;  /* Number of params in frame */
-    int       FrameOffs   = 0;  /* Offset into parameter frame */
     int       Ellipsis    = 0;  /* Function is variadic */
 
     /* Parse the actual parameter list */
@@ -518,6 +515,7 @@ static void FunctionCall (ExprDesc* Expr)
         }
 
         /* Check for known standard functions and inline them */
+#if 0
         if (Expr->Name != 0) {
             int StdFunc = FindStdFunc ((const char*) Expr->Name);
             if (StdFunc >= 0) {
@@ -526,6 +524,7 @@ static void FunctionCall (ExprDesc* Expr)
                 return;
             }
         }
+#endif
     }
 
     /* Parse the parameter list */
@@ -560,7 +559,7 @@ static void FunctionCall (ExprDesc* Expr)
         }
 
             /* Call the function */
-        g_callind (TypeOf (Expr->Type+1), ParamSize, PtrOffs);
+        g_callind (TypeOf (Expr->Type+1), PtrOffs);
 
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
@@ -576,7 +575,7 @@ static void FunctionCall (ExprDesc* Expr)
 
     } else {
         /* Normal function */
-        g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize);
+        g_call ((const char*) Expr->Name);
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
         StackPtr += ParamSize;
