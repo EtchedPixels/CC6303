@@ -312,6 +312,7 @@ loop:
 
 	case TREL8:
 		getaddr(&a1);
+		/* FIXME: do wo need to check this is constant ? */
 		disp = a1.a_value-dot[segment]-2;
 		if (disp<-128 || disp>127 || a1.a_segment != segment)
 			aerr(BRA_RANGE);
@@ -319,7 +320,13 @@ loop:
 		outab(disp);
 		break;
 
-		outab(opcode);
+	/* This needs an extra pass and some core changes to make smart
+	   but for compiler testing for now just generate the pessimal case */
+	case TBRA16:	/* Relative branch or reverse and jump for range */
+		getaddr(&a1);
+		outab(opcode^1);	/* Inverted branch */
+		outab(3);		/* Skip over the jump */
+		outab(0x6E);		/* Jump */
 		outraw(&a1);
 		break;
 

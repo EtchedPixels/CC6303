@@ -220,6 +220,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TIMPL	0x1600			/* Implicit */
 #define TBRK	0x1700			/* BRK */
 #define TJSR	0x1800			/* JSR */
+#define TBRA16	0x1900			/* Jcc asm magic */
 
 /*
  * Registers.
@@ -516,6 +517,8 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TIMPL6303	0x1700		/* 6303 implicit */
 #define TIDX6303	0x1800		/* AIM etc */
 #define TIDXB6303	0x1900		/* BIT form of the above */
+/* Assembler extras for resolving branch ranges */
+#define TBRA16		0x1A00		/* Jcc asm magic */
 
 /*
  * Registers.

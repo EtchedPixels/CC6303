@@ -88,6 +88,25 @@ SYM	sym[] = {
 	{	0,	"bgt",		TREL8,		0x2E	},
 	{	0,	"ble",		TREL8,		0x2F	},
 	
+	/* Special magic forms : these will be smart one day */
+	{	0,	"jhi",		TBRA16,		0x22	},
+	{	0,	"jls",		TBRA16,		0x23	},
+	{	0,	"jcc",		TBRA16,		0x24	},
+	{	0,	"jhs",		TBRA16,		0x24	},
+	{	0,	"jcs",		TBRA16,		0x25	},
+	{	0,	"jlo",		TBRA16,		0x25	},
+	{	0,	"jne",		TBRA16,		0x26	},
+	{	0,	"jeq",		TBRA16,		0x27	},
+	{	0,	"jvc",		TBRA16,		0x28	},
+	{	0,	"jvs",		TBRA16,		0x29	},
+	{	0,	"jpl",		TBRA16,		0x2A	},
+	{	0,	"jmi",		TBRA16,		0x2B	},
+	{	0,	"jge",		TBRA16,		0x2C	},
+	{	0,	"jlt",		TBRA16,		0x2D	},
+	{	0,	"jgt",		TBRA16,		0x2E	},
+	{	0,	"jle",		TBRA16,		0x2F	},
+	
+
 	/* 0x3X		:	Implicit */
 	{	0,	"tsx",		TIMPL,		0x30	},
 	{	0,	"ins",		TIMPL,		0x31	},
