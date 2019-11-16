@@ -213,7 +213,7 @@ SYM	sym[] = {
 	{	0,	"subb",		TDIXE,		0xC0	},
 	{	0,	"cmpb",		TDIXE,		0xC1	},
 	{	0,	"sbcb",		TDIXE,		0xC2	},
-	{	0,	"subd",		T16DIXE,	0xC3	},
+	{	0,	"addd",		T16DIXE,	0xC3	},
 	{	0,	"andb",		TDIXE,		0xC4	},
 	{	0,	"bitb",		TDIXE,		0xC5	},
 	{	0,	"ldab",		TDIXE,		0xC6	},
