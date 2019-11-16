@@ -29,12 +29,19 @@ static void constify(ADDR *ap)
 		ap->a_type = TUSER;
 }
 
-static void constant_to_zp(ADDR *ap)
+static void constant_to_zp(ADDR *ap, int dp)
 {
-	/* FIXME: if we meet 35 how do we know whether its ZP or
-	   not. I guess we just assume as direct is shorter anyway */
-	/* If it's not a constant then don't play with it, but rely upon
-	   the segment of the symbol */
+	/* dp means we wrote @foo meaning we want a DP reference and the symbol
+	   must be direct page */
+	if (dp) {
+		if (ap->a_segment != ABSOLUTE && ap->a_segment != ZP && ap->a_segment != UNKNOWN)
+			qerr(MUST_BE_ABSOLUTE);
+		if (ap->a_value > 255)
+			aerr(CONSTANT_RANGE);
+		ap->a_segment = ZP;
+		return;
+	}
+	/* Optimize absolute references to address 0-255 */
 	if (ap->a_segment != ABSOLUTE || ap->a_sym)
 		return;
 	if (ap->a_value > 255)
@@ -69,6 +76,7 @@ void getaddr(ADDR *ap)
 	int reg;
 	int c;
 	ADDR tmp;
+	int dp = 0;
 
 	ap->a_type = 0;
 	ap->a_flags = 0;
@@ -92,8 +100,14 @@ void getaddr(ADDR *ap)
 		return;
 	}
 
-	unget(c);	
+	/* :foo */
+	/* Our own syntax for DP form labels */
+	if (c == '@')
+		dp = 1;
+	else
+		unget(c);
 	expr1(ap, LOPRI, 1);
+
 	c = getnb();
 	
 	/* foo,[x|y] */
@@ -110,7 +124,7 @@ void getaddr(ADDR *ap)
 		unget(c);
 	}
 	unget(c);
-	constant_to_zp(ap);
+	constant_to_zp(ap, dp);
 	if (ap->a_segment == ZP)
 		ap->a_type = TDIRECT|TUSER|TMINDIR;
 	else
