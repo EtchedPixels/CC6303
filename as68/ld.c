@@ -69,7 +69,7 @@ static uint8_t verbose;			/* Verbose reporting */
 static int err;				/* Error tracking */
 static int dbgsyms = 1;			/* Set to dumb debug symbols */
 static int strip = 0;			/* Set to strip symbols */
-static int obj_flags;			/* Object module flags for compat */
+static int obj_flags = -1;		/* Object module flags for compat */
 static const char *mapname;		/* Name of map file to write */
 static const char *outname;		/* Name of output file */
 static uint16_t dot;			/* Working address as we link */
