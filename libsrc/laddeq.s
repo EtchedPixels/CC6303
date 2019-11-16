@@ -8,19 +8,19 @@
 ; In this form X is the stack offset. Turn that into X is a pointer and
 ; fall into the static form
 laddeqysp:
-	stx tmp
+	stx @tmp
 	tsx
 	xgdx
-	add tmp
+	add @tmp
 laddeqa:
-	std tmp
+	std @tmp
 	ldd 3,x		; do the low 16bits
-	addd tmp
+	addd @tmp
 	bcc l1
-	inc sreg	; carry - we don't have abcd
+	inc @sreg	; carry - we don't have abcd
 l1:
 	std 3,x
 	ldd 1,x
-	addd sreg
+	addd @sreg
 	std 1,x
 	rts

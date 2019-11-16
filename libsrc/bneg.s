@@ -10,7 +10,7 @@ bnegax:	tsta
 	bne ret0
 nega:	tstb
 	bne ret0
-	ldd #$0001
+	ldd @one
 	rts
 ret0:
 	clra

@@ -6,8 +6,8 @@
 
 swapstk:
 	pulx
-	stx tmp
+	stx @tmp
 	psha
 	pshb
-	ldd tmp
+	ldd @tmp
 	rts

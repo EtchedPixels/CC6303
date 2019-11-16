@@ -20,7 +20,7 @@
 booleq:
 	bne	ret0
 ret1:
-	ldd	#$0001
+	ldd	@one
 	rts
 boolne:
 	bne	ret1
@@ -51,6 +51,6 @@ boolult:
 boolugt:
 	beq	ret0
 booluge:			; use C flag
-	ldd	#$0000
+	ldd	@zero
 	rolb
 	rts
