@@ -137,7 +137,11 @@ loop:
 	getid(id, c);
 	if ((c=getnb()) == ':') {
 		sp = lookup(id, uhash, 1);
+		/* Pass 0 we guess the values
+		   Pass 1 we set them in stone
+		   Pass 2 we output accodingly */
 		if (pass == 0) {
+			/* Catch duplicates on phase 0 */
 			if ((sp->s_type&TMMODE) != TNEW
 			&&  (sp->s_type&TMASG) == 0)
 				sp->s_type |= TMMDF;
@@ -145,7 +149,17 @@ loop:
 			sp->s_type |= TUSER;
 			sp->s_value = dot[segment];
 			sp->s_segment = segment;
+		} else if (pass == 1) {
+			/* Don't check for duplicates, we did it already
+			   and we will confuse ourselves with the pass
+			   before. Instead blindly update the values */
+			sp->s_type &= ~TMMODE;
+			sp->s_type |= TUSER;
+			sp->s_value = dot[segment];
+			sp->s_segment = segment;
 		} else {
+			/* Phase 1 defined the values so a misalignment here
+			   is fatal */
 			if ((sp->s_type&TMMDF) != 0)
 				err('m', MULTIPLE_DEFS);
 			if (sp->s_value != dot[segment])
@@ -170,9 +184,14 @@ loop:
 		constify(&a1);
 		istuser(&a1);
 		sp = lookup(id, uhash, 1);
-		if ((sp->s_type&TMMODE) != TNEW
-		&&  (sp->s_type&TMASG) == 0)
-			err('m', MULTIPLE_DEFS);
+		/* TODO: double check this logic and test validity */
+		/* On pass 1 we expect to see ourself in the mirror, jsut
+		   update the value */
+		if (pass != 1) {
+			if ((sp->s_type&TMMODE) != TNEW
+			&&  (sp->s_type&TMASG) == 0)
+				err('m', MULTIPLE_DEFS);
+		}
 		sp->s_type &= ~(TMMODE|TPUBLIC);
 		sp->s_type |= TUSER|TMASG;
 		sp->s_value = a1.a_value;

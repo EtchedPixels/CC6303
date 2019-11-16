@@ -59,12 +59,14 @@ int main(int argc, char *argv[])
 	int c;
 	char fn[NFNAME];
 
+	/* FIXME: switch to getopt - add map, listing */
 	ifn = NULL;
 	for (i=1; i<argc; ++i) {
 		p = argv[i];
 		if (*p == '-') {
 			while ((c = *++p) != 0) {
 				switch (c) {
+				/* FIXME: move this to z80 .setcpu */
 				case '1':
 					cpu_flags |= OA_8080_Z180;
 					break;
@@ -97,7 +99,7 @@ int main(int argc, char *argv[])
 		exit(BAD);
 	}
 	syminit();
-	for (pass=0; pass<2; ++pass) {
+	for (pass=0; pass<3; ++pass) {
 		outpass();
 		line = 0;
 		memset(dot, 0, sizeof(dot));
@@ -110,7 +112,7 @@ int main(int argc, char *argv[])
 				asmline();
 		}
 	}
-	pass = 1;
+	pass = 2;
 	outeof();
 	exit(GOOD);
 }

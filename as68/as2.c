@@ -45,7 +45,7 @@ static void errstr(uint8_t code)
  */
 void err(char c, uint8_t code)
 {
-	if (pass != 0) {
+	if (pass > 1) {
 		printf("%s: %d: %c: ", fname, line, toupper(c));
 		errstr(code);
 		noobj = 1;

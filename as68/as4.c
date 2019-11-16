@@ -26,7 +26,7 @@ void outpass(void)
 
 	passbegin(pass);
 
-	if (pass == 1) {
+	if (pass == 2) {
 		/* Lay the file out */
 		for (i = 0; i < NSEGMENT; i++) {
 			segbase[i] = base;
@@ -72,7 +72,7 @@ void outabsolute(int addr)
 void outsegment(int seg)
 {
 	/* Seek to the current writing address for this segment */
-	if (pass == 1)
+	if (pass == 2)
 		fseek(ofp, segbase[seg], SEEK_SET);
 }
 
@@ -288,7 +288,7 @@ void outeof(void)
 {
 	/* We don't do the final write out if there was an error. That
 	   leaves the magic wrong on the object file so it can't be used */
-	if (noobj || pass == 0)
+	if (noobj || pass < 2)
 		return;
 
 	segment = ABSOLUTE;
@@ -317,7 +317,7 @@ void outeof(void)
  */
 void outbyte(uint8_t b)
 {
-	if (pass == 1 && segment != BSS && segment != ZP)
+	if (pass == 2 && segment != BSS && segment != ZP)
 		putc(b, ofp);
 	segbase[segment]++;
 	segsize[segment]++;
