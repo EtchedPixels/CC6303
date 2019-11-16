@@ -15,6 +15,7 @@ static int cputype;
 void passbegin(int pass)
 {
 	cputype = 6803;
+	segment = 0;
 }
 
 /*
@@ -41,6 +42,17 @@ static void constant_to_zp(ADDR *ap)
 	/* We will need to do something saner ifwe add 68HC11 */
 	ap->a_segment = ZP;
 	return;
+}
+
+/* Handle the corner case of labels in direct page being used as relative
+   branches from the overlapping 'absolute' space */
+static int segment_incompatible(ADDR *ap)
+{
+	if (ap->a_segment == segment)
+		return 0;
+	if (ap->a_segment == 4 && segment == 0 && ap->a_value < 256)
+		return 0;
+	return 1;
 }
 
 /*
@@ -354,21 +366,30 @@ loop:
 	case TREL8:
 		getaddr(&a1);
 		/* FIXME: do wo need to check this is constant ? */
-		disp = a1.a_value-dot[segment]-2;
-		if (disp<-128 || disp>127 || a1.a_segment != segment)
+		disp = a1.a_value - dot[segment]-2;
+		if (disp<-128 || disp>127 || segment_incompatible(&a1))
 			aerr(BRA_RANGE);
 		outab(opcode);
 		outab(disp);
 		break;
 
-	/* This needs an extra pass and some core changes to make smart
-	   but for compiler testing for now just generate the pessimal case */
 	case TBRA16:	/* Relative branch or reverse and jump for range */
 		getaddr(&a1);
-		outab(opcode^1);	/* Inverted branch */
-		outab(3);		/* Skip over the jump */
-		outab(0x6E);		/* Jump */
-		outraw(&a1);
+		/* disp may change between pass1 and pass2 but we know it won't
+		   get bigger so we can be sure that we still fit the 8bit disp
+		   in pass 2 if we did in pass 1 */
+		disp = a1.a_value - dot[segment] - 2;
+		/* For pass 0 assume the worst case. Then we optimize on
+		   pass 1 when we know what may be possible */
+		if (pass == 0 || segment_incompatible(&a1) || disp < -128 || disp > 127) {
+			outab(opcode^1);	/* Inverted branch */
+			outab(3);		/* Skip over the jump */
+			outab(0x6E);		/* Jump */
+			outraw(&a1);
+		} else {
+			outab(opcode);
+			outab(disp);
+		}
 		break;
 
 	case TIDX6303:	/* 6303 oddity, immediate followed by direct or indexed */
