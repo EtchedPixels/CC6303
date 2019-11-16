@@ -127,7 +127,7 @@ static void Usage (void)
             "  --register-vars\t\tEnable register variables\n"
             "  --rodata-name seg\t\tSet the name of the RODATA segment\n"
             "  --signed-chars\t\tDefault characters are signed\n"
-            "  --standard std\t\tLanguage standard (c89, c99, cc65)\n"
+            "  --standard std\t\tLanguage standard (c89, c99, cc68)\n"
             "  --static-locals\t\tMake local variables static\n"
             "  --verbose\t\t\tIncrease verbosity\n"
             "  --version\t\t\tPrint the compiler version number\n"
@@ -670,7 +670,7 @@ int main (int argc, char* argv[])
     const char* InputFile  = 0;
 
     /* Initialize the cmdline module */
-    InitCmdLine (&argc, &argv, "cc65");
+    InitCmdLine (&argc, &argv, "cc68");
 
     /* Initialize the default segment names */
     InitSegNames ();

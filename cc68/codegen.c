@@ -322,8 +322,8 @@ void g_preamble (void)
 
     /* If we're producing code for some other CPU, switch the command set */
     switch (CPU) {
-        case CPU_6803:      AddTextLine ("\t.setcpu\t\t\"6803\"");      break;
-        case CPU_6303:      AddTextLine ("\t.setcpu\t\t\"6303\"");      break;
+        case CPU_6803:      AddTextLine ("\t.setcpu\t\t6803");      break;
+        case CPU_6303:      AddTextLine ("\t.setcpu\t\t6303");      break;
         default:            Internal ("Unknown CPU: %d", CPU);
     }
 
@@ -530,11 +530,6 @@ void g_defexport (const char* Name, int ZP)
 void g_defimport (const char* Name, int ZP)
 /* Import the given label */
 {
-    if (ZP) {
-        AddTextLine ("\t.importzp\t_%s", Name);
-    } else {
-        AddTextLine ("\t.import\t\t_%s", Name);
-    }
 }
 
 
@@ -542,7 +537,6 @@ void g_defimport (const char* Name, int ZP)
 void g_importstartup (void)
 /* Forced import of the startup module */
 {
-    AddTextLine ("\t.forceimport\t__STARTUP__");
 }
 
 
@@ -550,7 +544,6 @@ void g_importstartup (void)
 void g_importmainargs (void)
 /* Forced import of a special symbol that handles arguments to main */
 {
-    AddTextLine ("\t.forceimport\tinitmainargs");
 }
 
 
@@ -564,7 +557,7 @@ void g_enter (const char *name)
 /* Function prologue */
 {
     push (CF_INT);		/* Return address */
-    AddCodeLine(".globl _%s", name);
+    AddCodeLine(".export _%s", name);
     AddCodeLine("_%s:",name);
     /* We have no valid X state on entry */
     InvalidateX();

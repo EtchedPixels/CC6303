@@ -69,15 +69,15 @@ void FinishIncludePaths (void)
 /* Finish creating the include path search lists. */
 {
     /* Add specific paths from the environment */
-    AddSearchPathFromEnv (SysIncSearchPath, "CC65_INC");
-    AddSearchPathFromEnv (UsrIncSearchPath, "CC65_INC");
+    AddSearchPathFromEnv (SysIncSearchPath, "CC68_INC");
+    AddSearchPathFromEnv (UsrIncSearchPath, "CC68_INC");
 
     /* Add paths relative to a main directory defined in an env. var. */
-    AddSubSearchPathFromEnv (SysIncSearchPath, "CC65_HOME", "include");
+    AddSubSearchPathFromEnv (SysIncSearchPath, "CC68_HOME", "include");
 
     /* Add some compiled-in search paths if defined at compile time. */
-#if defined(CC65_INC) && !defined(_WIN32)
-    AddSearchPath (SysIncSearchPath, STRINGIZE (CC65_INC));
+#if defined(CC68_INC) && !defined(_WIN32)
+    AddSearchPath (SysIncSearchPath, STRINGIZE (CC68_INC));
 #endif
 
     /* Add paths relative to the parent directory of the Windows binary. */

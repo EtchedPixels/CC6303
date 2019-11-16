@@ -363,7 +363,7 @@ void NewFunc (SymEntry* Func)
     /* Check if the function header contains unnamed parameters. These are
     ** only allowed in cc65 mode.
     */
-    if ((D->Flags & FD_UNNAMED_PARAMS) != 0 && (IS_Get (&Standard) != STD_CC65)) {
+    if ((D->Flags & FD_UNNAMED_PARAMS) != 0 && (IS_Get (&Standard) != STD_CC68)) {
         Error ("Parameter name omitted");
     }
 
@@ -379,7 +379,7 @@ void NewFunc (SymEntry* Func)
         /* If cc65 extensions aren't enabled, don't allow a main function that
         ** doesn't return an int.
 -        */
-        if (IS_Get (&Standard) != STD_CC65 && CurrentFunc->ReturnType[0].C != T_INT) {
+        if (IS_Get (&Standard) != STD_CC68 && CurrentFunc->ReturnType[0].C != T_INT) {
             Error ("'main' must always return an int");
         }
 

@@ -75,7 +75,7 @@ Token NextTok;          /* The next token */
 enum {
     TT_C89      = 0x01 << STD_C89,      /* Token valid in C89 */
     TT_C99      = 0x01 << STD_C99,      /* Token valid in C99 */
-    TT_CC65     = 0x01 << STD_CC65      /* Token valid in cc65 */
+    TT_CC68     = 0x01 << STD_CC68      /* Token valid in cc65 */
 };
 
 /* Token table */
@@ -85,56 +85,56 @@ static const struct Keyword {
     unsigned char   Std;        /* Token supported in which standards? */
 } Keywords [] = {
     /* FIXME: remove a lot of the 6502isms here */
-    { "_Pragma",        TOK_PRAGMA,     TT_C89 | TT_C99 | TT_CC65  },   /* !! */
-    { "__AX__",         TOK_AX,         TT_C89 | TT_C99 | TT_CC65  },
-    { "__A__",          TOK_A,          TT_C89 | TT_C99 | TT_CC65  },
-    { "__EAX__",        TOK_EAX,        TT_C89 | TT_C99 | TT_CC65  },
-    { "__X__",          TOK_X,          TT_C89 | TT_C99 | TT_CC65  },
-    { "__Y__",          TOK_Y,          TT_C89 | TT_C99 | TT_CC65  },
-    { "__asm__",        TOK_ASM,        TT_C89 | TT_C99 | TT_CC65  },
-    { "__attribute__",  TOK_ATTRIBUTE,  TT_C89 | TT_C99 | TT_CC65  },
-    { "__cdecl__",      TOK_CDECL,      TT_C89 | TT_C99 | TT_CC65  },
-    { "__far__",        TOK_FAR,        TT_C89 | TT_C99 | TT_CC65  },
-    { "__inline__",     TOK_INLINE,     TT_C89 | TT_C99 | TT_CC65  },
-    { "__near__",       TOK_NEAR,       TT_C89 | TT_C99 | TT_CC65  },
-    { "asm",            TOK_ASM,                          TT_CC65  },
-    { "auto",           TOK_AUTO,       TT_C89 | TT_C99 | TT_CC65  },
-    { "break",          TOK_BREAK,      TT_C89 | TT_C99 | TT_CC65  },
-    { "case",           TOK_CASE,       TT_C89 | TT_C99 | TT_CC65  },
-    { "cdecl",          TOK_CDECL,                        TT_CC65  },
-    { "char",           TOK_CHAR,       TT_C89 | TT_C99 | TT_CC65  },
-    { "const",          TOK_CONST,      TT_C89 | TT_C99 | TT_CC65  },
-    { "continue",       TOK_CONTINUE,   TT_C89 | TT_C99 | TT_CC65  },
-    { "default",        TOK_DEFAULT,    TT_C89 | TT_C99 | TT_CC65  },
-    { "do",             TOK_DO,         TT_C89 | TT_C99 | TT_CC65  },
-    { "double",         TOK_DOUBLE,     TT_C89 | TT_C99 | TT_CC65  },
-    { "else",           TOK_ELSE,       TT_C89 | TT_C99 | TT_CC65  },
-    { "enum",           TOK_ENUM,       TT_C89 | TT_C99 | TT_CC65  },
-    { "extern",         TOK_EXTERN,     TT_C89 | TT_C99 | TT_CC65  },
-    { "far",            TOK_FAR,                          TT_CC65  },
-    { "float",          TOK_FLOAT,      TT_C89 | TT_C99 | TT_CC65  },
-    { "for",            TOK_FOR,        TT_C89 | TT_C99 | TT_CC65  },
-    { "goto",           TOK_GOTO,       TT_C89 | TT_C99 | TT_CC65  },
-    { "if",             TOK_IF,         TT_C89 | TT_C99 | TT_CC65  },
-    { "inline",         TOK_INLINE,              TT_C99 | TT_CC65  },
-    { "int",            TOK_INT,        TT_C89 | TT_C99 | TT_CC65  },
-    { "long",           TOK_LONG,       TT_C89 | TT_C99 | TT_CC65  },
-    { "near",           TOK_NEAR,                         TT_CC65  },
-    { "register",       TOK_REGISTER,   TT_C89 | TT_C99 | TT_CC65  },
-    { "restrict",       TOK_RESTRICT,            TT_C99 | TT_CC65  },
-    { "return",         TOK_RETURN,     TT_C89 | TT_C99 | TT_CC65  },
-    { "short",          TOK_SHORT,      TT_C89 | TT_C99 | TT_CC65  },
-    { "signed",         TOK_SIGNED,     TT_C89 | TT_C99 | TT_CC65  },
-    { "sizeof",         TOK_SIZEOF,     TT_C89 | TT_C99 | TT_CC65  },
-    { "static",         TOK_STATIC,     TT_C89 | TT_C99 | TT_CC65  },
-    { "struct",         TOK_STRUCT,     TT_C89 | TT_C99 | TT_CC65  },
-    { "switch",         TOK_SWITCH,     TT_C89 | TT_C99 | TT_CC65  },
-    { "typedef",        TOK_TYPEDEF,    TT_C89 | TT_C99 | TT_CC65  },
-    { "union",          TOK_UNION,      TT_C89 | TT_C99 | TT_CC65  },
-    { "unsigned",       TOK_UNSIGNED,   TT_C89 | TT_C99 | TT_CC65  },
-    { "void",           TOK_VOID,       TT_C89 | TT_C99 | TT_CC65  },
-    { "volatile",       TOK_VOLATILE,   TT_C89 | TT_C99 | TT_CC65  },
-    { "while",          TOK_WHILE,      TT_C89 | TT_C99 | TT_CC65  },
+    { "_Pragma",        TOK_PRAGMA,     TT_C89 | TT_C99 | TT_CC68  },   /* !! */
+    { "__AX__",         TOK_AX,         TT_C89 | TT_C99 | TT_CC68  },
+    { "__A__",          TOK_A,          TT_C89 | TT_C99 | TT_CC68  },
+    { "__EAX__",        TOK_EAX,        TT_C89 | TT_C99 | TT_CC68  },
+    { "__X__",          TOK_X,          TT_C89 | TT_C99 | TT_CC68  },
+    { "__Y__",          TOK_Y,          TT_C89 | TT_C99 | TT_CC68  },
+    { "__asm__",        TOK_ASM,        TT_C89 | TT_C99 | TT_CC68  },
+    { "__attribute__",  TOK_ATTRIBUTE,  TT_C89 | TT_C99 | TT_CC68  },
+    { "__cdecl__",      TOK_CDECL,      TT_C89 | TT_C99 | TT_CC68  },
+    { "__far__",        TOK_FAR,        TT_C89 | TT_C99 | TT_CC68  },
+    { "__inline__",     TOK_INLINE,     TT_C89 | TT_C99 | TT_CC68  },
+    { "__near__",       TOK_NEAR,       TT_C89 | TT_C99 | TT_CC68  },
+    { "asm",            TOK_ASM,                          TT_CC68  },
+    { "auto",           TOK_AUTO,       TT_C89 | TT_C99 | TT_CC68  },
+    { "break",          TOK_BREAK,      TT_C89 | TT_C99 | TT_CC68  },
+    { "case",           TOK_CASE,       TT_C89 | TT_C99 | TT_CC68  },
+    { "cdecl",          TOK_CDECL,                        TT_CC68  },
+    { "char",           TOK_CHAR,       TT_C89 | TT_C99 | TT_CC68  },
+    { "const",          TOK_CONST,      TT_C89 | TT_C99 | TT_CC68  },
+    { "continue",       TOK_CONTINUE,   TT_C89 | TT_C99 | TT_CC68  },
+    { "default",        TOK_DEFAULT,    TT_C89 | TT_C99 | TT_CC68  },
+    { "do",             TOK_DO,         TT_C89 | TT_C99 | TT_CC68  },
+    { "double",         TOK_DOUBLE,     TT_C89 | TT_C99 | TT_CC68  },
+    { "else",           TOK_ELSE,       TT_C89 | TT_C99 | TT_CC68  },
+    { "enum",           TOK_ENUM,       TT_C89 | TT_C99 | TT_CC68  },
+    { "extern",         TOK_EXTERN,     TT_C89 | TT_C99 | TT_CC68  },
+    { "far",            TOK_FAR,                          TT_CC68  },
+    { "float",          TOK_FLOAT,      TT_C89 | TT_C99 | TT_CC68  },
+    { "for",            TOK_FOR,        TT_C89 | TT_C99 | TT_CC68  },
+    { "goto",           TOK_GOTO,       TT_C89 | TT_C99 | TT_CC68  },
+    { "if",             TOK_IF,         TT_C89 | TT_C99 | TT_CC68  },
+    { "inline",         TOK_INLINE,              TT_C99 | TT_CC68  },
+    { "int",            TOK_INT,        TT_C89 | TT_C99 | TT_CC68  },
+    { "long",           TOK_LONG,       TT_C89 | TT_C99 | TT_CC68  },
+    { "near",           TOK_NEAR,                         TT_CC68  },
+    { "register",       TOK_REGISTER,   TT_C89 | TT_C99 | TT_CC68  },
+    { "restrict",       TOK_RESTRICT,            TT_C99 | TT_CC68  },
+    { "return",         TOK_RETURN,     TT_C89 | TT_C99 | TT_CC68  },
+    { "short",          TOK_SHORT,      TT_C89 | TT_C99 | TT_CC68  },
+    { "signed",         TOK_SIGNED,     TT_C89 | TT_C99 | TT_CC68  },
+    { "sizeof",         TOK_SIZEOF,     TT_C89 | TT_C99 | TT_CC68  },
+    { "static",         TOK_STATIC,     TT_C89 | TT_C99 | TT_CC68  },
+    { "struct",         TOK_STRUCT,     TT_C89 | TT_C99 | TT_CC68  },
+    { "switch",         TOK_SWITCH,     TT_C89 | TT_C99 | TT_CC68  },
+    { "typedef",        TOK_TYPEDEF,    TT_C89 | TT_C99 | TT_CC68  },
+    { "union",          TOK_UNION,      TT_C89 | TT_C99 | TT_CC68  },
+    { "unsigned",       TOK_UNSIGNED,   TT_C89 | TT_C99 | TT_CC68  },
+    { "void",           TOK_VOID,       TT_C89 | TT_C99 | TT_CC68  },
+    { "volatile",       TOK_VOLATILE,   TT_C89 | TT_C99 | TT_CC68  },
+    { "while",          TOK_WHILE,      TT_C89 | TT_C99 | TT_CC68  },
 };
 #define KEY_COUNT       (sizeof (Keywords) / sizeof (Keywords [0]))
 
@@ -471,7 +471,7 @@ static void NumericConst (void)
         if (toupper (CurC) == 'X') {
             Base = Prefix = 16;
             NextChar ();        /* gobble "x" */
-        } else if (toupper (CurC) == 'B' && IS_Get (&Standard) >= STD_CC65) {
+        } else if (toupper (CurC) == 'B' && IS_Get (&Standard) >= STD_CC68) {
             Base = Prefix = 2;
             NextChar ();        /* gobble 'b' */
         } else {

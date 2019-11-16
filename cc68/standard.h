@@ -54,11 +54,11 @@ typedef enum standard_t {
     STD_UNKNOWN = -1,
     STD_C89,
     STD_C99,
-    STD_CC65,
+    STD_CC68,
 
     /* Special constants */
     STD_COUNT,                  /* Number of supported standards */
-    STD_DEFAULT = STD_CC65      /* Default standard if none given */
+    STD_DEFAULT = STD_CC68      /* Default standard if none given */
 } standard_t;
 
 /* Current language standard */

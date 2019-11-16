@@ -207,7 +207,7 @@ static void Parse (void)
                                 /* Size is unknown and not an array */
                                 Error ("Variable '%s' has unknown size", Decl.Ident);
                             }
-                        } else if (IS_Get (&Standard) != STD_CC65) {
+                        } else if (IS_Get (&Standard) != STD_CC68) {
                             /* We cannot declare variables of type void */
                             Error ("Illegal type for variable '%s'", Decl.Ident);
                         }
@@ -324,13 +324,13 @@ void Compile (const char* FileName)
     };
 
     /* Add macros that are always defined */
-    DefineNumericMacro ("__CC65__", GetVersionAsNumber ());
+    DefineNumericMacro ("__CC68__", GetVersionAsNumber ());
 
     /* Language standard that is supported */
-    DefineNumericMacro ("__CC65_STD_C89__", STD_C89);
-    DefineNumericMacro ("__CC65_STD_C99__", STD_C99);
-    DefineNumericMacro ("__CC65_STD_CC65__", STD_CC65);
-    DefineNumericMacro ("__CC65_STD__", IS_Get (&Standard));
+    DefineNumericMacro ("__CC68_STD_C89__", STD_C89);
+    DefineNumericMacro ("__CC68_STD_C99__", STD_C99);
+    DefineNumericMacro ("__CC68_STD_CC68__", STD_CC68);
+    DefineNumericMacro ("__CC68_STD__", IS_Get (&Standard));
 
     /* Optimization macros. Since no source code has been parsed for now, the
     ** IS_Get functions access the values in effect now, regardless of any

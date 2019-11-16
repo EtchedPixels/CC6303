@@ -649,7 +649,7 @@ static void Primary (ExprDesc* E)
 
         case TOK_BOOL_AND:
             /* A computed goto label address */
-            if (IS_Get (&Standard) >= STD_CC65) {
+            if (IS_Get (&Standard) >= STD_CC68) {
                 SymEntry* Entry;
                 NextToken ();
                 Entry = AddLabelSym (CurTok.Ident, SC_REF | SC_GOTO_IND);

@@ -642,7 +642,7 @@ static SymEntry* ParseUnionDecl (const char* Name)
                 /* In cc65 mode, we allow anonymous structs/unions within
                 ** a union.
                 */
-                if (IS_Get (&Standard) >= STD_CC65 && IsClassStruct (Decl.Type)) {
+                if (IS_Get (&Standard) >= STD_CC68 && IsClassStruct (Decl.Type)) {
                     /* This is an anonymous struct or union. Copy the fields
                     ** into the current level.
                     */
@@ -796,7 +796,7 @@ static SymEntry* ParseStructDecl (const char* Name)
                     /* In cc65 mode, we allow anonymous structs/unions within
                     ** a struct.
                     */
-                    if (IS_Get (&Standard) >= STD_CC65 && IsClassStruct (Decl.Type)) {
+                    if (IS_Get (&Standard) >= STD_CC68 && IsClassStruct (Decl.Type)) {
 
                         /* This is an anonymous struct or union. Copy the
                         ** fields into the current level.
@@ -2197,7 +2197,7 @@ static unsigned ParseInitInternal (Type* T, int AllowFlexibleMembers)
             return ParseStructInit (T, AllowFlexibleMembers);
 
         case T_VOID:
-            if (IS_Get (&Standard) == STD_CC65) {
+            if (IS_Get (&Standard) == STD_CC68) {
                 /* Special cc65 extension in non-ANSI mode */
                 return ParseVoidInit (T);
             }
@@ -2218,7 +2218,7 @@ unsigned ParseInit (Type* T)
     /* Parse the initialization. Flexible array members can only be initialized
     ** in cc65 mode.
     */
-    unsigned Size = ParseInitInternal (T, IS_Get (&Standard) == STD_CC65);
+    unsigned Size = ParseInitInternal (T, IS_Get (&Standard) == STD_CC68);
 
     /* The initialization may not generate code on global level, because code
     ** outside function scope will never get executed.

@@ -73,7 +73,7 @@ void GotoStatement (void)
         /* Eat the label name */
         NextToken ();
 
-    } else if (CurTok.Tok == TOK_STAR && IS_Get (&Standard) >= STD_CC65) {
+    } else if (CurTok.Tok == TOK_STAR && IS_Get (&Standard) >= STD_CC68) {
         SymEntry *arr, *idx, *cur;
         SymTable *tab;
         ExprDesc desc;
