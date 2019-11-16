@@ -123,11 +123,11 @@ pulx
 clra
 ldab #$01
 =
-ldd one
+ldd @one
 
 addd #$0001
 =
-addd one
+addd @one
 
 ldd #$0000
 =
@@ -136,15 +136,15 @@ clrb
 
 subd #$0001
 =
-subd one
+subd @one
 
 ldx #$0000
 =
-ldx zero
+ldx @zero
 
 ldx #$0001
 =
-ldx one
+ldx @one
 
 # Fix up some of the X cases
 # Push and then invalidate D so can use X
