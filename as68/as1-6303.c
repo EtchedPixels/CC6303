@@ -7,6 +7,17 @@
 
 
 /*
+ * CPU specific pass setup
+ */
+
+static int cputype;
+
+void passbegin(int pass)
+{
+	cputype = 6803;
+}
+
+/*
  * In some cases (JSR JMP and definitions - eg .word)
  * $ABCD means a constant everywhere else that is #ABCD
  */
@@ -239,8 +250,19 @@ loop:
 			outab(0);
 		break;
 
+	case TSETCPU:
+		getaddr(&a1);
+		constify(&a1);
+		istuser(&a1);
+		/* FIXME: add raw 6800 eventually */
+		if (a1.a_value != 6303 && a1.a_value != 6803)
+			aerr(SYNTAX_ERROR);
+		cputype = a1.a_value;
+		break;
+
 	case TIMPL6303:
-		/* Until we implement CPU type checks */
+		if (cputype != 6303)
+			aerr(BADCPU);
 	case TIMPL:
 		outab(opcode);
 		break;
@@ -331,6 +353,8 @@ loop:
 		break;
 
 	case TIDX6303:	/* 6303 oddity, immediate followed by direct or indexed */
+		if (cputype != 6303)
+			aerr(BADCPU);
 		getaddr(&a1);
 		if ((a1.a_type & TMADDR) != TIMMED)
 			qerr(SYNTAX_ERROR);
@@ -360,6 +384,8 @@ loop:
 		break;
 
 	case TIDXB6303:	/* The above - rebranded as bit operations */
+		if (cputype != 6303)
+			aerr(BADCPU);
 		getaddr(&a1);
 		switch (a1.a_type & TMADDR) {
 			case TINDEX:

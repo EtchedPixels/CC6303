@@ -24,6 +24,8 @@ void outpass(void)
 	off_t base = sizeof(obh);
 	int i;
 
+	passbegin(pass);
+
 	if (pass == 1) {
 		/* Lay the file out */
 		for (i = 0; i < NSEGMENT; i++) {

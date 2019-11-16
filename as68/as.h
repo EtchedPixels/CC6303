@@ -519,7 +519,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TIDXB6303	0x1900		/* BIT form of the above */
 /* Assembler extras for resolving branch ranges */
 #define TBRA16		0x1A00		/* Jcc asm magic */
-
+#define TSETCPU		0x1B00		/* .setcpu */
 /*
  * Registers.
  */
@@ -554,6 +554,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define SEGMENT_OVERFLOW 25
 #define DATA_IN_ZP	26
 #define	SEGMENT_CLASH	27
+#define BADCPU		28
 
 #elif TARGET_Z8
 
@@ -809,6 +810,7 @@ extern	char	*fname;
 extern	int	noobj;
 extern	int	cpu_flags;
 
+extern void passbegin(int pass);
 extern void asmline(void);
 extern void comma(void);
 extern void istuser(ADDR *);

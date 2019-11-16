@@ -39,6 +39,7 @@ SYM	sym[] = {
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
 	{	0,	".zp",		TSEGMENT,	ZP	},
+	{	0,	".setcpu",	TSETCPU,	XXXX	},
 
 	/* 0x0X		:	Implicit */
 	{	0,	"nop",		TIMPL,		0x01	},
@@ -268,7 +269,8 @@ char *etext[] = {
 	"data in BSS",			/* 24 */
 	"segment overflow",		/* 25 */
 	"data in direct page",		/* 26 */
-	"segment conflict"		/* 27 */
+	"segment conflict",		/* 27 */
+	"unsupported by this CPU"	/* 28 */
 };
 
 /*
