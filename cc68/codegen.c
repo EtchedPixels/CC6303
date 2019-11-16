@@ -149,7 +149,7 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
 
         case CF_REGVAR:
             /* Variable in register bank */
-            xsprintf (Buf, sizeof (Buf), "_reg%u", (unsigned)((Label+Offs) & 0xFFFF));
+            xsprintf (Buf, sizeof (Buf), "@_reg%u", (unsigned)((Label+Offs) & 0xFFFF));
             break;
 
         default:
@@ -4512,7 +4512,7 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
 void g_save_regvar(int Offset, int Reg, unsigned Size)
 {
     AddCodeLine(";offset %d\n", Offset);
-    AddCodeLine("ldx #_reg%u", Reg);
+    AddCodeLine("ldx @_reg%u", Reg);
     AddCodeLine("pshx");
     push(CF_INT);
     InvalidateX();
@@ -4523,7 +4523,7 @@ void g_restore_regvar(int Offset, int Reg, unsigned Size)
 {
     AddCodeLine(";offset %d\n", Offset);
     AddCodeLine("pulx");
-    AddCodeLine("stx #_reg%u", Reg);
+    AddCodeLine("stx @_reg%u", Reg);
     pop(CF_INT);
     InvalidateX();
     NotViaX();
