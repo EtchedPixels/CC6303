@@ -1,4 +1,13 @@
 /*
+ *	CC6303:  A C compiler for the 6803/6303 processors
+ *	(C) 2019 Alan Cox
+ *
+ *	This compiler is built out of a much modified CC65 and all new code
+ *	is placed under the same licence as the original. Please direct all
+ *	cc6303 bugs to the author not to the cc65 developers unless you find
+ *	a bug that is also present in cc65.
+ */
+/*
  *	6800 code generator, heavily based on the cc65 code generator
  *
  *	The main differences we have are
