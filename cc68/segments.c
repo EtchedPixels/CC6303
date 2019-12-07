@@ -236,7 +236,7 @@ void AddTextLine (const char* Format, ...)
     va_list ap;
     va_start (ap, Format);
     vsnprintf(buf, 512, Format, ap);
-    printf("T:%s\n", buf);
+//    printf("T:%s\n", buf);
     /* For now */
     AppendABS(buf);
     CHECK (CS != 0);
@@ -253,7 +253,7 @@ void AddCodeLine (const char* Format, ...)
     va_start (ap, Format);
     vsnprintf(buf, 512, Format, ap);
     CHECK (CS != 0);
-    printf("C:%s\n", buf);
+//    printf("C:%s\n", buf);
     AppendCode(buf);
     va_end (ap);
 }
@@ -264,7 +264,7 @@ void AddCode (struct CodeLabel* JumpTo)
 /* Add a code entry to the code segment */
 {
     CHECK (CS != 0);
-    printf("!!:%s", CurTok.LI->Line);
+//    printf("!!:%s", CurTok.LI->Line);
     AppendCode(CurTok.LI->Line);
 }
 
@@ -278,7 +278,7 @@ void AddDataLine (const char* Format, ...)
     va_start (ap, Format);
     vsnprintf(buf, 512, Format, ap);
     CHECK (CS != 0);
-    printf("D:%s\n", buf);
+//    printf("D:%s\n", buf);
     /* FIXME: clean this lot out further */
     switch(CS->CurDSeg) {
     case SEG_BSS:
@@ -300,7 +300,7 @@ void AddABSLine (const char* Format, ...)
     char buf[512];
     va_list ap;
     va_start (ap, Format);
-    vsnprintf(buf, 512, Format, ap);
+//    vsnprintf(buf, 512, Format, ap);
     CHECK (CS != 0);
     printf("B:%s\n", buf);
     AppendData(buf);
