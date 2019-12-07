@@ -1,7 +1,9 @@
 /*
- * Z-80 assembler.
+ * Assembler.
  * Command line processing
  * and main driver.
+ *
+ * FIXME: normal Unix as option parsing.
  */
 #include	"as.h"
 
@@ -25,39 +27,13 @@ int	debug_write = 1 ;
 int	noobj;
 int	cpu_flags = ARCH_CPUFLAGS;
 
-/*
- * Make up a file name.
- * The "sfn" is the source file
- * name and "dft" is the desired file
- * type. The finished name is copied
- * into the "dfn" buffer.
- */
-void mkname(char *dfn, char *sfn, char *dft)
-{
-	char *p1;
-	char *p2;
-	int c;
-
-	p1 = sfn;
-	while (*p1 != 0)
-		++p1;
-	while (p1!=sfn && p1[-1]!='/')
-		--p1;
-	p2 = dfn;
-	while ((c = *p1++)!=0 && c!='.')
-		*p2++ = c;
-	*p2++ = '.';
-	p1 = dft;
-	while ((*p2++ = *p1++) != 0);
-}
-
 int main(int argc, char *argv[])
 {
 	char *ifn;
+	char *ofn;
 	char *p;
 	int i;
 	int c;
-	char fn[NFNAME];
 
 	/* FIXME: switch to getopt - add map, listing */
 	ifn = NULL;
@@ -87,15 +63,27 @@ int main(int argc, char *argv[])
 		exit(BAD);
 	}
 
-	fname = ifn;
-
 	if ((ifp=fopen(ifn, "r")) == NULL) {
 		fprintf(stderr, "%s: cannot open\n", ifn);
 		exit(BAD);
 	}
-	mkname(fn, ifn, "o");
-	if ((ofp=fopen(fn, "w")) == NULL) {
-		fprintf(stderr, "%s: cannot create\n", fn);
+
+	ofn = strdup(ifn);
+	if (ofn == NULL) {
+		fprintf(stderr, "%s: out of memory.\n", ifn);
+		exit(BAD);
+	}
+	p = strrchr(ofn, '.');
+	if (p == NULL || p[1] == 0) {
+		fprintf(stderr, "%s: expected extensions.\n", ifn);
+		exit(BAD);
+	}
+
+	p[1] = 'o';
+	p[2] = '\0';
+
+	if ((ofp=fopen(ofn, "w")) == NULL) {
+		fprintf(stderr, "%s: cannot create.\n", ofn);
 		exit(BAD);
 	}
 	syminit();
