@@ -11,7 +11,7 @@
  *	Ending			Action
  *	$1.S			preprocessor - may make $1.s
  *	$1.s			nothing
- *	$1.c			preprocessor, may make $1.% or /dev/tty
+ *	$1.c			preprocessor, no-op or /dev/tty
  *	$1.o			nothing
  *	$1.a			nothing (library)
  *
@@ -53,12 +53,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define CMD_AS	BINPATH"as68"
+#define CMD_AS	BINPATH"as6303"
 #define CMD_CC	BINPATH"cc68"
 #define CMD_COPT BINPATH"copt"
 #define COPT_FILE LIBPATH"cc68.rules"
-#define CMD_LD	BINPATH"ld68"
-#define CMD_CPP BINPATH"cc68"
+#define CMD_LD	BINPATH"ld6303"
 #define CRT0	LIBPATH"crt0.o"
 
 struct obj {
@@ -159,12 +158,7 @@ static char *pathmod(char *p, char *f, char *t, int rmif)
 		if (*rmptr++ == NULL)
 			memory();
 	}
-	/* Traditionally compilers dump the work files in the current dir
-	   even if the source is /foo/bar/baz.c - follow this */
-	x = strrchr(p,'/');
-	if (x == NULL)
-		return p;
-	return x+1;
+	return p;
 }
 
 static void add_argument(char *p)
@@ -195,13 +189,21 @@ static void run_command(void)
 
 	fflush(stdout);
 
+	*argptr = NULL;
+
 	pid = fork();
 	if (pid == -1) {
 		perror("fork");
 		fatal();
 	}
 	if (pid == 0) {
-//		printf("Run %s\n", arglist[0]);
+		{
+			char **p = arglist;
+			printf("[");
+			while(*p)
+				printf("%s ", *p++);
+			printf("]\n");
+		}
 		fflush(stdout);
 		if (arginfd != -1) {
 			dup2(arginfd, 0);
@@ -267,10 +269,17 @@ void convert_s_to_o(char *path)
 
 void convert_c_to_s(char *path)
 {
-	char *tmp;
+	char *tmp, *t;
 	build_arglist(CMD_CC);
-	redirect_in(path);
-	tmp = strdup(pathmod(path, ".%", ".@", 0));
+	add_argument_list("-I", &inclist);
+	add_argument_list("-D", &deflist);
+	add_argument("-r");
+	add_argument("--add-source");
+	add_argument(path);
+	t = strdup(path);
+	if (t == NULL)
+		memory();
+	tmp = pathmod(t, ".c", ".@", 0);
 	if (tmp == NULL)
 		memory();
 	redirect_out(tmp);
@@ -278,14 +287,15 @@ void convert_c_to_s(char *path)
 	build_arglist(CMD_COPT);
 	add_argument(COPT_FILE);
 	redirect_in(tmp);
-	redirect_out(pathmod(path, ".%", ".s", 2));
+	redirect_out(pathmod(path, ".@", ".s", 2));
 	run_command();
-	free(tmp);
+	free(t);
 }
 
 void convert_S_to_s(char *path)
 {
-	build_arglist(CMD_CPP);
+	build_arglist(CMD_CC);
+	add_argument("-E");
 	redirect_in(path);
 	redirect_out(pathmod(path, ".S", ".s", 1));
 	run_command();
@@ -293,8 +303,9 @@ void convert_S_to_s(char *path)
 
 void preprocess_c(char *path)
 {
-	build_arglist(CMD_CPP);
+	build_arglist(CMD_CC);
 
+	add_argument("-E");
 	add_argument_list("-I", &inclist);
 	add_argument_list("-D", &deflist);
 	add_argument(path);
@@ -308,7 +319,7 @@ void link_phase(void)
 {
 	build_arglist(CMD_LD);
 	add_argument("-b");
-	add_argument("-c");
+	add_argument("-C");
 	add_argument("256");
 	if (strip)
 		add_argument("-s");
@@ -323,29 +334,29 @@ void link_phase(void)
 
 void sequence(struct obj *i)
 {
-//	printf("Last Phase %d\n", last_phase);
-//	printf("1:Processing %s %d\n", i->name, i->type);
+	printf("Last Phase %d\n", last_phase);
+	printf("1:Processing %s %d\n", i->name, i->type);
 	if (i->type == TYPE_S) {
 		convert_S_to_s(i->name);
 		i->type = TYPE_s;
 		i->used = 1;
 	}
-	if (i->type == TYPE_C) {
+	if (i->type == TYPE_C && last_phase == 1) {
 		preprocess_c(i->name);
 		i->type = TYPE_C_pp;
 		i->used = 1;
 	}
 	if (last_phase == 1)
 		return;
-//	printf("2:Processing %s %d\n", i->name, i->type);
-	if (i->type == TYPE_C_pp) {
+	printf("2:Processing %s %d\n", i->name, i->type);
+	if (i->type == TYPE_C_pp || i->type == TYPE_C) {
 		convert_c_to_s(i->name);
 		i->type = TYPE_s;
 		i->used = 1;
 	}
 	if (last_phase == 2)
 		return;
-//	printf("3:Processing %s %d\n", i->name, i->type);
+	printf("3:Processing %s %d\n", i->name, i->type);
 	if (i->type == TYPE_s) {
 		convert_s_to_o(i->name);
 		i->type = TYPE_O;
@@ -524,6 +535,9 @@ int main(int argc, char *argv[])
 				target = *p + 2;
 			else
 				target = *++p;
+			break;
+		case 's':	/* FIXME: for now - switch to getopt */
+			standalone = 1;
 			break;
 		case 'X':
 			uniopt(*p);

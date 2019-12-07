@@ -5,7 +5,7 @@ all: cc6303
 
 AOBJ = cc.o
 
-CFLAGS = -DBINPATH=\"/opt/fuzix/cc6303/bin/\" -DLIBPATH=\"/opt/fuzix/cc6303/lib/\"
+CFLAGS = -DBINPATH=\"/opt/cc6303/bin/\" -DLIBPATH=\"/opt/cc6303/lib/\"
 
 cc6303: cc.o
 	cc -o cc6303 cc.o
