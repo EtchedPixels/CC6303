@@ -28,7 +28,7 @@
  *		symbols or relocations are left
  *
  *	There are a few things not yet addressed
- *	1.	For speed libraries can stat with an _RANLIB ar file node whic
+ *	1.	For speed libraries can start with an _RANLIB ar file node which
  *		is an index of all the symbols by library module for speed.
  *	2.	Testing bigendian support.
  *	3.	Banked binaries (segments 5-7 ?).
