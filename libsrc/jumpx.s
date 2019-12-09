@@ -1,6 +1,6 @@
 
     .code
-    .globl jumpx
+    .export jumpx
 
 jumpx:
     jmp ,x

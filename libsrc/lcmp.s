@@ -1,5 +1,5 @@
 	.code
-	.globl toslcmp
+	.export toslcmp
 
 ;
 ;	Compare the 4 bytes stack top with the 32bit accumulator

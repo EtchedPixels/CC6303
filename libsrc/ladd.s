@@ -3,8 +3,8 @@
 ;	the stack
 ;
 	.code
-	.globl tosadd0ax
-	.globl tosaddeax
+	.export tosadd0ax
+	.export tosaddeax
 
 tosadd0ax:
 	clr	@sreg

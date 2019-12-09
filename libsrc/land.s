@@ -5,8 +5,8 @@
 
 	.code
 
-	.globl tosand0ax
-	.globl tosandeax
+	.export tosand0ax
+	.export tosandeax
 
 tosand0ax:
 	clr	@sreg

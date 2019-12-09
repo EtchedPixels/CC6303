@@ -2,8 +2,8 @@
 ;	On entry X points to the object
 ;
 	.code
-	.globl lsubeqa
-	.globl lsubeqysp
+	.export lsubeqa
+	.export lsubeqysp
 
 ; In this form X is the stack offset. Turn that into X is a pointer and
 ; fall into the static form

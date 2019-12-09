@@ -6,16 +6,16 @@
 
 	.code
 
-	.globl booleq
-	.globl boolne
-	.globl boolle
-	.globl boollt
-	.globl boolge
-	.globl boolgt
-	.globl boolule
-	.globl boolult
-	.globl booluge
-	.globl boolugt
+	.export booleq
+	.export boolne
+	.export boolle
+	.export boollt
+	.export boolge
+	.export boolgt
+	.export boolule
+	.export boolult
+	.export booluge
+	.export boolugt
 
 booleq:
 	bne	ret0

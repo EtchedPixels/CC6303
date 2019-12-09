@@ -2,7 +2,7 @@
 ;	6803 lacks xgdx...
 ;
 	.code
-	.globl swapstk
+	.export swapstk
 
 swapstk:
 	pulx
