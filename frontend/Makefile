@@ -1,15 +1,15 @@
 #
 #	Build 6803/6303 version of the tools
 #
-all: cc6303
+all: cc68
 
 AOBJ = cc.o
 
-CFLAGS = -DBINPATH=\"/opt/cc6303/bin/\" -DLIBPATH=\"/opt/cc6303/lib/\"
+CFLAGS = -DBINPATH=\"/opt/cc68/bin/\" -DLIBPATH=\"/opt/cc68/lib/\"
 
-cc6303: cc.o
-	cc -o cc6303 cc.o
+cc68: cc.o
+	cc -o cc68 cc.o
 
 clean:
 	rm -f *.o *~
-	rm -f cc6303
+	rm -f cc68
