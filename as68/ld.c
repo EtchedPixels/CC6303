@@ -53,9 +53,9 @@ static char *arg0;			/* Command name */
 static struct object *processing;	/* Object being processed */
 static struct object *objects, *otail;	/* List of objects */
 static struct symbol *symhash[NHASH];	/* Symbol has tables */
-static uint16_t base[4];		/* Base of each segment */
-static uint16_t size[4];		/* Size of each segment */
-static uint16_t align;			/* Alignment */
+static uint16_t base[OSEG];		/* Base of each segment */
+static uint16_t size[OSEG];		/* Size of each segment */
+static uint16_t align = 1;		/* Alignment */
 
 #define LD_RELOC	0		/* Output a relocatable binary */
 #define LD_RFLAG	1		/* Output an object module */
@@ -127,6 +127,21 @@ static void xfseek(FILE *fp, off_t pos)
 		perror("fseek");
 		exit(err | 1);
 	}
+}
+
+static uint16_t xstrtoul(const char *p)
+{
+	char *r;
+	unsigned long x = strtoul(p, &r, 0);
+	if (r == p) {
+		fprintf(stderr, "'%s' is not a valid numeric constant.\n", p);
+		exit(1);
+	}
+	if (x > 65535) {
+		fprintf(stderr, "'%s' is not in the range 0-65535.\n", p);
+		exit(1);
+	}
+	return x;
 }
 
 /*
@@ -487,29 +502,29 @@ restart:
 static void set_segment_bases(void)
 {
 	struct object *o;
-	uint16_t pos[4];
+	uint16_t pos[OSEG];
 	int i;
 
 	/* We are doing a simple model here without split I/D for now */
-	for (i = 1; i < 4; i++)
+	for (i = 1; i < OSEG; i++)
 		size[i] = 0;
 	/* Now run through once computing the basic size of each segment */
 	for (o = objects; o != NULL; o = o->next) {
-		for (i = 1; i < 4; i++) {
+		for (i = 1; i < OSEG; i++) {
 			size[i] += o->oh.o_size[i];
 			if (size[i] < o->oh.o_size[i])
 				error("segment too large");
 		}
 	}
+
 	/* We now know where to put the binary */
 	if (ldmode != LD_RFLAG) {
 		/* Creating a binary - put the segments together */
 		if (split_id)
-			base[2] = size[1];
+			base[2] = 0;
 		else {
 			/* Single image. Check if we are aligning */
-			if (align)
-				base[2] = ((base[1] + size[1] + align - 1)/align) * align;
+			base[2] = ((base[1] + size[1] + align - 1)/align) * align;
 			if (base[2] < base[1])
 				error("image too large");
 		}
@@ -521,6 +536,7 @@ static void set_segment_bases(void)
 			error("image too large");
 		/* Whoopee it fits */
 		/* Insert the linker symbols */
+		/* FIXME: symbols for all OSEG segments */
 		insert_internal_symbol("__code", CODE, 0);
 		insert_internal_symbol("__data", DATA, 0);
 		insert_internal_symbol("__bss", BSS, 0);
@@ -533,7 +549,7 @@ static void set_segment_bases(void)
 	memcpy(&pos, &base, sizeof(pos));
 	for (o = objects; o != NULL; o = o->next) {
 		o->base[0] = 0;
-		for (i = 1; i < 4; i++) {
+		for (i = 1; i < OSEG; i++) {
 			o->base[i] = pos[i];
 			pos[i] += o->oh.o_size[i];
 		}
@@ -826,6 +842,8 @@ static void write_stream(FILE * op, int seg)
 static void write_binary(FILE * op, FILE *mp)
 {
 	static struct objhdr hdr;
+	uint8_t i;
+
 	hdr.o_arch = arch;
 	hdr.o_cpuflags = arch_flags;
 	hdr.o_flags = obj_flags;
@@ -850,7 +868,12 @@ static void write_binary(FILE * op, FILE *mp)
 	write_stream(op, CODE);
 	hdr.o_segbase[1] = ftell(op);
 	write_stream(op, DATA);
-	if (!strip) {
+	/* Absolute images may contain things other than code/data/bss */
+	if (ldmode == LD_ABSOLUTE) {
+		for (i = 4; i < OSEG; i++)
+			write_stream(op, i);
+	}
+	else if (!strip) {
 		hdr.o_symbase = ftell(op);
 		write_symbols(op);
 	}
@@ -952,7 +975,7 @@ int main(int argc, char *argv[])
 			strip = 1;
 			break;
 		case 'v':
-			printf("FuzixLD 0.1.1\n");
+			printf("FuzixLD 0.1.2\n");
 			break;
 		case 't':
 			verbose = 1;
@@ -973,16 +996,24 @@ int main(int argc, char *argv[])
 			split_id = 1;
 			break;
 		case 'A':
-			align = strtoul(optarg, NULL, 0);
+			align = xstrtoul(optarg);
+			if (align == 0)
+				align = 1;
 			break;
 		case 'B':
-			base[1] = strtoul(optarg, NULL, 0);
+			base[3] = xstrtoul(optarg);
 			break;
 		case 'C':
-			base[1] = strtoul(optarg, NULL, 0);
+			base[1] = xstrtoul(optarg);
 			break;
 		case 'D':
-			base[2] = strtoul(optarg, NULL, 0);
+			base[2] = xstrtoul(optarg);
+			break;
+		case 'X':
+			base[4] = xstrtoul(optarg);
+			break;
+		case 'S':
+			base[5] = xstrtoul(optarg);
 			break;
 		default:
 			fprintf(stderr, "%s: name ...\n", argv[0]);

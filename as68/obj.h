@@ -101,6 +101,8 @@ struct objhdr
 #define DATA		2		/* Relocated versus data */
 #define BSS		3		/* Relocated versus BSS */
 #define ZP		4		/* Relocated versus zero page */
+#define DISCARD		5		/* Discard for things like kernels */
+#define COMMON		6		/* Common for things like kernels */
 /* Special cases 8+ don't exist as real segments */
 #define PCREL		14		/* assumed signed */
 /* and 15 is 'any' */
