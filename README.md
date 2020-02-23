@@ -34,6 +34,9 @@ Lots of more complicating things will blow up.
 
 - Strip out lots of unused options like -o.
 
+- The assembler uses 15 char names internally. The compiler does not. This
+  leads to asm errors when the symbols clash.
+
 - Maybe float: cc65 lacks float beyond the basic parsing support, so this
   means extending the back end to handle all the fp cases (probably via
   stack) and using the long handling paths for the non maths ops.
@@ -76,4 +79,3 @@ for other stuff. Supporting that will not be trivial - and I don't have a
 
 Stub code that is a chain of ins/des instructions with labels for each so
 you can jsr to shift the stack by 4-n bytes in the ugly cases.
-
