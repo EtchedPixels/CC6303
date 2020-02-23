@@ -4345,7 +4345,7 @@ void g_ge (unsigned flags, unsigned long val)
 void g_res (unsigned n)
 /* Reserve static storage, n bytes */
 {
-    AddDataLine ("\t.res\t%u,$00", n);
+    AddDataLine ("\t.blkb\t%u", n);
 }
 
 
@@ -4429,7 +4429,7 @@ void g_zerobytes (unsigned Count)
 /* Output Count bytes of data initialized with zero */
 {
     if (Count > 0) {
-        AddDataLine ("\t.res\t%u,$00", Count);
+        AddDataLine ("\t.blkb\t%u", Count);
     }
 }
 
