@@ -3096,37 +3096,35 @@ void g_asr (unsigned flags, unsigned long val)
 
             case CF_CHAR:
             case CF_INT:
-                /* FIXME: we could go with oversize shift = 0 better ? */
                 val &= 0x0F;
                 if (val >= 8) {
                     if (flags & CF_UNSIGNED) {
-                        AddCodeLine ("txa");
-                        AddCodeLine ("ldx #$0000");
+                        AddCodeLine ("tab");
                     } else {
                         unsigned L = GetLocalLabel();
-                        AddCodeLine ("cpx #$80");   /* Sign bit into carry */
-                        AddCodeLine ("txa");
-                        AddCodeLine ("ldx #$0000");
+                        AddCodeLine ("tab");
+                        AddCodeLine ("clra");
+                        AddCodeLine ("cmpb #$80");   /* Sign bit into carry */
                         AddCodeLine ("bcc %s", LocalLabelName (L));
-                        AddCodeLine ("dex");        /* Make $FF */
+                        AddCodeLine ("coma");        /* Make $FF */
                         g_defcodelabel (L);
                     }
                     val -= 8;
                 }
-                if (val >= 4) {
+                if (val >= 3) {
                     if (flags & CF_UNSIGNED) {
-                        AddCodeLine ("jsr shrax4");
+                        AddCodeLine ("jsr shrax%d", val);
                     } else {
-                        AddCodeLine ("jsr asrax4");
+                        AddCodeLine ("jsr asrax%d", val);
                     }
-                    val -= 4;
+                    return;
                 }
-                if (val > 0) {
-                    if (flags & CF_UNSIGNED) {
-                        AddCodeLine ("jsr shrax%ld", val);
-                    } else {
-                        AddCodeLine ("jsr asrax%ld", val);
-                    }
+                while(val--) {
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine("lsra");
+                    else
+                        AddCodeLine("asra");
+                    AddCodeLine("rorb");
                 }
                 return;
 
