@@ -500,7 +500,7 @@ void g_aliasdatalabel (unsigned label, unsigned baselabel, long offs)
     StrBuf L = AUTO_STRBUF_INITIALIZER;
     SB_AppendStr (&L, LocalLabelName (label));
     SB_Terminate (&L);
-    AddDataLine ("%s\t:=\t%s+%ld",
+    AddDataLine ("%s .equ\t%s+%ld",
                  SB_GetConstBuf (&L),
                  LocalLabelName (baselabel),
                  offs);
