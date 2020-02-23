@@ -27,6 +27,7 @@ clean:
 #
 install:
 	mkdir -p /opt/cc68/bin
+	mkdir -p /opt/cc68/lib
 	cp cc68/cc68 /opt/cc68/lib
 	cp as68/as68 /opt/cc68/bin
 	cp as68/ld68 /opt/cc68/bin
