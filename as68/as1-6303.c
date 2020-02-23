@@ -95,7 +95,16 @@ void getaddr(ADDR *ap)
 	/* Our own syntax for DP form labels */
 	if (c == '@')
 		dp = 1;
-	else
+	/* Allow naked ",x" form */
+	else if (c == ',') {
+		c = getnb();
+		if (tolower(c) != 'x')
+			aerr(SYNTAX_ERROR);
+		ap->a_type = TINDEX | TUSER;
+		ap->a_value = 0;
+		ap->a_segment = ABSOLUTE;
+		return;
+	} else
 		unget(c);
 	expr1(ap, LOPRI, 1);
 
