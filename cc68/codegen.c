@@ -3815,15 +3815,13 @@ void g_lt (unsigned flags, unsigned long val)
                     if (flags & CF_FORCECHAR) {
                         Label = GetLocalLabel ();
                         GenTSX();
-                        AddCodeLine ("sbb 1,x");
+                        AddCodeLine ("subb #%02X", val);
                         AddCodeLine ("bvc %s", LocalLabelName (Label));
                         AddCodeLine ("eorb #$80");
                         g_defcodelabel (Label);
                         AddCodeLine ("aslb");          /* Bit 7 -> carry */
                         AddCodeLine ("ldd #$0000");
                         AddCodeLine ("rolb");
-                        AddCodeLine ("ins");
-                        pop (flags);
                         return;
                     }
                     /* FALLTHROUGH */
@@ -3832,16 +3830,13 @@ void g_lt (unsigned flags, unsigned long val)
                     /* Do a subtraction */
                     GenTSX();
                     Label = GetLocalLabel ();
-                    AddCodeLine ("subd 1,x");
+                    AddCodeLine ("subd #$%04X", val);
                     AddCodeLine ("bvc %s", LocalLabelName (Label));
                     AddCodeLine ("eora #$80");
                     g_defcodelabel (Label);
                     AddCodeLine ("asla");          /* Bit 7 -> carry */
                     AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
-                    AddCodeLine ("pulx");
-                    InvalidateX();
-                    pop (flags);
                     return;
 
                 case CF_LONG:
@@ -4199,7 +4194,7 @@ void g_ge (unsigned flags, unsigned long val)
                         /* Do a subtraction. Condition is true if carry set */
                         AddCodeLine ("cmpb #$%02X", (unsigned char)val);
                         /* Do not usr clr as it clears carry */
-                        AddCodeLine ("ldd #$0000");
+                        AddCodeLine ("ldd @zero");
                         AddCodeLine ("rolb");
                         return;
                     }
@@ -4208,7 +4203,7 @@ void g_ge (unsigned flags, unsigned long val)
                 case CF_INT:
                     /* Do a subtraction. Condition is true if carry set */
                     AddCodeLine ("subd #$%04X", (unsigned short)val);
-                    AddCodeLine ("ldd #$0000");
+                    AddCodeLine ("ldd @zero");
                     AddCodeLine ("rolb");
                     return;
 
