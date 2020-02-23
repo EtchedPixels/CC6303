@@ -1382,35 +1382,27 @@ void Store (ExprDesc* Expr, const Type* StoreType)
 
 int CanStoreViaX (unsigned Flags, ExprDesc *Expr)
 {
-    printf("CSVX: ");
     if (ED_IsBitField(Expr)) {
-        printf("no - bitfield\n");
         return 0;
     }
     if ((Flags & CF_FORCECHAR) && (Flags & CF_TYPEMASK) == CF_CHAR) {
-        printf("No - forcechar.\n");
         return 0;
     }
     /* We can't store X to offset of stack as that needs X */
     if (ED_GetLoc(Expr) == E_LOC_STACK) {
-        printf("No - stack.\n");
         return 0;
     }
     if (ED_IsLVal(Expr)) {
         /* Until we fix getloc to be a lot smarter */
         if (ED_GetLoc(Expr) == E_LOC_EXPR) {
-            printf("no - loc expr\n");
             return 0;
         }
-        printf("yes\n");
         return 1;
     }
     /* FIXME: we can do this for a small range of ival */
     if (ED_IsLocExpr(Expr)) {
-        printf("No Rval Loc expr.\n");
         return 0;
     }
-    printf("Yes\n");
     /* Constant */
     return 1;
 }

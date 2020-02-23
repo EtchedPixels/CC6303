@@ -101,30 +101,24 @@ static void LoadConstant (unsigned Flags, ExprDesc* Expr)
    the input */
 int CanLoadViaX(unsigned Flags, struct ExprDesc *Expr)
 {
-    printf("CLVX:");
     if (ED_IsBitField(Expr) || ED_NeedsTest(Expr)) {
         printf("no - bitfield/test.\n");
         return 0;
     }
     if ((Flags & CF_FORCECHAR) && (Flags & CF_TYPEMASK) == CF_CHAR) {
-        printf("No - forcechar.\n");
         return 0;
     }
     if (ED_IsLVal(Expr)) {
         /* Until we fix getloc to be a lot smarter */
         if (ED_GetLoc(Expr) == E_LOC_EXPR) {
-            printf("no - loc expr\n");
             return 0;
         }
-        printf("yes\n");
         return 1;
     }
     /* FIXME: we can do this for a small range of ival */
     if (ED_IsLocExpr(Expr)) {
-        printf("No Rval Loc expr.\n");
         return 0;
     }
-    printf("Yes\n");
     /* Constant */
     return 1;
 }
