@@ -2400,12 +2400,12 @@ void g_drop (unsigned Space, int save_d)
         if (Space < 256) {
             AddCodeLine("tsx");
             if (save_d)
-                AddCodeLine("stb @tmp");
-            AddCodeLine("ldb #$%02X", Space);
+                AddCodeLine("stab @tmp");
+            AddCodeLine("ldab #$%02X", Space);
             AddCodeLine("abx");
             AddCodeLine("txs");
             if (save_d)
-                AddCodeLine("ldb @tmp");
+                AddCodeLine("ldab @tmp");
         } else {           
             if (save_d)
                 AddCodeLine("std @tmp2");
@@ -2860,7 +2860,7 @@ void g_or (unsigned flags, unsigned long val)
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
                 GenTSX();
-                AddCodeLine ("orb 1,x");
+                AddCodeLine ("orab 1,x");
                 AddCodeLine ("ins");
                 pop(flags);
                 return;
@@ -2868,8 +2868,8 @@ void g_or (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             GenTSX();
-            AddCodeLine ("orb 1,x");
-            AddCodeLine ("ora 2,x");
+            AddCodeLine ("orab 1,x");
+            AddCodeLine ("oraa 2,x");
             AddCodeLine ("pulx");
             InvalidateX();
             pop(flags);
