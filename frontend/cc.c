@@ -53,12 +53,13 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define CMD_AS	BINPATH"as6303"
-#define CMD_CC	BINPATH"cc68"
-#define CMD_COPT BINPATH"copt"
+#define CMD_AS	BINPATH"as68"
+#define CMD_CC	LIBPATH"cc68"
+#define CMD_COPT LIBPATH"copt"
 #define COPT_FILE LIBPATH"cc68.rules"
-#define CMD_LD	BINPATH"ld6303"
+#define CMD_LD	BINPATH"ld68"
 #define CRT0	LIBPATH"crt0.o"
+#define LIBC	LIBPATH"libc.o"
 
 struct obj {
 	struct obj *next;
@@ -325,8 +326,11 @@ void link_phase(void)
 		add_argument("-s");
 	add_argument("-o");
 	add_argument(target);
-	if (!standalone)
+	if (!standalone) {
+		/* Start with crt0.o, end with libc.a */
 		add_argument(CRT0);
+		append_obj(&liblist, LIBC, TYPE_A);
+	}
 	add_argument_list(NULL, &objlist);
 	add_argument_list(NULL, &liblist);
 	run_command();
@@ -510,6 +514,8 @@ int main(int argc, char *argv[])
 			only_one_input = 1;
 			break;
 		case 'l':
+			/* FIXME: need to expand to understand -lc as
+			   "libc.a" etc */
 			p = add_library(p);
 			break;
 		case 'I':
