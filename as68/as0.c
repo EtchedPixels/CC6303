@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
 	}
 	pass = 2;
 	outeof();
-	exit(GOOD);
+	/* Return an error code if no object was created */
+	exit(noobj);
 }
 
