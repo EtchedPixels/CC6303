@@ -2249,6 +2249,7 @@ void g_push (unsigned flags, unsigned long val)
                 default:
                     typeerror (flags);
                 }
+                push (flags);
                 return;
             }
             g_getimmed (flags, val, 0);
