@@ -274,7 +274,8 @@ char *etext[] = {
 	"segment overflow",		/* 25 */
 	"data in direct page",		/* 26 */
 	"segment conflict",		/* 27 */
-	"unsupported by this CPU"	/* 28 */
+	"unsupported by this CPU",	/* 28 */
+	"too many Jcc instructions"	/* 29 */
 };
 
 /*

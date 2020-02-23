@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
 	}
 	syminit();
 	fname = ifn;
-	for (pass=0; pass<3; ++pass) {
+	for (pass=0; pass<4; ++pass) {
+		/* FIXME: for some platforms we should just do 0 and 3 */
 		outpass();
 		line = 0;
 		memset(dot, 0, sizeof(dot));
@@ -100,8 +101,11 @@ int main(int argc, char *argv[])
 			if (setjmp(env) == 0)
 				asmline();
 		}
+		/* Don't continue once we know we failed */
+		if (noobj)
+			exit(noobj);
 	}
-	pass = 2;
+	pass = 3;
 	outeof();
 	/* Return an error code if no object was created */
 	exit(noobj);

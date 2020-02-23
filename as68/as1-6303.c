@@ -11,11 +11,32 @@
  */
 
 static int cputype;
+/* FIXME: we should malloc/realloc this on non 8bit machines */
+static uint8_t reltab[1024];
+static unsigned int nextrel;
 
 void passbegin(int pass)
 {
 	cputype = 6803;
 	segment = 0;
+	if (pass == 3)
+		nextrel = 0;
+}
+
+static void setnextrel(int flag)
+{
+	if (nextrel == 8 * sizeof(reltab))
+		aerr(TOOMANYJCC);
+	if (flag)
+		reltab[nextrel >> 3] |= (1 << (nextrel & 7));
+	nextrel++;
+}
+
+static unsigned int getnextrel(void)
+{
+	unsigned int n = reltab[nextrel >> 3] & (1 << (nextrel & 7));
+	nextrel++;
+	return n;
 }
 
 /*
@@ -163,9 +184,11 @@ loop:
 	getid(id, c);
 	if ((c=getnb()) == ':') {
 		sp = lookup(id, uhash, 1);
-		/* Pass 0 we guess the values
-		   Pass 1 we set them in stone
-		   Pass 2 we output accodingly */
+		/* Pass 0 we compute the worst cases
+		   Pass 1 we generate according to those 
+		   Pass 2 we set them in stone (the shrinkage from pass 1
+					        allowing us a lot more)
+		   Pass 3 we output accodingly */
 		if (pass == 0) {
 			/* Catch duplicates on phase 0 */
 			if ((sp->s_type&TMMODE) != TNEW
@@ -175,7 +198,7 @@ loop:
 			sp->s_type |= TUSER;
 			sp->s_value = dot[segment];
 			sp->s_segment = segment;
-		} else if (pass == 1) {
+		} else if (pass != 3) {
 			/* Don't check for duplicates, we did it already
 			   and we will confuse ourselves with the pass
 			   before. Instead blindly update the values */
@@ -188,8 +211,11 @@ loop:
 			   is fatal */
 			if ((sp->s_type&TMMDF) != 0)
 				err('m', MULTIPLE_DEFS);
-			if (sp->s_value != dot[segment])
+			if (sp->s_value != dot[segment]) {
+				printf("Phase 2: Dot %x Should be %x\n",
+					dot[segment], sp->s_value);
 				err('p', PHASE_ERROR);
+			}
 		}
 		goto loop;
 	}
@@ -388,6 +414,19 @@ loop:
 		break;
 
 	case TBRA16:	/* Relative branch or reverse and jump for range */
+
+		/* Algorithm:
+			Pass 0: generate worst case code. We then know things
+				that can safely be turned short because more
+				shortening will only reduce gap
+			Pass 1: generate code case based upon pass 0 but now
+				using short branch conditionals
+			Pass 2: repeat this because pass 1 causes a lot of
+				collapses. Pin down the choices we made.
+			Pass 3: generate code. We don't "fix" any further
+				possible shortenings because we need the
+				addresses in pass 3 to exactly match pass 2
+		*/
 		getaddr(&a1);
 		/* disp may change between pass1 and pass2 but we know it won't
 		   get bigger so we can be sure that we still fit the 8bit disp
@@ -395,13 +434,32 @@ loop:
 		disp = a1.a_value - dot[segment] - 2;
 		/* For pass 0 assume the worst case. Then we optimize on
 		   pass 1 when we know what may be possible */
-		if (pass == 0 || segment_incompatible(&a1) || disp < -128 || disp > 127) {
+		if (pass == 3)
+			c = getnextrel();
+		else {
+			c = 0;
+			/* Cases we know it goes big */
+			if (pass == 0 || segment_incompatible(&a1) || disp < -128 || disp > 127)
+				c = 1;
+			/* On pass 2 we lock down our choices in the table */
+			if (pass == 2)
+				setnextrel(c);
+		}
+		if (c) {
 			outab(opcode^1);	/* Inverted branch */
 			outab(3);		/* Skip over the jump */
 			outab(0x6E);		/* Jump */
 			outraw(&a1);
+//			if (pass)
+//				printf("%x: pass %d far (%d)\n",
+//						dot[segment], pass, disp);
 		} else {
+//			printf("%x: pass %d near (%d)\n",
+//					dot[segment], pass, disp);
 			outab(opcode);
+			/* Should never happen */
+			if (disp < -128 || disp > 127)
+				aerr(BRA_RANGE);
 			outab(disp);
 		}
 		break;
