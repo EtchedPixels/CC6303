@@ -303,3 +303,11 @@ jsr boolne
 jne %1
 =
 jne %1
+
+# Clean up tsx tsx
+
+tsx
+tsx
+=
+tsx
+
