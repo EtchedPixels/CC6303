@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
 		exit(BAD);
 	}
 	syminit();
+	fname = ifn;
 	for (pass=0; pass<3; ++pass) {
 		outpass();
 		line = 0;
