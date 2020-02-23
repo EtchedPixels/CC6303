@@ -423,6 +423,9 @@ static unsigned FunctionParamList (FuncDesc* Func)
 
         }
 
+        /* Use the type of the argument for the push */
+        Flags |= TypeOf (Expr.Type);
+
         /* Load the value into the primary if it is not already there */
         if (CanLoadViaX(Flags, &Expr)) {
             LoadExprX(Flags, &Expr);
@@ -430,9 +433,6 @@ static unsigned FunctionParamList (FuncDesc* Func)
         } else {
             LoadExpr (Flags, &Expr);
         }
-
-        /* Use the type of the argument for the push */
-        Flags |= TypeOf (Expr.Type);
 
         ArgSize = sizeofarg (Flags);
         g_push (Flags, Expr.IVal);

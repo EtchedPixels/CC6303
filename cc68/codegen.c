@@ -792,8 +792,10 @@ void g_getlocal_x (unsigned Flags, int Offs)
     switch (Flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            Internal("Char in getlocal_x");
-            break;
+            if (Flags & CF_FORCECHAR) {
+                Internal("ForceChar in getlocal_x");
+                break;
+            }
 
         case CF_INT:
             AddCodeLine ("ldx $%02X,x", Offs);
