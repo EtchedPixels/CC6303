@@ -39,16 +39,7 @@ static void constant_to_zp(ADDR *ap, int dp)
 		if (ap->a_value > 255)
 			aerr(CONSTANT_RANGE);
 		ap->a_segment = ZP;
-		return;
 	}
-	/* Optimize absolute references to address 0-255 */
-	if (ap->a_segment != ABSOLUTE || ap->a_sym)
-		return;
-	if (ap->a_value > 255)
-		return;
-	/* We will need to do something saner ifwe add 68HC11 */
-	ap->a_segment = ZP;
-	return;
 }
 
 /* Handle the corner case of labels in direct page being used as relative
