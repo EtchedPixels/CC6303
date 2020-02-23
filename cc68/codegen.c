@@ -1817,7 +1817,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
                 if (flags & CF_CONST) {
                     if (val == 1) {
                         AddCodeLine ("dec %s", lbuf);
-                        AddCodeLine ("lda %s", lbuf);
+                        AddCodeLine ("ldab %s", lbuf);
                     } else {
                         AddCodeLine ("ldab %s", lbuf);
                         AddCodeLine ("subb #$%02X", (int)(val & 0xFF));
@@ -3135,7 +3135,7 @@ void g_asr (unsigned flags, unsigned long val)
                 val &= 0x1F;
                 if (val >= 24) {
                     AddCodeLine ("ldx #$0000");
-                    AddCodeLine ("lda @sreg+1");
+                    AddCodeLine ("ldab @sreg+1");
                     if ((flags & CF_UNSIGNED) == 0) {
                         unsigned L = GetLocalLabel();
                         AddCodeLine ("bpl %s", LocalLabelName (L));
