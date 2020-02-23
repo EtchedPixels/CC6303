@@ -266,6 +266,7 @@ void expr3(ADDR *ap, int c)
 	VALUE value;
 	char num[40];
 
+		
 	np1 = &num[0];
 	do {
 		if (isupper(c))
@@ -274,37 +275,44 @@ void expr3(ADDR *ap, int c)
 		c = *ip++;
 	} while (isalnum(c));
 	--ip;
-	switch (*--np1) {
-	case 'h':
+
+	/* The grammar here is ambiguous in the case of $11b which should
+	   be 11B hex, but 11b is 11 boolean. We must therefore handle the
+	   $ case first */
+	if (num[0] == '$') {
+		np2 = &num[1];
 		radix = 16;
-		break;
-	case 'o':
-	case 'q':
-		radix = 8;
-		break;
-	case 'b':
-		radix = 2;
-		break;
-	default:
-		radix = 10;
-		++np1;
-	}
-	np2 = &num[0];
-	value = 0;
-	/* No trailing tag, so look for 0octab, 0xhex and $xxxx */
-	if (radix == 10) {
-		if (*np2 == '0') {
-			radix = 8;
-			np2++;
-			if (*np2 == 'x') {
-				radix = 16;
-				np2++;
-			}
-		} else if (*np2 =='$') {
+	} else {
+		/* Look for trailing information on the radix */
+		switch (*--np1) {
+		case 'h':
 			radix = 16;
-			np2++;
+			break;
+		case 'o':
+		case 'q':
+			radix = 8;
+			break;
+		case 'b':
+			radix = 2;
+			break;
+		default:
+			radix = 10;
+			++np1;
+		}
+		np2 = &num[0];
+		/* No trailing tag, so look for 0octab, 0xhex */
+		if (radix == 10) {
+			if (*np2 == '0') {
+				radix = 8;
+				np2++;
+				if (*np2 == 'x') {
+					radix = 16;
+					np2++;
+				}
+			}
 		}
 	}
+	value = 0;
 	while (np2 < np1) {
 		if ((c = *np2++)>='0' && c<='9')
 			c -= '0';
