@@ -100,7 +100,7 @@ void NotViaX(void)
 void TryViaX(void)
 {
     if (XDepth++ == 0) {
-        printf("Begin try via X\n");
+//        printf("Begin try via X\n");
         XFailure = 0;
         GetCodePos(&XCode);
     }
@@ -113,7 +113,7 @@ void TryViaX(void)
 int EndViaX(void)
 {
     if (--XDepth == 0) {
-        printf("End via X %d\n", XFailure);
+//        printf("End via X %d\n", XFailure);
         if (XFailure) {
             RemoveCode(&XCode);
             return XFailure;
@@ -941,7 +941,6 @@ static void ArrayRef (ExprDesc* Expr)
         ** since we can generate expression+offset.
         */
         if (!ConstBaseAddr) {
-            printf("K2\n");
             RemoveCode (&Mark2);
         } else {
             /* Get an array pointer into the primary */
