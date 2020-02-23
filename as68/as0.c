@@ -7,6 +7,8 @@
  */
 #include	"as.h"
 
+#include <unistd.h>
+
 FILE	*ifp;
 FILE	*ofp;
 FILE	*lfp;
@@ -103,10 +105,15 @@ int main(int argc, char *argv[])
 		}
 		/* Don't continue once we know we failed */
 		if (noobj)
-			exit(noobj);
+			break;
 	}
-	pass = 3;
-	outeof();
+	if (!noobj) {
+		pass = 3;
+		outeof();
+	} else {
+		if (unlink(ofn))
+			perror(ofn);
+	}
 	/* Return an error code if no object was created */
 	exit(noobj);
 }
