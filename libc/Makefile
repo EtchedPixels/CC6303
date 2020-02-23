@@ -1,4 +1,5 @@
-OBJ = strlen.o
+OBJ = bneg.o jumpx.o laddeq.o ladd.o land.o lcmp.o leq.o lge.o lgt.o lle.o llt.o lne.o lor.o lsubeq.o luge.o lugt.o lule.o lult.o lxor.o makebool.o strlen.o swap.o
+
 CRT = crt0.o
 
 all: $(CRT) libc.a
