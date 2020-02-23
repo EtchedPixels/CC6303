@@ -15,6 +15,10 @@ which it could have done so easily, but cc6303 does.
 
 ## Status
 
+The basic structure is now reasonably functional. You can "make" and "make
+install" to get a complete compiler/assembler/linker/tools that appear
+to generate actual binaries.
+
 Simple code appears to be producing valid looking if not very good code.
 Lots of more complicating things will blow up.
 
@@ -23,12 +27,16 @@ Lots of more complicating things will blow up.
 - Strip out lots more unused cc65 code. There is a lot of unused code,
   and a load of dangling header references and so on left to resolve.
 
-- Remove remaining '6502' references
+- Support -lfoo not just -llibfoo.a in the front end. There are other
+  cc'isms we need to address as well.
 
-- Strip out lots of unused options like -o
+- Remove remaining '6502' references.
 
-- Clean up Makefiles and make it build a single set of tools for a target.
-  Right now you need to hand stuff things into /opt/cc6303/bin etc
+- Strip out lots of unused options like -o.
+
+- Maybe float: cc65 lacks float beyond the basic parsing support, so this
+  means extending the back end to handle all the fp cases (probably via
+  stack) and using the long handling paths for the non maths ops.
 
 ## BIG ISSUES
 
@@ -52,9 +60,20 @@ Lots of more complicating things will blow up.
   the function returns void. In those cases we can use D (mostly importantly
   B) to use abx to fix the stack offsets.
 
+- copt has no idea about register usage analysis, dead code elimination etc.
+  We could do far better with a proper processor that understood 680x not
+  just a pattern handler. We fudge it a bit with hints but it's not ideal.
+
+## 6800
+
+The 6800 is not currently supported. It has a few gaps that are awkward to
+address, in particular the fact it lacks PSHX and ABX. The compiler uses the
+fact it can PSHX/PULX a lot to improve 16bit handling, for temporaries and
+for other stuff. Supporting that will not be trivial - and I don't have a
+6800 machine so it's not my problem!
+
 ## IDEAS
 
-- Store 0,0,1 as 3 bytes in DP then we can load/add/sub 0/1 into D and X in
-  less bytes via direct page
-
+Stub code that is a chain of ins/des instructions with labels for each so
+you can jsr to shift the stack by 4-n bytes in the ugly cases.
 
