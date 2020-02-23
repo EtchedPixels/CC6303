@@ -1,41 +1,16 @@
+- cc a non existing C file gives bogus error - need to check cc68 return
+  codes and stuff
 - overlong names clashing in assembler
 
 Libc test compiling
 -------------------
 
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source asctime.c ]
-asctime.c(22): Internal compiler error:
-Code generation messed up: StackPtr is 0, should be -2
-
-Input: if ((ptm->tm_wday >= 0) && (ptm->tm_wday <= 6))
-make[1]: *** [Makefile.6303:108: asctime.o] Error 1
-
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source closedir.c ]
-closedir.c(14): Error: Undefined symbol: 'NULL'
-closedir.c(14): Error: Incompatible types
-closedir.c(22): Internal compiler error:
-g_leave: stack unbalanced
-
-
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source __getgrent.c ]
-__getgrent.c(61): Internal compiler error:
-Code generation messed up: StackPtr is -8, should be -10
-
-Input: return ((void *)0);
-make[1]: *** [Makefile.6303:108: __getgrent.o] Error 1
-
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source __getpwent.c ]
-__getpwent.c(51): Internal compiler error:
-Code generation messed up: StackPtr is -10, should be -12
-
-Input: return ((void *)0);
-make[1]: *** [Makefile.6303:108: __getpwent.o] Error 1
-
+Front end type failures
+-----------------------
 
 Front end: ?: with mix of void * and char * errors wrongly
 (check if was fixed in cc65 as I think it was and if so take fixes)
 
-../tools/syscall_6303
 cc68 -D__STDC__ -c -I../include/ -I../include/6303/ strchr.c
 Last Phase 3
 1:Processing strchr.c 4
@@ -46,7 +21,6 @@ make[1]: *** [Makefile.6303:108: strchr.o] Error 1
 
 Front end - again check with cc65 fixes
 
-
 cc68 -D__STDC__ -c -I../include/ -I../include/6303/ gets.c
 Last Phase 3
 1:Processing gets.c 4
@@ -56,162 +30,51 @@ gets.c(22): Error: Incompatible pointer types
 gets.c(47): Error: Incompatible pointer types
 make[1]: *** [Makefile.6303:108: gets.o] Error 1
 
+[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source getcwd.c ]
+getcwd.c(84): Error: Incompatible pointer types
 
+Stack unbalance (register arguments)
+------------------------------------
 
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ initgroups.c
-Last Phase 3
-1:Processing initgroups.c 4
-2:Processing initgroups.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source initgroups.c ]
-initgroups.c(40): Internal compiler error:
-Code generation messed up: StackPtr is -70, should be -72
-
-Input: (group = __getgrent(grp_fd)) != ((void *)0)) {
-make[1]: *** [Makefile.6303:108: initgroups.o] Error 1
-
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ ltostr.c
-Last Phase 3
-1:Processing ltostr.c 4
-2:Processing ltostr.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source ltostr.c ]
-ltostr.c(16): Internal compiler error:
-Code generation messed up: StackPtr is -2, should be -4
-
-Input: if( radix > 36 || radix < 2 ) return 0;
-make[1]: *** [Makefile.6303:108: ltostr.o] Error 1
-
-
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source putenv.c ]
-putenv.c(34): Internal compiler error:
-Code generation messed up: StackPtr is -6, should be -8
-
-Input: {
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ qsort.c
-Last Phase 3
-1:Processing qsort.c 4
-2:Processing qsort.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source qsort.c ]
-qsort.c(44): Internal compiler error:
-Code generation messed up: StackPtr is -10, should be -12
-
-Input: while ((i < j) && (((*cmp) ((base + i), p)) <= 0))
-make[1]: *** [Makefile.6303:108: qsort.o] Error 1
-
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source readdir.c ]
-readdir.c(16): Internal compiler error:
-Code generation messed up: StackPtr is 0, should be -2
-
-Input: return ((void *)0);
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ strsignal.c
-Last Phase 3
-1:Processing strsignal.c 4
-2:Processing strsignal.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source strsignal.c ]
-strsignal.c(45): Internal compiler error:
-Code generation messed up: StackPtr is 2, should be 0
-
-Input: if (s < 1 || s >= 32)
-
-1:Processing tzset.c 4
-2:Processing tzset.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source tzset.c ]
-tzset.c(74): Internal compiler error:
+curses/refresh.c
+curses/refresh.c(70): Internal compiler error:
 g_leave: stack unbalanced
 
-Input: static char *tzunit(char *in, char *tzstr, long *p, int required)
-make[1]: *** [Makefile.6303:108: tzset.o] Error 1
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ vfprintf.c
-Last Phase 3
-1:Processing vfprintf.c 4
-2:Processing vfprintf.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source vfprintf.c ]
-vfprintf.c(95): Warning: Result of comparison is constant
-vfprintf.c(166): Warning: Result of comparison is constant
-vfprintf.c(228): Internal compiler error:
-Char in getlocal_x
-
-Input: ljustf, sign, pad, width, preci,
-make[1]: *** [Makefile.6303:108: vfprintf.o] Error 1
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ sysconf.c
-Last Phase 3
-1:Processing sysconf.c 4
-2:Processing sysconf.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source sysconf.c ]
-sysconf.c(11): Internal compiler error:
-Code generation messed up: StackPtr is -44, should be -48
-
-Input: pscale = psize/1024;
-
-1:Processing strtol.c 4
-2:Processing strtol.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source strtol.c ]
-strtol.c(95): Internal compiler error:
-Code generation messed up: StackPtr is -4, should be -6
-
-Input: ch -= (ch<='9' ? '0' : 'A'-10);
-
-1:Processing vfscanf.c 4
-2:Processing vfscanf.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source vfscanf.c ]
-vfscanf.c(138): Warning: Result of comparison is constant
-vfscanf.c(195): Internal compiler error:
-Code generation messed up: StackPtr is -173, should be -175
-
-Input: numfmt:while(isspace(c)) { if ((c=fgetc(fp))<1) goto done; };
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ regexp.c
-Last Phase 3
-1:Processing regexp.c 4
-2:Processing regexp.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source regexp.c ]
-regexp.c(482): Internal compiler error:
-Char in getlocal_x
-
-Input: regc(class);
-
-
-1:Processing atol.c 4
-2:Processing atol.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source atol.c ]
-atol.c(22): Internal compiler error:
-g_leave: stack unbalanced
+Caused by register foo * as argument
 
 Input: 
 
-
-
-
-
-(Failure is caused by the error handling - if NULL is defined we are good)
-
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source crypt.c ]
-crypt.c(68): Internal compiler error:
+regexp.c
+regexp.c(729): Internal compiler error:
 g_leave: stack unbalanced
-
-getcwd.c(29): Error: Undefined symbol: 'NULL'
-getcwd.c(29): Warning: Converting integer to pointer without a cast
-getcwd.c(37): Warning: Converting integer to pointer without a cast
-getcwd.c(44): Warning: Converting integer to pointer without a cast
-getcwd.c(49): Warning: Converting integer to pointer without a cast
-getcwd.c(63): Warning: Converting integer to pointer without a cast
-getcwd.c(64): Internal compiler error:
-g_leave: stack unbalanced
-
-Input: static char *recurser(void) 
+Input: static int regtry(regexp *prog, char *string) 
 
 
-(Failure is caused by error handling maybe ? Unchecked)
+FIXED:
 
-Also looks like a compiler bug in the static checking - may be cc65 inherited
-check cc65 fixes in this area
+Mishandling of  < const for char/int.
 
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source getcwd.c ]
-getcwd.c(84): Error: Incompatible pointer types
-getcwd.c(89): Internal compiler error:
-Code generation messed up: StackPtr is 2, should be 0
+asctime.c
+ltostr.c
+__getgrent.c
+__getpwent.c
+initgroups.c
+putenv.c
+qsort.c
+readdir.c
+strsignal.c
+vfscanf.c
 
+
+Mishandling of push of const long
+
+atol.c
+strtol.c
+sysconf.c
+
+Fixed mishandling of char as argument to function
+
+readline.c
+regexp.c (other bugs still)
+tzset.c
+vfprintf.c
