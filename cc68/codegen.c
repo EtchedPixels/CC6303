@@ -4380,7 +4380,7 @@ void g_defdata (unsigned flags, unsigned long val, long offs)
         const char* Label = GetLabelName (flags, val, offs);
 
         /* Labels are always 16 bit */
-        AddDataLine ("\t.addr\t%s", Label);
+        AddDataLine ("\t.word\t%s", Label);
 
     }
 }
