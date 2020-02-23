@@ -1,7 +1,7 @@
 
 all: cc68 as68 copt frontend
 
-.PHONY: cc68 as68 frontend
+.PHONY: cc68 as68 frontend libc
 
 cc68:
 	+(cd common; make)
@@ -9,6 +9,9 @@ cc68:
 
 as68:
 	+(cd as68; make)
+
+libc:
+	+(cd libc; make)
 
 copt: copt.c
 
@@ -20,6 +23,7 @@ clean:
 	(cd cc68; make clean)
 	(cd as68; make clean)
 	(cd frontend; make clean)
+	(cd libc; make clean)
 	rm copt
 
 #
@@ -35,3 +39,5 @@ install:
 	cp copt /opt/cc68/lib
 	cp frontend/cc68 /opt/cc68/bin/
 	cp cc68.rules /opt/cc68/lib
+	cp libc/crt0.o /opt/cc68/lib
+	cp libc/libc.a /opt/cc68/lib
