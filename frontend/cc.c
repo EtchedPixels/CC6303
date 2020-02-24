@@ -135,10 +135,9 @@ static void append_obj(struct objhead *h, char *p, uint8_t type)
 	o->type = type;
 	if (h->tail)
 		h->tail->next = o;
-	else {
-		h->tail = o;
+	else
 		h->head = o;
-	}
+	h->tail = o;
 }
 
 static char *pathmod(char *p, char *f, char *t, int rmif)
