@@ -36,6 +36,7 @@ install:
 	cp as68/as68 /opt/cc68/bin
 	cp as68/ld68 /opt/cc68/bin
 	cp as68/nm68 /opt/cc68/bin
+	cp as68/osize68 /opt/cc68/bin
 	cp copt /opt/cc68/lib
 	cp frontend/cc68 /opt/cc68/bin/
 	cp cc68.rules /opt/cc68/lib
