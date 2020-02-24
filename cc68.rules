@@ -129,10 +129,15 @@ addd #$0001
 =
 addd @one
 
+# We generate clra/clrb in some cases but we can't blindly do this
+# because clra/clrb affects flags differently
 ldd #$0000
 =
-clra
-clrb
+ldd @zero
+
+ldd #$0001
+=
+ldd @one
 
 subd #$0001
 =
@@ -145,6 +150,49 @@ ldx @zero
 ldx #$0001
 =
 ldx @one
+
+#	Branches
+#
+
+%1:
+	jmp %2
+%3:
+	jmp %1
+=
+%1:
+%3:
+	jmp %2
+
+# Review more conditions
+
+jne %1
+jmp %2
+%1:
+=
+jeq %2
+%1:
+
+jeq %1
+jmp %2
+%1:
+=
+jne %2
+%1:
+
+jcc %1
+jmp %2
+%1:
+=
+jcs %2
+%1:
+
+jcs %1
+jmp %2
+%1:
+=
+jcc %2
+%1:
+
 
 # Fix up some of the X cases
 # Push and then invalidate D so can use X
@@ -219,6 +267,18 @@ pshx
 tsx
 ldd %2,x
 
+ldd %1
+pshb
+psha
+clra
+clrb
+tsx
+=
+ldx %1
+pshx
+clra
+clrb
+tsx
 
 # Clean up trailing references from things like p++;
 ldd %1
@@ -279,6 +339,16 @@ invalid X,D,P
 pulx
 ;invalid XDP
 
+ldd %1
+pshb
+psha
+tsx
+ldd %2
+=
+ldx %1
+pshx
+tsx
+ldd %2
 
 # Clean up invalid markers
 invalid D,P
@@ -310,4 +380,219 @@ tsx
 tsx
 =
 tsx
+
+# We generate this sequence to compare
+
+subd #$0000
+=
+subd @zero
+
+subd #$0001
+=
+subd @one
+
+# We have a more general issue of cases where we shouldn't go via the
+# stack at all to address - eg 16bit compare with static. Until we fix
+# the compiler address them here
+
+ldd %1
+pshb
+psha
+ldd %2
+tsx
+subd 1,x
+pulx
+=
+ldd %1
+subd %2
+
+ldd %1
+pshb
+psha
+ldd %2
+tsx
+addd 1,x
+pulx
+=
+ldd %1
+addd %2
+
+ldd %1
+pshb
+psha
+ldd %2
+subd 1,x
+pulx
+=
+ldd %1
+subd %2
+
+ldd %1
+pshb
+psha
+ldd %2
+addd 1,x
+pulx
+=
+ldd %1
+addd %2
+
+
+
+
+# Spot logic operations where we can use x to avoid going over the stack
+
+ldd %1
+pshb
+psha
+ldd %2
+tsx
+=
+ldx %1
+pshx
+ldd %2
+tsx
+
+
+# Repeat clears for 8bit work
+
+clra
+ldab %1
+clra
+=
+clra
+ldab %1
+
+clra
+clrb
+stab %1
+tsx
+ldd %2
+=
+clrb
+stab %1
+tsx
+ldd %2
+
+clra
+clrb
+stab %1
+ldd %2
+=
+clrb
+stab %1
+ldd %2
+
+clra
+clrb
+stab %1
+ldd %2
+=
+clrb
+stab %1
+ldd %2
+
+# Pointer chases that can use X directly
+
+ldd %1
+std @tmp
+ldx @tmp
+ldd %2
+=
+ldx %1
+ldd %2
+
+ldd %1
+std @tmp
+ldx @tmp
+clra
+ldab%2
+=
+ldx %1
+clra
+ldab %2
+
+ldd %1
+pshb
+psha
+std @tmp
+ldx @tmp
+clra
+ldab %2
+=
+ldx %1
+pshx
+clra
+ldab %2
+
+ldd %1
+pshb
+psha
+tsx
+clra
+ldab %2
+pulx
+stab %3
+=
+ldx %1
+pshx
+tsx
+clra
+ldab %2
+pulx
+stab %3
+
+ldd %1
+pshb
+psha
+tsx
+ldd %2
+pulx
+std %3
+=
+ldx %1
+pshx
+tsx
+ldd %2
+pulx
+std %3
+
+ldd %1
+pshb
+psha
+clra
+clrb
+pulx
+=
+ldx %1
+clra
+clrb
+
+ldd %1
+pshb
+psha
+ldd %2
+pulx
+=
+ldx %1
+ldd %2
+
+# Byte increments
+ldd @one
+addb %1
+stab %1
+=
+inc %1
+ldab %1
+clra
+
+# Byte compares
+clra
+ldab %1
+cmpb %2
+ldd %3
+=
+ldab %1
+cmpb %2
+ldd %3
 
