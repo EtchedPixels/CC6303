@@ -579,7 +579,7 @@ void g_leave(void)
 {
     /* Should always be zero */
     if (StackPtr)
-        Internal("g_leave: stack unbalanced");
+        Internal("g_leave: stack unbalanced by %d", StackPtr);
     AddCodeLine("rts");
 }
 
