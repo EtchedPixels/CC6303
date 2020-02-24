@@ -808,10 +808,12 @@ extern	VALUE	dot[NSEGMENT];
 extern  int	segment;
 extern	int	debug_write;
 extern	char	*fname;
+extern  char	*listname;
 extern	int	noobj;
 extern	int	cpu_flags;
 
 extern void passbegin(int pass);
+extern void list_addbyte(uint8_t);
 extern void asmline(void);
 extern void comma(void);
 extern void istuser(ADDR *);

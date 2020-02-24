@@ -14,10 +14,12 @@ FILE	*ofp;
 FILE	*lfp;
 char	eb[NERR];
 char	ib[NINPUT];
+char	lb[NINPUT];
 char	*cp;
 char	*ep;
 char	*ip;
 char	*fname;
+char 	*listname;
 VALUE	dot[NSEGMENT];
 int	segment;
 SYM	*phash[NHASH];
@@ -49,6 +51,43 @@ static char *xstrdup(const char *p)
 	return n;
 }
 
+static int listbytes;
+
+static void list_beginline(void)
+{
+	if (pass !=3 || !lfp)
+		return;
+	strcpy(lb, ib);	/* Save the input buffer */
+	fprintf(lfp, "%1X %04X : ",
+		segment, dot[segment]);
+	listbytes = 0;
+}
+
+void list_addbyte(uint8_t byte)
+{
+	if (pass == 3 && lfp) {
+		/* Deal with wrapping nicely (eg for .ascii) */
+		if (listbytes == 8) {
+			fputs(lb, lfp);
+			strcpy(lb, "...\n");
+			listbytes = 0;
+			fprintf(lfp, "%1X %04X : ",
+				segment, dot[segment]);
+		}
+		listbytes++;
+		fprintf(lfp, "%02X ", byte);
+	}
+}
+
+void list_endline(void)
+{
+	if (pass == 3 && lfp) {
+		while(listbytes++ < 8)
+			fputs("   ", lfp);
+		fputs(lb, lfp);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	char *ifn;
@@ -60,10 +99,13 @@ int main(int argc, char *argv[])
 	int opt;
 
 	/* Lots of options need adding yet */
-	while ((opt = getopt(argc, argv, "o:")) != -1) {
+	while ((opt = getopt(argc, argv, "o:l:")) != -1) {
 		switch (opt) {
 		case 'o':
 			ofn = optarg;
+			break;
+		case 'l':
+			listname = optarg;
 			break;
 		default:
 			usage();
@@ -94,6 +136,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: cannot create.\n", ofn);
 		exit(BAD);
 	}
+	if (listname) {
+		lfp = fopen(listname, "w");
+		if (lfp == NULL) {
+			fprintf(stderr, "%s: cannot create.\n", listname);
+			exit(BAD);
+		}
+	}
+
 	syminit();
 	fname = xstrdup(ifn);
 	for (pass=0; pass<4; ++pass) {
@@ -114,10 +164,12 @@ int main(int argc, char *argv[])
 				fname = xstrdup(p);
 			/* Normal assembly */
 			} else {
+				list_beginline();
 				ep = &eb[0];
 				ip = &ib[0];
 				if (setjmp(env) == 0)
 					asmline();
+				list_endline();
 				++line;
 			}
 		}

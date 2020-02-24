@@ -158,6 +158,7 @@ void outab(uint8_t b)
 	++truesize[segment];
 	if (truesize[segment] == SEGMENT_LIMIT || dot[segment] == SEGMENT_LIMIT)
 		err('o', SEGMENT_OVERFLOW);
+	list_addbyte(b);
 }
 
 void outabchk(uint16_t b)
