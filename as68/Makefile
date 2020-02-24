@@ -1,7 +1,7 @@
 #
 #	Build 6803/68 version of the tools
 #
-all: as68 ld68 nm68
+all: as68 ld68 nm68 osize68
 
 HDR = as.h ld.h obj.h
 
@@ -18,6 +18,9 @@ ld68: $(HDR) ld.o
 nm68: $(HDR) nm.o
 	cc -o nm68 nm.o
 
+osize68: $(HDR) osize.o
+	cc -o osize68 osize.o
+
 clean:
 	rm -f *.o *~
-	rm -f nm68 ld68 as68
+	rm -f nm68 ld68 as68 osize68
