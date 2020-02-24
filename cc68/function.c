@@ -363,6 +363,9 @@ void NewFunc (SymEntry* Func)
     /* Get the function descriptor from the function entry */
     FuncDesc* D = Func->V.F.Func;
 
+
+    SymEntry * Param;
+
     /* Allocate the function activation record for the function */
     CurrentFunc = NewFunction (Func);
 
@@ -418,8 +421,6 @@ void NewFunc (SymEntry* Func)
     /* Setup the stack */
     StackPtr = 0;
 
-#if 0
-    /* FIXME: This one is harder to do right */
     /* Walk through the parameter list and allocate register variable space
     ** for parameters declared as register. Generate code to swap the contents
     ** of the register bank with the save area on the stack.
@@ -430,8 +431,9 @@ void NewFunc (SymEntry* Func)
         /* Check for a register variable */
         if (SymIsRegVar (Param)) {
 
+            /* FIXME: This one is harder to do right */
             /* Allocate space */
-            int Reg = F_AllocRegVar (CurrentFunc, Param->Type);
+            int Reg = -1; //FIXME F_AllocRegVar (CurrentFunc, Param->Type);
 
             /* Could we allocate a register? */
             if (Reg < 0) {
@@ -442,14 +444,14 @@ void NewFunc (SymEntry* Func)
                 Param->V.R.RegOffs = Reg;
 
                 /* Generate swap code */
-                g_swap_regvars (Param->V.R.SaveOffs, Reg, CheckedSizeOf (Param->Type));
+//FIXME         g_swap_regvars (Param->V.R.SaveOffs, Reg, CheckedSizeOf (Param->Type));
             }
         }
 
         /* Next parameter */
         Param = Param->NextSym;
     }
-#endif
+
     /* Need a starting curly brace */
     ConsumeLCurly ();
 
