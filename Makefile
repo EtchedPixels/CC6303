@@ -1,5 +1,5 @@
 
-all: cc68 as68 copt frontend
+all: cc68 as68 copt frontend libc
 
 .PHONY: cc68 as68 frontend libc
 
