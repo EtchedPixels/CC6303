@@ -3333,12 +3333,20 @@ static void hieQuest (ExprDesc* Expr)
             }
 
         } else if (IsClassPtr (Expr2.Type) && IsClassPtr (Expr3.Type)) {
-            /* Must point to same type */
-            if (TypeCmp (Indirect (Expr2.Type), Indirect (Expr3.Type)) < TC_EQUAL) {
-                Error ("Incompatible pointer types");
+            /* If either side is a void * then we are good and the type is
+               the other side, or void * if both are void * */
+            /* FIXME: should we handle this here or is TypeCmp wrong ? */
+            if (IsTypeVoid(Indirect(Expr2.Type)))
+                ResultType = Expr3.Type;
+            else if (IsTypeVoid(Indirect(Expr3.Type)))
+                ResultType = Expr2.Type;
+            /* Otherwise must point to same type */
+            else {
+                if (TypeCmp (Indirect (Expr2.Type), Indirect (Expr3.Type)) < TC_EQUAL)
+                    Error ("Incompatible pointer types");
+                /* Result has the common type */
+                ResultType = Expr2.Type;
             }
-            /* Result has the common type */
-            ResultType = Expr2.Type;
         } else if (IsClassPtr (Expr2.Type) && Expr3IsNULL) {
             /* Result type is pointer, no cast needed */
             ResultType = Expr2.Type;
