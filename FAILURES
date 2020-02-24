@@ -7,6 +7,23 @@ Libc test compiling
 
 None at code generation
 
+Kernel test compiling
+---------------------
+
+(error handling ?)
+2:Processing syscall_fs.c 4
+[/opt/cc68/lib/cc68 -I /rotating/home/alan/UZI/External/FUZIX/Kernel/cpu-6303 -I /rotating/home/alan/UZI/External/FUZIX/Kernel/platform-rc2014-6303 -I /rotating/home/alan/UZI/External/FUZIX/Kernel/include -r --add-source syscall_fs.c ]
+syscall_fs.c(405): Error: Undefined symbol: 'ssize_t'
+syscall_fs.c(405): Error: Illegal function call
+syscall_fs.c(405): Error: Variable identifier expected
+syscall_fs.c(405): Error: ')' expected
+syscall_fs.c(405): Error: ';' expected
+syscall_fs.c(405): Error: Expression expected
+syscall_fs.c(405): Warning: Statement has no effect
+syscall_fs.c(405): Error: ';' expected
+syscall_fs.c(422): Internal compiler error:
+g_leave: stack unbalanced by 2
+
 
 FIXED:
 
