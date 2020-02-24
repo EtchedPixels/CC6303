@@ -271,6 +271,9 @@ loop:
 	case TEXPORT:
 		getid(id, getnb());
 		sp = lookup(id, uhash, 1);
+		/* FIXME: make a new common error, and push to other ports */
+		if (((sp->s_type & TMMODE) == TNEW) && pass == 3)
+			aerr(ADDR_REQUIRED);
 		sp->s_type |= TPUBLIC;
 		break;
 		/* .code etc */
