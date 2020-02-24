@@ -26,6 +26,15 @@ void outpass(void)
 
 	passbegin(pass);
 
+	/* Pass 2 locks everything down so we can then set up truesize. For
+	   a 2 pass (0/3 CPU) we are fine as pass 0 will lock down and truesize
+	   is already clear */
+
+	if (pass == 2) {
+		for (i = 0; i < NSEGMENT; i++)
+			truesize[i] = 0;
+	}
+
 	if (pass == 3) {
 		/* Lay the file out */
 		for (i = 0; i < NSEGMENT; i++) {
