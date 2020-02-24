@@ -5,49 +5,7 @@
 Libc test compiling
 -------------------
 
-Front end type failures
------------------------
-
-Front end: ?: with mix of void * and char * errors wrongly
-(check if was fixed in cc65 as I think it was and if so take fixes)
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ strchr.c
-Last Phase 3
-1:Processing strchr.c 4
-2:Processing strchr.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source strchr.c ]
-strchr.c(17): Error: Pointer types differ in type qualifiers
-make[1]: *** [Makefile.6303:108: strchr.o] Error 1
-
-Front end - again check with cc65 fixes
-
-cc68 -D__STDC__ -c -I../include/ -I../include/6303/ gets.c
-Last Phase 3
-1:Processing gets.c 4
-2:Processing gets.c 4
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source gets.c ]
-gets.c(22): Error: Incompatible pointer types
-gets.c(47): Error: Incompatible pointer types
-make[1]: *** [Makefile.6303:108: gets.o] Error 1
-
-[/opt/cc68/lib/cc68 -I ../include/ -I ../include/6303/ -D __STDC__ -r --add-source getcwd.c ]
-getcwd.c(84): Error: Incompatible pointer types
-
-Stack unbalance (register arguments)
-------------------------------------
-
-curses/refresh.c
-curses/refresh.c(70): Internal compiler error:
-g_leave: stack unbalanced
-
-Caused by register foo * as argument
-
-Input: 
-
-regexp.c
-regexp.c(729): Internal compiler error:
-g_leave: stack unbalanced
-Input: static int regtry(regexp *prog, char *string) 
+None at code generation
 
 
 FIXED:
@@ -78,3 +36,23 @@ readline.c
 regexp.c (other bugs still)
 tzset.c
 vfprintf.c
+
+Fixed ?: with mix of void * and char *
+
+gets.c
+
+Pedantic But Correct (Fixed Library Code)
+
+Should cast const char * to char * on returns
+
+strchr
+strrchr
+
+Fixed (for now) by correcting register param disable
+
+curses/refresh.c
+regexp.c (but other bug)
+
+Fixed (incorrect Bcc out of range)
+
+regexp.s
