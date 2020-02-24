@@ -39,7 +39,7 @@ static int do_osize(FILE *fp, const char *name)
 
 int main(int argc, char *argv[])
 {
-    int n;
+    int n = 1;
     int err = 0;
 
     arg0 = argv[0];
