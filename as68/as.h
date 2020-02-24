@@ -457,7 +457,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 
 typedef	uint16_t	VALUE;		/* For symbol values */
 
-#define NSEGMENT 5			/* # of segments */
+#define NSEGMENT 7			/* # of segments */
 
 #define ARCH OA_6800
 #define ARCH_FLAGS OF_BIGENDIAN
