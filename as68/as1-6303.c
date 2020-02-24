@@ -407,7 +407,9 @@ loop:
 		getaddr(&a1);
 		/* FIXME: do wo need to check this is constant ? */
 		disp = a1.a_value - dot[segment]-2;
-		if (disp<-128 || disp>127 || segment_incompatible(&a1))
+		/* Only on pass 3 do we know the correct offset for a forward branch
+		   to a label where other stuff with Jcc has been compacted */
+		if (pass == 3 && (disp<-128 || disp>127 || segment_incompatible(&a1)))
 			aerr(BRA_RANGE);
 		outab(opcode);
 		outab(disp);
@@ -450,12 +452,7 @@ loop:
 			outab(3);		/* Skip over the jump */
 			outab(0x6E);		/* Jump */
 			outraw(&a1);
-//			if (pass)
-//				printf("%x: pass %d far (%d)\n",
-//						dot[segment], pass, disp);
 		} else {
-//			printf("%x: pass %d near (%d)\n",
-//					dot[segment], pass, disp);
 			outab(opcode);
 			/* Should never happen */
 			if (disp < -128 || disp > 127)
