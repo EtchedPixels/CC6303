@@ -82,8 +82,8 @@ void outsegment(int seg)
 {
 	/* Seek to the current writing address for this segment */
 	if (pass == 3) {
-		fprintf(stderr, "Writing segment %d at %ld\n",
-			seg, (long)segbase[seg]);
+//		fprintf(stderr, "Writing segment %d at %ld\n",
+//			seg, (long)segbase[seg]);
 		fseek(ofp, segbase[seg], SEEK_SET);
 	}
 }
