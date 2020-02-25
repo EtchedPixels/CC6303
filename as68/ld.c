@@ -56,7 +56,7 @@ static struct symbol *symhash[NHASH];	/* Symbol has tables */
 static uint16_t base[OSEG];		/* Base of each segment */
 static uint16_t size[OSEG];		/* Size of each segment */
 static uint16_t align = 1;		/* Alignment */
-
+static uint16_t baseset[OSEG];		/* Did the user force this one */
 #define LD_RELOC	0		/* Output a relocatable binary */
 #define LD_RFLAG	1		/* Output an object module */
 #define LD_ABSOLUTE	2		/* Output a linked binary */
@@ -298,7 +298,7 @@ static struct symbol *find_alloc_symbol(struct object *o, uint8_t type, const ch
 	/* Two definitions.. usually bad but allow duplicate absolutes */
 	if (((s->type | type) & S_SEGMENT) != ABSOLUTE || s->value != value) {
 		/* FIXME: expand to report files somehow ? */
-		fprintf(stderr, "%s: multiply defined.\n", id);
+		fprintf(stderr, "%.16s: multiply defined.\n", id);
 	}
 	/* Duplicate absolutes - just keep current entry */
 	return s;
@@ -364,7 +364,7 @@ static void print_symbol(struct symbol *s, FILE *fp)
 		if (s->type & S_PUBLIC)
 			c = toupper(c);
 	}
-	fprintf(fp, "%04X %c %s\n", s->value, c, s->name);
+	fprintf(fp, "%04X %c %.16s\n", s->value, c, s->name);
 }
 
 /*
@@ -390,9 +390,6 @@ static void compatible_obj(struct objhdr *oh)
 	if (obj_flags != -1 && oh->o_flags != obj_flags) {
 		fprintf(stderr, "Mixed object types not supported.\n");
 		exit(1);
-	}
-	if (oh->o_flags & OF_BIGENDIAN) {
-		fprintf(stderr, "Warning: Big endian not tested.\n");
 	}
 	obj_flags = oh->o_flags;
 }
@@ -456,11 +453,11 @@ restart:
 	sp = o->syment;
 	for (i = 0; i < nsym; i++) {
 		type = fgetc(fp);
-		if (!(type & S_UNKNOWN) && (type & S_SEGMENT) > ZP)
-			error("bad symbol");
 		fread(name, 16, 1, fp);
 		name[16] = 0;
 		value = fgetc(fp) + (fgetc(fp) << 8);
+		if (!(type & S_UNKNOWN) && (type & S_SEGMENT) >= OSEG)
+			error("bad symbol");
 		/* In library mode we look for a symbol that means we will load
 		   this object - and then restart wih lib = 0 */
 		if (lib) {
@@ -518,7 +515,7 @@ static void set_segment_bases(void)
 	}
 
 	/* We now know where to put the binary */
-	if (ldmode != LD_RFLAG) {
+	if (ldmode == LD_RELOC) {
 		/* Creating a binary - put the segments together */
 		if (split_id)
 			base[2] = 0;
@@ -529,9 +526,33 @@ static void set_segment_bases(void)
 				error("image too large");
 		}
 		base[3] = base[2] + size[2];
-
+	} else {
+		/* FIXME: some kind of link scripts one day ? */
+		/* Where to put stuff. Try and be helpful. This is a shade
+		   Fuzix oriented */
+		/* Default data after code */
+		if (!baseset[2]) {
+			base[2] = ((base[1] + size[1] + align - 1)/align) * align;
+			if (base[2] < base[1])
+				error("image too large");
+		}
+		/* BSS after data */
+		if (!baseset[3]) {
+			base[3] = base[2] + size[2];
+			if (base[3] < base[2])
+				error("image too large");
+		}
+		/* ZP we leave alone */
+		/* Discard after BSS */
+		if (!baseset[5]) {
+			base[5] = base[3] + size[3];
+			if (base[5] < base[3])
+				error("image too large");
+		}
+		/* Common we can't really do much to guess a layout */
+	}
+	if (ldmode != LD_RFLAG) {
 		/* ZP if any is assumed to be set on input */
-
 		if (base[3] < base[2] || base[3] + size[3] < base[3])
 			error("image too large");
 		/* Whoopee it fits */
@@ -684,7 +705,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 		if (code & REL_SIMPLE) {
 			uint8_t seg = code & S_SEGMENT;
 			/* Check entry is valid */
-			if (seg == ABSOLUTE || seg > ZP || size > 2)
+			if (seg == ABSOLUTE || seg >= OSEG || size > 2)
 				error("invalid reloc");
 			/* If we are not building an absolute then keep the tag */
 			if (ldmode != LD_ABSOLUTE) {
@@ -698,9 +719,13 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 			/* Relocate the value versus the new segment base and offset of the
 			   object */
 			r = target_get(o, size, ip);
+//			fprintf(stderr, "Target is %x, Segment %d base is %x\n", 
+//				r, seg, o->base[seg]);
 			r += o->base[seg];
-			if (overflow && (r < o->base[seg] || (size == 1 && r > 255)))
+			if (overflow && (r < o->base[seg] || (size == 1 && r > 255))) {
+				fprintf(stderr, "%d width relocation offset %d does not fit.\n", size, r);
 				error("relocation exceeded");
+			}
 			if (high && ldmode == LD_ABSOLUTE) {
 				r >>= 8;
 				size = 1;
@@ -723,7 +748,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 				if (r >= o->nsym)
 					error("invalid reloc sym");
 				s = o->syment[r];
-				fprintf(stderr, "relocating sym %d (%s : %x)\n", r, s->name, s->type);
+//				fprintf(stderr, "relocating sym %d (%s : %x)\n", r, s->name, s->type);
 				if (s->type & S_UNKNOWN) {
 					if (ldmode != LD_RFLAG) {
 						if (processing)
@@ -758,12 +783,14 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 						else
 							off -= dot;
 						if (overflow && size == 1 && (off < -128 || off > 127))
-							error("relocation exceeded");
+							error("byte relocation exceeded");
 						r = (uint16_t)off;
 					} else {
 						/* Check again */
-						if (overflow && (r < s->value || (size == 1 && r > 255)))
+						if (overflow && (r < s->value || (size == 1 && r > 255))) {
+							fprintf(stderr, "width %d relocation offset %d, %d, %d does not fit.\n", size, r-s->value, s->value, r);
 							error("relocation exceeded");
+						}
 					}
 					/* If we are not fully resolving then turn this into a
 					   simple relocation */
@@ -813,6 +840,10 @@ static void write_stream(FILE * op, int seg)
 		if (verbose)
 			printf("Writing %s#%ld:%d\n", o->path, o->off, seg);
 		xfseek(ip, o->off + o->oh.o_segbase[seg]);
+		if (verbose)
+			printf("%s:Segment %d file seek base %d\n",
+				o->path,
+				seg, o->oh.o_segbase[seg]);
 		dot = o->base[seg];
 		/* In absolute mode we place segments wherever they should
 		   be in the binary space */
@@ -870,12 +901,21 @@ static void write_binary(FILE * op, FILE *mp)
 	write_stream(op, DATA);
 	/* Absolute images may contain things other than code/data/bss */
 	if (ldmode == LD_ABSOLUTE) {
-		for (i = 4; i < OSEG; i++)
+		for (i = 4; i < OSEG; i++) {
 			write_stream(op, i);
+		}
 	}
-	else if (!strip) {
-		hdr.o_symbase = ftell(op);
-		write_symbols(op);
+	else {
+		for (i = 4; i < OSEG; i++) {
+			if (size[i]) {
+				fprintf(stderr, "Unsupported data in non-standard segments.\n");
+				break;
+			}
+		}
+		if (!strip) {
+			hdr.o_symbase = ftell(op);
+			write_symbols(op);
+		}
 	}
 	hdr.o_dbgbase = ftell(op);
 	hdr.o_magic = MAGIC_OBJ;
@@ -961,11 +1001,12 @@ static void add_object(const char *name, off_t off, int lib)
 int main(int argc, char *argv[])
 {
 	int opt;
+	int i;
 	FILE *bp, *mp = NULL;
 
 	arg0 = argv[0];
 
-	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:A:B:C:D:")) != -1) {
+	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:A:B:C:D:S:X:Z:")) != -1) {
 		switch (opt) {
 		case 'r':
 			ldmode = LD_RFLAG;
@@ -1000,20 +1041,29 @@ int main(int argc, char *argv[])
 			if (align == 0)
 				align = 1;
 			break;
-		case 'B':
+		case 'B':	/* BSS */
 			base[3] = xstrtoul(optarg);
+			baseset[3] = 1;
 			break;
-		case 'C':
+		case 'C':	/* CODE */
 			base[1] = xstrtoul(optarg);
+			baseset[1] = 1;
 			break;
-		case 'D':
+		case 'D':	/* DATA */
 			base[2] = xstrtoul(optarg);
+			baseset[2] = 1;
 			break;
-		case 'X':
-			base[4] = xstrtoul(optarg);
+		case 'S':	/* Shared/Common */
+			base[6] = xstrtoul(optarg);
+			baseset[6] = 1;
 			break;
-		case 'S':
+		case 'X':	/* DISCARD */
 			base[5] = xstrtoul(optarg);
+			baseset[5] = 1;
+			break;
+		case 'Z':	/* ZP / DP */
+			base[4] = xstrtoul(optarg);
+			baseset[4] = 1;
 			break;
 		default:
 			fprintf(stderr, "%s: name ...\n", argv[0]);
@@ -1022,6 +1072,20 @@ int main(int argc, char *argv[])
 	}
 	if (outname == NULL)
 		outname = "a.out";
+
+	if (ldmode != LD_ABSOLUTE) {
+		for (i = 0; i < OSEG; i++) {
+			if (baseset[i]) {
+				fprintf(stderr, "%s: cannot set addresses except in absolute mode.\n", argv[0]);
+				exit(1);
+			}
+		}
+	}
+	if (ldmode == LD_ABSOLUTE && split_id) {
+		fprintf(stderr, "%s: split I/D absolute is not yet supported.\n");
+		/* TODO */
+		exit(1);
+	}
 
 	while (optind < argc) {
 		/* FIXME: spot libraries and handle here */
