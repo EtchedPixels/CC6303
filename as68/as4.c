@@ -39,7 +39,7 @@ void outpass(void)
 		/* Lay the file out */
 		for (i = 0; i < NSEGMENT; i++) {
 			segbase[i] = base;
-			if (i != BSS && i != ZP) {
+			if (i != BSS) {
 				obh.o_segbase[i] = base;
 				base += segsize[i] + 2; /* 2 for the EOF mark */
 			}
@@ -81,8 +81,11 @@ void outabsolute(int addr)
 void outsegment(int seg)
 {
 	/* Seek to the current writing address for this segment */
-	if (pass == 3)
+	if (pass == 3) {
+		fprintf(stderr, "Writing segment %d at %ld\n",
+			seg, (long)segbase[seg]);
 		fseek(ofp, segbase[seg], SEEK_SET);
+	}
 }
 
 /*
@@ -107,8 +110,6 @@ static void check_store_allowed(uint8_t segment, uint16_t value)
 		return;
 	if (segment == BSS)
 		err('b', DATA_IN_BSS);
-	if (segment == ZP)
-		err('z', DATA_IN_ZP);
 }
 
 /*
@@ -296,23 +297,22 @@ static void numbersymbols(void)
  */
 void outeof(void)
 {
+	int i;
+
 	/* We don't do the final write out if there was an error. That
 	   leaves the magic wrong on the object file so it can't be used */
 	if (noobj || pass < 3)
 		return;
 
-	segment = ABSOLUTE;
-	outsegment(ABSOLUTE);
-	outbyte(REL_ESC);
-	outbyte(REL_EOF);
-	segment = CODE;
-	outsegment(CODE);
-	outbyte(REL_ESC);
-	outbyte(REL_EOF);
-	segment = DATA;
-	outsegment(DATA);
-	outbyte(REL_ESC);
-	outbyte(REL_EOF);
+	for (i = 0; i < NSEGMENT; i++) {
+		/* The BSS is not written out */
+		if (i == BSS)
+			continue;
+		segment = i;
+		outsegment(i);
+		outbyte(REL_ESC);
+		outbyte(REL_EOF);
+	}
 	writesymbols(uhash, ofp);
 	rewind(ofp);
 	obh.o_magic = MAGIC_OBJ;
@@ -323,11 +323,11 @@ void outeof(void)
 
 /*
  * Output a byte and track our position. For BSS we care about sizes
- * only. ZP is similar but not yet really used.
+ * only.
  */
 void outbyte(uint8_t b)
 {
-	if (pass == 3 && segment != BSS && segment != ZP)
+	if (pass == 3 && segment != BSS)
 		putc(b, ofp);
 	segbase[segment]++;
 	segsize[segment]++;
