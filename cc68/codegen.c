@@ -2281,7 +2281,11 @@ void g_push (unsigned flags, unsigned long val)
                 /* FIXME: inline */
                 NotViaX();
                 InvalidateX();
-                AddCodeLine ("jsr pusheax");
+                AddCodeLine ("pshb");
+                AddCodeLine ("psha");
+                /* Could go via D if it helps other stuff */
+                AddCodeLine ("ldx @sreg");
+                AddCodeLine ("pshx");
                 break;
 
             default:
@@ -2553,6 +2557,11 @@ void g_add (unsigned flags, unsigned long val)
 
 
 
+/* TODO: We can maybe evaluate this better for consts by adding the
+   negation of the const. Check if this ever happens or the higher level
+   code generation fixes it first.
+   For oper cases it's probably faster to do the negation but that's
+   in the library anyway */
 void g_sub (unsigned flags, unsigned long val)
 /* Primary = TOS - Primary */
 {
@@ -3729,7 +3738,7 @@ void g_lt (unsigned flags, unsigned long val)
             /* Give a warning in some special cases */
             if (val == 0) {
                 Warning ("Condition is never true");
-                AddCodeLine ("jsr return0");
+                AddCodeLine ("ldd @zero");
                 return;
             }
 
@@ -3859,6 +3868,30 @@ void g_lt (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     } else {
+        if (flags & CF_UNSIGNED) {
+            switch (flags & CF_TYPEMASK) {
+                    case CF_CHAR:
+                        if (flags & CF_FORCECHAR) {
+                            AddCodeLine("pula");
+                            AddCodeLine("sba");
+                            AddCodeLine("ldb #0");
+                            AddCodeLine("rolb");
+                            pop (flags);
+                            return;
+                        }
+                    case CF_INT:
+                        InvalidateX();
+                        AddCodeLine ("subd 1,x");
+                        AddCodeLine ("pulx");
+                        AddCodeLine ("ldd @zero");
+                        AddCodeLine ("rolb");
+                        /* Check direction - may need to swap bit 0 over */
+                        pop (flags);
+                        return;
+            }
+        } else {
+                /* Signed: TODO bvc/bvs based inlines */
+        }
     }
 
     /* Use long way over the stack */
@@ -4041,7 +4074,7 @@ void g_gt (unsigned flags, unsigned long val)
                         } else {
                             /* Never true */
                             Warning ("Condition is never true");
-                            AddCodeLine ("jsr return0");
+                            AddCodeLine ("ldd @zero");
                         }
                     } else {
                         if ((long) val < 0x7F) {
@@ -4052,7 +4085,7 @@ void g_gt (unsigned flags, unsigned long val)
                         } else {
                             /* Never true */
                             Warning ("Condition is never true");
-                            AddCodeLine ("jsr return0");
+                            AddCodeLine ("ldd @zero");
                         }
                     }
                     return;
@@ -4076,7 +4109,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("jsr return0");
+                        AddCodeLine ("ldd @zero");
                     }
                 } else {
                     /* Signed compare */
@@ -4085,7 +4118,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("jsr return0");
+                        AddCodeLine ("ldd @zero");
                     }
                 }
                 return;
@@ -4107,7 +4140,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("jsr return0");
+                        AddCodeLine ("ldd @zero");
                     }
                 } else {
                     /* Signed compare */
@@ -4116,7 +4149,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("jsr return0");
+                        AddCodeLine ("ldd @zero");
                     }
                 }
                 return;
