@@ -1,6 +1,6 @@
 
 	.code
-	.export toseqeax
+	.export tosgteax
 
 tosgteax:
 	jsr toslcmp

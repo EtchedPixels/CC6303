@@ -8,7 +8,7 @@
 
 bnegax:	tsta
 	bne ret0
-nega:	tstb
+bnega:	tstb
 	bne ret0
 	ldd @one
 	rts
