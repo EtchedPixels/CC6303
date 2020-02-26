@@ -360,7 +360,7 @@ static void print_symbol(struct symbol *s, FILE *fp)
 	if (s->type & S_UNKNOWN)
 		c = 'U';
 	else {
-		c = "acdb"[s->type & S_SEGMENT];
+		c = "acdbzxs7"[s->type & S_SEGMENT];
 		if (s->type & S_PUBLIC)
 			c = toupper(c);
 	}
