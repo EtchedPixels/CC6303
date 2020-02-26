@@ -62,6 +62,11 @@ static void reloc_seg(int n)
     relbuf[6] = "ACDBZXS7???????U"[n];
 }
 
+static void reloc_size(int n)
+{
+    relbuf[5] = "0123456789ABCDEF"[n];
+}
+
 static void reloc_value(int fd, int size)
 {
     int n;
@@ -134,6 +139,7 @@ static int dump_data(const char *p, int fd)
             c = nextbyte(fd);
         }
         size = ((c & S_SIZE) >> 4) + 1;
+        reloc_size(size);
         if (c & REL_SIMPLE) {
             reloc_type("SEG");
             reloc_seg(c & S_SEGMENT);
