@@ -275,7 +275,8 @@ char *etext[] = {
 	"data in direct page",		/* 26 */
 	"segment conflict",		/* 27 */
 	"unsupported by this CPU",	/* 28 */
-	"too many Jcc instructions"	/* 29 */
+	"too many Jcc instructions",	/* 29 */
+	"invalid addressing mode"	/* 30 */
 };
 
 /*

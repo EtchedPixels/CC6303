@@ -18,7 +18,7 @@ static unsigned int nextrel;
 void passbegin(int pass)
 {
 	cputype = 6803;
-	segment = 0;
+	segment = 1;		/* Default to code */
 	if (pass == 3)
 		nextrel = 0;
 }
@@ -343,9 +343,21 @@ loop:
 
 	case TXE:
 		getaddr(&a1);
-		if ((a1.a_type & TMADDR) != TINDEX)
+		switch(a1.a_type & TMADDR) {
+		case TINDEX:
 			opcode += 0x10;
-		outab(opcode);
+			outab(opcode);
+			outab(a1.a_value);
+			break;
+		case TDIRECT:
+		case TIMMED:
+			aerr(INVALIDAMODE);
+		default:
+			outab(opcode);
+			constify(&a1);
+			istuser(&a1);
+			outraw(&a1);
+		}
 		break;
 
 	case TDIXE:
@@ -370,6 +382,7 @@ loop:
 			outab(a1.a_value);
 			break;
 		default:
+			outab(opcode + 0x30);
 			/* An address */
 			constify(&a1);
 			istuser(&a1);
@@ -399,6 +412,7 @@ loop:
 			break;
 		default:
 			/* An address */
+			outab(opcode + 0x30);
 			constify(&a1);
 			istuser(&a1);
 			outraw(&a1);

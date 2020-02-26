@@ -557,6 +557,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	SEGMENT_CLASH	27
 #define BADCPU		28
 #define TOOMANYJCC	29
+#define INVALIDAMODE	30
 
 #elif TARGET_Z8
 
