@@ -53,7 +53,6 @@ void outpass(void)
 		obh.o_dbgbase = 0;	/* for now */
 		/* Number the symbols for output */
 		numbersymbols();
-		segment = ABSOLUTE;
 		outsegment(segment);
 	}
 }
