@@ -404,7 +404,9 @@ loop:
 			break;
 		case TDIRECT:
 			outab(opcode + 0x10);
-			outab(a1.a_value);
+			constify(&a1);
+			istuser(&a1);
+			outrab(&a1);
 			break;
 		case TINDEX:
 			outab(opcode + 0x20);
