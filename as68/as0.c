@@ -21,7 +21,7 @@ char	*ip;
 char	*fname;
 char 	*listname;
 VALUE	dot[NSEGMENT];
-int	segment;
+int	segment = 1;
 SYM	*phash[NHASH];
 SYM	*uhash[NHASH];
 int	pass;
