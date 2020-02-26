@@ -22,16 +22,16 @@ tosmodax:
 	anda #$7F		; make positive
 	jsr div16x16		; do the unsigned divide
 				; D = quotient, X = remainder
-	stx @temp		; save remainder whilst we fix up the sign
+	stx @tmp		; save remainder whilst we fix up the sign
 	pula			; sign of the dividend
 signfix:
 	bita #$80		; negative ?
 	beq dd_unsigned
-	ldd @temp		; Dividend is signed, fix up remainder
+	ldd @tmp		; Dividend is signed, fix up remainder
 	oraa #$80		; Force negative
 	jmp pop2
 dd_unsigned:
-	ldd @temp		; Will be unsigned
+	ldd @tmp		; Will be unsigned
 	jmp pop2
 	
 
@@ -46,7 +46,7 @@ tosdivax:
 	anda #$7F		; make positive
 	jsr div16x16		; do the unsigned divide
 				; D = quotient, X = remainder
-	std @temp		; save quotient whilst we fix up the sign
+	std @tmp		; save quotient whilst we fix up the sign
 	pula			; sign of the dividend
 	tsx
 	eora 1,x		; A bit 7 is now the xor of the signs
