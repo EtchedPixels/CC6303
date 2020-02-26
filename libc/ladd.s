@@ -7,8 +7,8 @@
 	.export tosaddeax
 
 tosadd0ax:
-	clr	@sreg
-	clr	@sreg+1
+	clr	sreg
+	clr	sreg+1
 tosaddeax:
 	addd	3,x
 	std	@tmp

@@ -23,7 +23,7 @@ laddeqa:
 	ldd 3,x		; do the low 16bits
 	addd @tmp
 	bcc l1
-	inc @sreg	; carry - we don't have abcd
+	inc sreg	; carry - we don't have abcd
 l1:
 	std 3,x
 	ldd 1,x

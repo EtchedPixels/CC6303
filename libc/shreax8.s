@@ -12,6 +12,6 @@ shreax8:
 	psha
 	ldaa @sreg
 	staa @sreg+1
-	clr @sreg
+	clr sreg
 	pula
 	rts

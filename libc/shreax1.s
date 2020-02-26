@@ -11,8 +11,8 @@ shreax1:
 	ldd @sreg
 	lsrd
 	std @sreg
-	ror @tmp1
-	ror @tmp1+1
+	ror tmp1
+	ror tmp1+1
 	ldd @tmp1
 	rts
 

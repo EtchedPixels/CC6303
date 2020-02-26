@@ -6,8 +6,8 @@
 	.code
 
 asreax1:
-	asr @sreg
-	ror @sreg+1
+	asr sreg
+	ror sreg+1
 	rora
 	rorb
 	rts

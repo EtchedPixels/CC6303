@@ -9,8 +9,8 @@
 	.export tosxoreax
 
 tosxor0ax:
-	clr	@sreg
-	clr	@sreg+1
+	clr	sreg
+	clr	sreg+1
 ;
 ;	xor D and @sreg with the top of stack (1,X as called)
 ;

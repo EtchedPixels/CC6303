@@ -20,7 +20,7 @@ lsubeqa:
 	ldd 3,x		; do the low 16bits
 	subd @tmp
 	bcc l1
-	inc @sreg	; borrow - we don't have sbcd
+	inc sreg	; borrow - we don't have sbcd
 l1:
 	std 3,x
 	ldd 1,x
