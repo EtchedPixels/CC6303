@@ -11,9 +11,9 @@
 
 #include	"as.h"
 
-static uint16_t segsize[NSEGMENT];
-static uint16_t truesize[NSEGMENT];
-static off_t segbase[NSEGMENT];
+static uint16_t segsize[OSEG];
+static uint16_t truesize[OSEG];
+static off_t segbase[OSEG];
 
 static struct objhdr obh;
 
@@ -31,13 +31,13 @@ void outpass(void)
 	   is already clear */
 
 	if (pass == 2) {
-		for (i = 0; i < NSEGMENT; i++)
+		for (i = 0; i < OSEG; i++)
 			truesize[i] = 0;
 	}
 
 	if (pass == 3) {
 		/* Lay the file out */
-		for (i = 0; i < NSEGMENT; i++) {
+		for (i = 0; i < OSEG; i++) {
 			segbase[i] = base;
 			if (i != BSS) {
 				obh.o_segbase[i] = base;
@@ -303,7 +303,7 @@ void outeof(void)
 	if (noobj || pass < 3)
 		return;
 
-	for (i = 0; i < NSEGMENT; i++) {
+	for (i = 0; i < OSEG; i++) {
 		/* The BSS is not written out */
 		if (i == BSS)
 			continue;

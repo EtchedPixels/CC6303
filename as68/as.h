@@ -10,6 +10,8 @@
 #include	<ctype.h>
 #include	<setjmp.h>
 
+#include	"obj.h"
+
 /*
  * Table sizes, etc.
  */
@@ -32,8 +34,6 @@
 #ifdef TARGET_Z80
 
 typedef	uint16_t	VALUE;		/* For symbol values */
-
-#define NSEGMENT 4			/* # of segments */
 
 #define ARCH OA_8080
 #define ARCH_FLAGS 0
@@ -161,8 +161,6 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 
 typedef	uint16_t	VALUE;		/* For symbol values */
 
-#define NSEGMENT 5			/* # of segments */
-
 #define ARCH OA_6502
 #define ARCH_FLAGS 0
 #define ARCH_CPUFLAGS OA_6502_BCD	/* For now until CPU type properly settable */
@@ -267,8 +265,6 @@ typedef	uint32_t	VALUE;		/* For symbol values */
 
 #define SEGMENT_LIMIT	0x10000		/* bytes */
 
-#define NSEGMENT 5			/* # of segments */
-
 #define ARCH OA_DGNOVA
 #define ARCH_FLAGS OF_WORDMACHINE
 #define ARCH_CPUFLAGS 0
@@ -352,8 +348,6 @@ typedef	uint32_t	VALUE;		/* For symbol values */
 #elif TARGET_6809
 
 typedef	uint16_t	VALUE;		/* For symbol values */
-
-#define NSEGMENT 4			/* # of segments */
 
 #define ARCH OA_6809
 #define ARCH_FLAGS OF_BIGENDIAN
@@ -456,8 +450,6 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #elif TARGET_6303
 
 typedef	uint16_t	VALUE;		/* For symbol values */
-
-#define NSEGMENT 7			/* # of segments */
 
 #define ARCH OA_6800
 #define ARCH_FLAGS OF_BIGENDIAN
@@ -563,8 +555,6 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 
 typedef	uint16_t	VALUE;		/* For symbol values */
 
-#define NSEGMENT 5			/* # of segments */
-
 #define ARCH OA_Z8
 #define ARCH_FLAGS 0
 #define ARCH_CPUFLAGS 0			/* For now until CPU type properly settable */
@@ -655,8 +645,6 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #elif TARGET_1802
 
 typedef	uint16_t	VALUE;		/* For symbol values */
-
-#define NSEGMENT 5			/* # of segments */
 
 #define ARCH OA_1802
 #define ARCH_FLAGS OF_BIGENDIAN
@@ -806,7 +794,7 @@ extern	SYM	*phash[];
 extern	SYM	*uhash[];
 extern	int	lflag;
 extern	jmp_buf	env;
-extern	VALUE	dot[NSEGMENT];
+extern	VALUE	dot[OSEG];
 extern  int	segment;
 extern	int	debug_write;
 extern	char	*fname;

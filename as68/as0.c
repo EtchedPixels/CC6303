@@ -5,8 +5,7 @@
  *
  * FIXME: normal Unix as option parsing.
  */
-#include	"as.h"
-
+#include "as.h"
 #include <unistd.h>
 
 FILE	*ifp;
@@ -20,7 +19,7 @@ char	*ep;
 char	*ip;
 char	*fname;
 char 	*listname;
-VALUE	dot[NSEGMENT];
+VALUE	dot[OSEG];
 int	segment = 1;
 SYM	*phash[NHASH];
 SYM	*uhash[NHASH];
