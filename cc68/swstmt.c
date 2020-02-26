@@ -170,9 +170,8 @@ void SwitchStatement (void)
     ** carry the label), add a jump to the exit. If it is useless, the
     ** optimizer will remove it later.
     */
-    if (!HaveBreak) {
+    if (!HaveBreak)
         g_jump (ExitLabel);
-    }
 
     /* Remember the current position */
     GetCodePos (&SwitchCodeStart);

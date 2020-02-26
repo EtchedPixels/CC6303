@@ -163,6 +163,8 @@ void DoLabel (void)
     /* Emit the jump label */
     CodeLabel* L = CS_AddLabel (CS->Code, LocalLabelName (Entry->V.L.Label));
 
+    g_defcodelabel(Entry->V.L.Label);
+
     if (Entry->V.L.IndJumpFrom) {
         CollAppend (&L->JumpFrom, Entry->V.L.IndJumpFrom);
     }
