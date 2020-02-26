@@ -1,3 +1,6 @@
+#ifndef _OBJ_H
+#define _OBJ_H
+
 #define MAGIC_OBJ		0x3D1A
 #define MAGIC_OBJ_SWAPPED	0x1A3D
 
@@ -106,3 +109,5 @@ struct objhdr
 /* Special cases 8+ don't exist as real segments */
 #define PCREL		14		/* assumed signed */
 /* and 15 is 'any' */
+
+#endif
