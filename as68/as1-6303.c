@@ -345,7 +345,6 @@ loop:
 		getaddr(&a1);
 		switch(a1.a_type & TMADDR) {
 		case TINDEX:
-			opcode += 0x10;
 			outab(opcode);
 			outab(a1.a_value);
 			break;
@@ -353,6 +352,7 @@ loop:
 		case TIMMED:
 			aerr(INVALIDAMODE);
 		default:
+			opcode += 0x10;
 			outab(opcode);
 			constify(&a1);
 			istuser(&a1);
