@@ -18,7 +18,7 @@ ldaa #-1 tab
 
 Probably all the ldd statements everywhere would want to become
 
-	LoadDConst(value)
+	LoadDConst(value, preserve_carry)
 	LoadDViaX(value)
 
 and churn out the right per CPU code, ditto some other cases.
@@ -46,14 +46,13 @@ but still not pretty
 
 Various other chunks of code need to move between X and D. These should
 already do the right thing because when you can't work via X the same mess
-is present on 6803, and only 6303 has xgdx
-
+is present on 6803, and only 6303 has xgdx. With some peephole rules a
+surprisingly large number of these go away.
 
 The painful stuff is dealing with all the code that uses 16bit ops for
 add/sub/etc as each will need an alternative, or in some cases for size
 probably a helper jsr. A lot of it doesn't bloat much but becomes add/adc
 etc.
-
 
 Stack offsets are uglier because there is no ABX. That means that if it's
 not within the ,X range you have to do it the hard way and can't use tsx abx

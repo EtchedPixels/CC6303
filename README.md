@@ -34,12 +34,20 @@ Lots of more complicating things will blow up.
 
 - Strip out lots of unused options like -o.
 
+- Make embedding C source into asm as comments work for debugging
+
+- Allow the code segment to be set so code can be compiled into other
+  segments like .discard
+
 - The assembler uses 15 char names internally. The compiler does not. This
   leads to asm errors when the symbols clash.
 
 - Maybe float: cc65 lacks float beyond the basic parsing support, so this
   means extending the back end to handle all the fp cases (probably via
   stack) and using the long handling paths for the non maths ops.
+
+- Teach as68 to behave like a classic unix assembler. Then go fix up the
+  Fuzix makefiles to match.
 
 ## BIG ISSUES
 
@@ -48,7 +56,7 @@ Lots of more complicating things will blow up.
   tell the expression evaluation "try and evaluate this into X without using
   D". In practice that means simple constants and stack offsets. That will
   improve some handling of helpers. We can't do that much with it because
-  we need to be in D for maths.
+  we need to be in D for maths. Right now the worst of this is peepholed.
 
 - Fetch pointers via X when we can, especially on 6803. In particular also
   deal with pre/post-inc of statics (but not alas pre/post inc locals) with
