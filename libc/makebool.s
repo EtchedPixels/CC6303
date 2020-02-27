@@ -17,6 +17,11 @@
 	.export booluge
 	.export boolugt
 
+;
+;	Turn  val op test into 1 for true 0 for false. Ensure the Z flag
+;	is appropriately set
+;
+
 booleq:
 	bne	ret0
 ret1:
@@ -28,29 +33,31 @@ ret0:
 	clra
 	clrb
 	rts
-boolle:
-	beq	ret1
+
 boollt:
-	blt	ret1
-	clra
-	clrb
+	beq	ret0
+boolle:
+	bgt	ret0
+	ldd	@one
 	rts
+
 boolgt:
 	beq	ret0
-boolge:	bge	ret1
-	clra
-	clrb
+boolge:	blt	ret0
+	ldd	@one
 	rts
-boolule:
+
+booluge:
 	beq	ret1
-boolult:
+boolugt:
 	bcc	ret1
 	clra
 	clrb
 	rts
-boolugt:
-	beq	ret0
-booluge:			; use C flag
+
+boolule:
+	beq	ret1
+boolult:			; use C flag
 	ldd	@zero
 	rolb
 	rts
