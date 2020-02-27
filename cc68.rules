@@ -250,10 +250,12 @@ addd %2
 std %1
 pula
 pulb
+ldd %3
 =
 ldd %1
 addd %2
 std %1
+ldd %3
 
 # Optimize a few pull sequences where we can see X is not live
 
