@@ -35,6 +35,7 @@ extern void AppendCode(const char *txt);
 extern void PrintCode(void);
 extern void PushCode(void);
 extern void PopCode(void);
+extern void PopCodeTail(void);
 extern void AppendROData(const char *txt);
 extern void PrintROData(void);
 extern void AppendData(const char *txt);

@@ -561,8 +561,9 @@ void g_importmainargs (void)
 /*                          Function entry and exit                          */
 /*****************************************************************************/
 
+static int varargs;
 
-void g_enter (const char *name)
+void g_enter (const char *name, unsigned flags, unsigned argsize)
 /* Function prologue */
 {
     push (CF_INT);		/* Return address */
@@ -570,6 +571,11 @@ void g_enter (const char *name)
     AddCodeLine("_%s:",name);
     /* We have no valid X state on entry */
     InvalidateX();
+    varargs = !(flags & CF_FIXARGC);
+    /* FIXME: we really want to fold the magic around varargs into the
+       normal stack management */
+    if (varargs)
+        AddCodeLine("pshb");
 }
 
 
@@ -580,6 +586,10 @@ void g_leave(void)
     /* Should always be zero */
     if (StackPtr)
         Internal("g_leave: stack unbalanced by %d", StackPtr);
+    /* FIXME: we really want to fold the magic around varargs into the
+       normal stack management */
+    if (varargs)
+        AddCodeLine("ins");
     AddCodeLine("rts");
 }
 
@@ -2332,16 +2342,18 @@ void g_swap (unsigned flags)
 
 
 
-void g_call (const char* Label)
+void g_call (unsigned Flags, const char* Label, int ArgSize)
 /* Call the specified subroutine name */
 {
     InvalidateX();
+    if ((Flags & CF_FIXARGC) == 0)
+        AddCodeLine("ldab #$%02X", ArgSize);
     AddCodeLine ("jsr _%s", Label);
 }
 
 
 
-void g_callind (unsigned Flags, int Offs)
+void g_callind (unsigned Flags, int Offs, int ArgSize)
 /* Call subroutine indirect */
 {
     InvalidateX();
@@ -2349,12 +2361,16 @@ void g_callind (unsigned Flags, int Offs)
         /* Address is in d */
         if ((Flags & CF_USINGX) == 0)
             DToX();
+        if ((Flags & CF_FIXARGC) == 0)
+            AddCodeLine("ldab #$%02X", ArgSize);
         AddCodeLine ("jsr ,x");
     } else {
         /* The address is on stack, offset is on Val */
         Offs -= StackPtr;
         /* FIXME: check flag type is right here */
         GenOffset(Flags, Offs, 1, 1);
+        if ((Flags & CF_FIXARGC) == 0)
+            AddCodeLine("ldab #$%02X", ArgSize);
         AddCodeLine("jsr jumpx");
         /* jumpx is just jmp ,x" */
     }

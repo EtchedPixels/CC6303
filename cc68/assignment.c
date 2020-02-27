@@ -144,9 +144,7 @@ void Assignment (ExprDesc* Expr)
 
                 /* Load the size of the struct into X */
                 g_push (CF_INT | CF_USINGX | CF_UNSIGNED | CF_CONST, CheckedSizeOf (ltype));
-                /* Call the object copier.. we have the args reversed to memcpy for now
-                   so it can't be the same FIXME */
-                g_call (Func_memcpy);
+                g_call (CF_FIXARGC, Func_memcpy, 6);
                 /* Now drop the stacked arguments */
                 g_drop(6, 0);
             }

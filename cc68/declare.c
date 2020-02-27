@@ -1364,13 +1364,15 @@ static FuncDesc* ParseFuncDecl (void)
     ** there's one additional byte (the arg size).
     */
     Offs = 2;		/* Because of the return */
-    Sym = F->FirstParam;
+    Sym = F->LastParam;
+    if (F->Flags & FD_VARIADIC)
+        Offs++;		/* There is an argument size byte hack */
     while (Sym) {
         unsigned Size = CheckedSizeOf (Sym->Type);
         Sym->V.Offs = Offs;
         Offs += Size;
         F->ParamSize += Size;
-        Sym = Sym->NextSym;
+        Sym = Sym->PrevSym;
     }
 
     /* Leave the lexical level remembering the symbol tables */

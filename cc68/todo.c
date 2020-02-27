@@ -170,29 +170,69 @@ void PrintCode(void)
     TextListRemoveRange(&CodeHead, &CodeHead);
 }
 
+static void DumpCode(char *info, TextList *t)
+{
+#if 0
+    int n = 0;
+    TextList *p = t->next;
+    fprintf(stderr, "%s: \n", info);
+    while(n++ < 10 && p != t) {
+     fprintf(stderr, "|%s\n", p->str);
+     p = p->next;
+    }
+    fprintf(stderr, "---\n");
+#endif
+}
+
 void PushCode(void)
 {
     TextList *n = xmalloc(sizeof(TextList));
+    DumpCode("Pushed ", &CodeHead);
     *n = CodeHead;
+    /* Fix back pointers to match the copy instead */
+    n->next->prev = n;
+    n->prev->next = n;
     n->stack = CodeStack;
     CodeStack = n;
     CodeHead.prev = CodeHead.next = &CodeHead;
 }
 
+/* Pop a block of text and place it before the existing text */
 void PopCode(void)
 {
     TextList *t;
     if (CodeStack == NULL)
         Internal ("code pop without push");
+    DumpCode("Popping before ", &CodeHead);
     t = CodeStack;
+    DumpCode("With ", t);
     CodeStack = CodeStack->stack;
     /* We restore the stacked code and append the new to it */
     /* Chain the new code onto the old */
-    t->prev->next = CodeHead.next;
-    CodeHead.next->prev = t->prev;
-    /* The stacked code goes at the front */
-    CodeHead.next = t->next;
-    /* The end of chain pointers are still valid */
+    t->prev->next = CodeHead.next;	/* Link the old code onto the end of the stacked */
+    CodeHead.next->prev = t->prev;	/* Fix the back pointer */
+    CodeHead.next = t->next;		/* Link the popped code to the front */
+    t->next->prev = &CodeHead;		/* End the list */
+    free(t);
+}
+
+/* Pop a block of text and place it afte the existing text */
+void PopCodeTail(void)
+{
+    TextList *t;
+    if (CodeStack == NULL)
+        Internal ("code pop without push");
+    DumpCode("Popping after ", &CodeHead);
+    t = CodeStack;
+    DumpCode("With ", t);
+    CodeStack = CodeStack->stack;
+    /* We restore the stacked code and append it to the old */
+    /* The stacked code goes at the end */
+    CodeHead.prev->next = t->next;	/* Link it onto the end */
+    t->next->prev = CodeHead.prev;	/* Fix the back pointer */
+    CodeHead.prev = t->prev;		/* Fix the head back pointer */
+    t->prev->next = &CodeHead;		/* End of list */
+    /* The start of chain pointers are still valid */
     free(t);
 }
 

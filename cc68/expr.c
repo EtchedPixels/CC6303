@@ -351,11 +351,11 @@ static unsigned FunctionParamList (FuncDesc* Func)
     int       Ellipsis    = 0;  /* Function is variadic */
 
     /* Parse the actual parameter list */
-    
-    /* For each argument we need to divert the flow and then at
-       the end of the parameter list undivert the flow that number of
-       times so that we push the arguments in normal C order not smallC
-       order */
+
+    /* It would be nice to reverse the order of arguments but to do that
+       we would need to know the stack frame size in advance and work
+       back. We can't do that for varargs with the current parser because
+       we simply don't know how many arguments there are until too late. */    
     while (CurTok.Tok != TOK_RPAREN) {
 
         unsigned Flags;
@@ -394,7 +394,8 @@ static unsigned FunctionParamList (FuncDesc* Func)
             Ellipsis = 1;
         }
 
-        PushCode();
+        /* Stack the previous argument computation for re-ordering */
+//        PushCode();
 
         /* Evaluate the parameter expression */
         /* FIXME: we play a bit fast and loose here. We ought to adjust
@@ -436,6 +437,9 @@ static unsigned FunctionParamList (FuncDesc* Func)
 
         ArgSize = sizeofarg (Flags);
         g_push (Flags, Expr.IVal);
+        /* Hint to the optimizer that it can optimize use of X and D */
+        g_statement();
+        
         /* Calculate total parameter size */
         ParamSize += ArgSize;
 
@@ -453,8 +457,11 @@ static unsigned FunctionParamList (FuncDesc* Func)
 
     /* Now unwind the Code stack so that we end up with the arguments
        stacked in conventional C order */
-    while(ParamCount--)
-        PopCode();
+//    if (ParamCount) {
+//        while(--ParamCount)
+//            PopCodeTail();
+//        PopCode();
+//    }
 
     /* The function returns the size of all parameters pushed onto the stack.
     ** However, if there are parameters missing (which is an error and was
@@ -463,9 +470,6 @@ static unsigned FunctionParamList (FuncDesc* Func)
     ** later. So we correct the value by the parameters that should have been
     ** pushed to avoid an internal compiler error. Since an error was
     ** generated before, no code will be output anyway.
-    **
-    ** FIXME: as we are moving to C calling convention that problem should
-    ** be about to go away
     */
     return ParamSize + FrameSize;
 }
@@ -568,7 +572,7 @@ static void FunctionCall (ExprDesc* Expr)
         }
 
             /* Call the function */
-        g_callind (TypeOf (Expr->Type+1), PtrOffs);
+        g_callind (TypeOf (Expr->Type+1), PtrOffs, ParamSize);
 
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
@@ -584,7 +588,7 @@ static void FunctionCall (ExprDesc* Expr)
 
     } else {
         /* Normal function */
-        g_call ((const char*) Expr->Name);
+        g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize);
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
         StackPtr += ParamSize;

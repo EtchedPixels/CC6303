@@ -243,7 +243,7 @@ void g_scale (unsigned flags, long val);
 
 
 
-void g_enter (const char *name);
+void g_enter (const char *name, unsigned flags, unsigned argsize);
 /* Function prologue */
 
 void g_leave (void);
@@ -384,10 +384,10 @@ void g_swap (unsigned flags);
 ** of *both* values (must have same size).
 */
 
-void g_call (const char* Label);
+void g_call (unsigned Flags, const char* Label, int ArgSize);
 /* Call the specified subroutine name */
 
-void g_callind (unsigned Flags, int Offs);
+void g_callind (unsigned Flags, int Offs, int ArgSize);
 /* Call subroutine indirect */
 
 void g_jump (unsigned Label);
