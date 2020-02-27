@@ -195,6 +195,7 @@ jcc %2
 
 
 # Fix up some of the X cases
+
 # Push and then invalidate D so can use X
 ldd %1
 pshb
@@ -203,18 +204,6 @@ invalid X,D,P
 =
 ldx %1
 pshx
-invalid X,D,P
-
-# Push and then invalidate D so can use X single arg entry
-ldd %1
-pshb
-psha
-des
-invalid X,D,P
-=
-ldx %1
-pshx
-des
 invalid X,D,P
 
 # Push and then invalidate D so can use X single arg entry, with label
@@ -229,56 +218,15 @@ pshx
 %2:
 invalid X,D,P
 
-ldd %1
-pshb
-psha
-des
-%2:
-invalid X,D,P
-=
-ldx %1
-pshx
-des
-%2:
-invalid X,D,P
-
-# Pattern sometimes found when setting up from stack
-ldd %1,x
-pshb
-psha
-des
-tsx
-ldd %2,x
-=
-ldx %1,x
-pshx
-des
-tsx
-ldd %2,x
-
-ldd %1,x
-pshb
-psha
-tsx
-ldd %2,x
-=
-ldx %1,x
-pshx
-tsx
-ldd %2,x
+# Stack via X
 
 ldd %1
 pshb
 psha
-clra
-clrb
-tsx
+invalid X,D,P
 =
 ldx %1
 pshx
-clra
-clrb
-tsx
 
 # Clean up trailing references from things like p++;
 ldd %1
@@ -595,4 +543,15 @@ ldd %3
 ldab %1
 cmpb %2
 ldd %3
+
+# Call cleanups(no internal X using helpers start with an underscore) 
+
+ldd %1
+pshb
+psha
+jsr _%2
+=
+ldx %1
+pshx
+jsr _%2
 
