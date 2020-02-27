@@ -3867,8 +3867,7 @@ void g_lt (unsigned flags, unsigned long val)
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
                         AddCodeLine ("aslb");          /* Bit 7 -> carry */
-                        AddCodeLine ("clra");
-                        AddCodeLine ("clrb");
+                        AddCodeLine ("ldd #$0000");
                         AddCodeLine ("rolb");
                         return;
                     }
@@ -3877,8 +3876,7 @@ void g_lt (unsigned flags, unsigned long val)
                 case CF_INT:
                     /* Just check the high byte */
                     AddCodeLine ("cmpa #$80");           /* Bit 7 -> carry */
-                    AddCodeLine ("clra");
-                    AddCodeLine ("clrb");
+                    AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
                     return;
 
@@ -3886,8 +3884,7 @@ void g_lt (unsigned flags, unsigned long val)
                     /* Just check the high byte */
                     AddCodeLine ("ldab @sreg+1");
                     AddCodeLine ("aslb");              /* Bit 7 -> carry */
-                    AddCodeLine ("clra");
-                    AddCodeLine ("clrb");
+                    AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
                     return;
 
@@ -3904,12 +3901,7 @@ void g_lt (unsigned flags, unsigned long val)
                     if (flags & CF_FORCECHAR) {
                         Label = GetLocalLabel ();
                         AddCodeLine ("subb #%02X", val);
-                        AddCodeLine ("bvc %s", LocalLabelName (Label));
-                        AddCodeLine ("eorb #$80");
-                        g_defcodelabel (Label);
-                        AddCodeLine ("aslb");          /* Bit 7 -> carry */
-                        AddCodeLine ("ldd #$0000");
-                        AddCodeLine ("rolb");
+                        AddCodeLine ("jsr boollt");
                         return;
                     }
                     /* FALLTHROUGH */
@@ -3918,12 +3910,7 @@ void g_lt (unsigned flags, unsigned long val)
                     /* Do a subtraction */
                     Label = GetLocalLabel ();
                     AddCodeLine ("subd #$%04X", val);
-                    AddCodeLine ("bvc %s", LocalLabelName (Label));
-                    AddCodeLine ("eora #$80");
-                    g_defcodelabel (Label);
-                    AddCodeLine ("asla");          /* Bit 7 -> carry */
-                    AddCodeLine ("ldd #$0000");
-                    AddCodeLine ("rolb");
+                    AddCodeLine ("jsr boollt");
                     return;
 
                 case CF_LONG:
@@ -3949,8 +3936,7 @@ void g_lt (unsigned flags, unsigned long val)
                         if (flags & CF_FORCECHAR) {
                             AddCodeLine("pula");
                             AddCodeLine("sba");
-                            AddCodeLine("ldb #0");
-                            AddCodeLine("rolb");
+                            AddCodeLine("jsr boolult");
                             pop (flags);
                             return;
                         }
@@ -3958,14 +3944,10 @@ void g_lt (unsigned flags, unsigned long val)
                         InvalidateX();
                         AddCodeLine ("subd 1,x");
                         AddCodeLine ("pulx");
-                        AddCodeLine ("ldd @zero");
-                        AddCodeLine ("rolb");
-                        /* Check direction - may need to swap bit 0 over */
+                        AddCodeLine ("jsr boolult");
                         pop (flags);
                         return;
             }
-        } else {
-                /* Signed: TODO bvc/bvs based inlines */
         }
     }
 
@@ -4094,7 +4076,10 @@ void g_le (unsigned flags, unsigned long val)
                     offs = GenTSXByte(1);
                     AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
-                    AddCodeLine("jsr boolle");
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine("jsr boolule");
+                    else
+                        AddCodeLine("jsr boolle");
                     pop (flags);
                     return;
                 }
@@ -4104,7 +4089,10 @@ void g_le (unsigned flags, unsigned long val)
                 offs = GenTSXByte(1);
                 AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
-                AddCodeLine ("jsr boolle");
+                if (flags & CF_UNSIGNED)
+                    AddCodeLine("jsr boolule");
+                else
+                    AddCodeLine ("jsr boolle");
                 pop (flags);
                 return;
         }
@@ -4251,7 +4239,10 @@ void g_gt (unsigned flags, unsigned long val)
                     offs = GenTSXByte(1);
                     AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
-                    AddCodeLine("jsr boolgt");
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr boolugt");
+                    else
+                        AddCodeLine ("jsr boolgt");
                     pop (flags);
                     return;
                 }
@@ -4261,7 +4252,10 @@ void g_gt (unsigned flags, unsigned long val)
                 offs = GenTSXByte(1);
                 AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
-                AddCodeLine ("jsr boolgt");
+                if (flags & CF_UNSIGNED)
+                     AddCodeLine ("jsr boolugt");
+                else
+                     AddCodeLine ("jsr boolgt");
                 pop (flags);
                 return;
         }
@@ -4291,8 +4285,6 @@ void g_ge (unsigned flags, unsigned long val)
         /* Because the handling of the overflow flag is too complex for
         ** inlining, we can handle only unsigned compares, and signed
         ** compares against zero here.
-        *
-        * FIXME: 6502 C is backwards to 680x
         */
         if (flags & CF_UNSIGNED) {
 
@@ -4311,8 +4303,7 @@ void g_ge (unsigned flags, unsigned long val)
                         /* Do a subtraction. Condition is true if carry set */
                         AddCodeLine ("cmpb #$%02X", (unsigned char)val);
                         /* Do not usr clr as it clears carry */
-                        AddCodeLine ("ldd @zero");
-                        AddCodeLine ("rolb");
+                        AddCodeLine ("jsr booluge");
                         return;
                     }
                     /* FALLTHROUGH */
@@ -4320,8 +4311,7 @@ void g_ge (unsigned flags, unsigned long val)
                 case CF_INT:
                     /* Do a subtraction. Condition is true if carry set */
                     AddCodeLine ("subd #$%04X", (unsigned short)val);
-                    AddCodeLine ("ldd @zero");
-                    AddCodeLine ("rolb");
+                    AddCodeLine ("jsr booluge");
                     return;
 
                 case CF_LONG:
@@ -4331,8 +4321,7 @@ void g_ge (unsigned flags, unsigned long val)
                     AddCodeLine ("sbcb #$%02X", (unsigned char)(val >> 16));
                     AddCodeLine ("ldab @sreg+1");
                     AddCodeLine ("sbcb #$%02X", (unsigned char)(val >> 24));
-                    AddCodeLine ("ldd #$0000");
-                    AddCodeLine ("rolb");
+                    AddCodeLine ("jsr booluge");
                     return;
 
                 default:
@@ -4375,29 +4364,22 @@ void g_ge (unsigned flags, unsigned long val)
 
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
-                        Label = GetLocalLabel ();
                         AddCodeLine ("subb #$%02X", (unsigned char)val);
-                        AddCodeLine ("bvs %s", LocalLabelName (Label));
-                        AddCodeLine ("eorb #$80");
-                        g_defcodelabel (Label);
-                        AddCodeLine ("aslb");          /* Bit 7 -> carry */
-                        AddCodeLine ("clra");
-                        AddCodeLine ("clrb");
-                        AddCodeLine ("rolb");
+                        if (flags & CF_UNSIGNED)
+                            AddCodeLine ("jsr booluge");
+                        else
+                            AddCodeLine ("jsr boolge");
                         return;
                     }
                     /* FALLTHROUGH */
 
                 case CF_INT:
                     /* Do a subtraction */
-                    Label = GetLocalLabel ();
                     AddCodeLine ("subd #$%04X", (unsigned short)val);
-                    AddCodeLine ("bvs %s", LocalLabelName (Label));
-                    AddCodeLine ("eora #$80");
-                    g_defcodelabel (Label);
-                    AddCodeLine ("asla");          /* Bit 7 -> carry */
-                    AddCodeLine ("ldd #$0000");
-                    AddCodeLine ("rolb");
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr booluge");
+                    else
+                        AddCodeLine ("jsr boolge");
                     return;
 
                 case CF_LONG:
