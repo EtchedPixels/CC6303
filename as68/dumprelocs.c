@@ -112,7 +112,7 @@ static int dump_data(const char *p, int fd)
         }
         c = nextbyte(fd);
         if (c == REL_REL) {
-            byte(c);
+            byte(REL_ESC);
             continue;
         }
         reloc_init();

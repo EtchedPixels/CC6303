@@ -667,11 +667,13 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 			return;
 		}
 		/* Escaped 0xDA byte. Just copy it over, and if in absolute mode
-		   remove the escaped byte */
+		   remove the REL_REL marker */
 		if (code == REL_REL) {
-			if (ldmode != LD_ABSOLUTE)
+			if (ldmode != LD_ABSOLUTE) {
 				fputc(REL_ESC, op);
-			fputc(REL_REL, op);
+				fputc(REL_REL, op);
+			} else
+				fputc(REL_ESC, op);
 			dot++;
 			continue;
 		}
