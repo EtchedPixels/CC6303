@@ -163,16 +163,55 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
 /* X versus S tracking */
 
 unsigned XState;
+
 #define XSTATE_VALID	0x8000
 
-static int GenTSX(void)
+/* Force a TSX and reset the tracking state */
+static void ForceTSX(void)
 {
-    if (!(XState & XSTATE_VALID)) {
         AddCodeLine("tsx");
         XState = XSTATE_VALID;
+}
+
+/* Return the offset between S and X, if need be issue a TSX. The
+   caller is assumed to be able to handle any positive offset needed
+   and generate appropriate code */
+static int GenTSX(int low)
+{
+    int8_t n = (int8_t)(XState & 0xFF);
+
+    /* If our TSX value is below the desired range then it's cheaper
+       to TSX. */
+    if (!(XState & XSTATE_VALID) || n < low) {
+        ForceTSX();
         return 0;
     }
-    return (int8_t)(XState & 0xFF);
+    return n;
+}
+
+/* The caller wants to do a byte operation on low,S, where it knows that
+   low,S is in reach if X = S. Provide the relevant offset if we can still
+   stay within reach but if not or if we need to index negative then do
+   a TSX */
+static int GenTSXByte(int low)
+{
+    int n = GenTSX(low);
+    if (n + low > 255) {
+        ForceTSX();
+        return 0;
+    }
+    return n;
+}
+
+/* Ditto but the caller also wants low+1,S */
+static int GenTSXWord(int low)
+{
+    int n = GenTSX(low);
+    if (n + low > 254) {
+        ForceTSX();
+        return 0;
+    }
+    return n;
 }
 
 static void ModifyX(int Bias)
@@ -257,7 +296,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
     }
 
     /* Generate the tsx if needed */
-    curoffs = GenTSX();
+    curoffs = GenTSX(Offs);
 
     /* We are in range of n,x so do nothing but tsx */
     if (curoffs + Offs + s <= 255 && !exact)
@@ -267,7 +306,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
        cheaper to TSX than adjust */
     if (Offs + s <= 255 && !exact) {
         InvalidateX();
-        curoffs = GenTSX();
+        curoffs = GenTSX(0);
         return curoffs + Offs;
     }
 
@@ -434,11 +473,15 @@ unsigned sizeofarg (unsigned flags)
 }
 
 
-
+/* We need to track the state of X versus S here. As we push and pop
+   we may well be able to supress the use of TSX but we can't assume the
+   offset versus S is the same any more */
 int pop (unsigned flags)
 /* Pop an argument of the given size */
 {
-    return StackPtr += sizeofarg (flags);
+    unsigned s = sizeofarg (flags);
+    ModifyX(s);
+    return StackPtr += s;
 }
 
 
@@ -446,7 +489,9 @@ int pop (unsigned flags)
 int push (unsigned flags)
 /* Push an argument of the given size */
 {
-    return StackPtr -= sizeofarg (flags);
+    unsigned s = sizeofarg (flags);
+    ModifyX(-s);
+    return StackPtr -= s;
 }
 
 
@@ -2173,8 +2218,6 @@ static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
         g_getimmed (Flags, Val, 0);
     }
 
-    /* Output the operation: We set X up so that ,s is usable on stack ops */
-    GenTSX();
     AddCodeLine ("jsr %s", *Subs);
     InvalidateX();
 
@@ -2547,20 +2590,21 @@ void g_add (unsigned flags, unsigned long val)
                 oper(flags, val, ops);
         }
     } else {
+        int offs;
         /* We can optimize some of these in terms of 1,x */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    GenTSX();
-                    AddCodeLine ("addb 1,x");
+                    offs = GenTSXByte(1);
+                    AddCodeLine ("addb %d,x", offs + 1);
                     AddCodeLine ("ins");
                     pop(flags);
                     return;
                 }
             /* Fall through */
             case CF_INT:
-                GenTSX();
-                AddCodeLine ("addd 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("addd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 InvalidateX();
                 pop(flags);
@@ -2825,6 +2869,7 @@ void g_mod (unsigned flags, unsigned long val)
 void g_or (unsigned flags, unsigned long val)
 /* Primary = TOS | Primary */
 {
+    int offs;
     static const char* const ops[4] = {
         "tosorax", "tosorax", "tosoreax", "tosoreax"
     };
@@ -2887,17 +2932,17 @@ void g_or (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
-                GenTSX();
-                AddCodeLine ("orab 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("orab %d,x", offs + 1 );
                 AddCodeLine ("ins");
                 pop(flags);
                 return;
             }
             /* Fall through */
         case CF_INT:
-            GenTSX();
-            AddCodeLine ("orab 1,x");
-            AddCodeLine ("oraa 2,x");
+            offs = GenTSXWord(1);
+            AddCodeLine ("orab %d,x", offs + 1);
+            AddCodeLine ("oraa %d,x", offs + 2);
             AddCodeLine ("pulx");
             InvalidateX();
             pop(flags);
@@ -2914,6 +2959,7 @@ void g_or (unsigned flags, unsigned long val)
 void g_xor (unsigned flags, unsigned long val)
 /* Primary = TOS ^ Primary */
 {
+    int offs;
     static const char* const ops[4] = {
         /* Only tosxoreax should ever be generated */
         "tosxorax", "tosxorax", "tosxoreax", "tosxoreax"
@@ -2974,17 +3020,17 @@ void g_xor (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
-                GenTSX();
-                AddCodeLine ("eorb 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("eorb %d,x", offs + 1);
                 AddCodeLine ("ins");
                 pop(flags);
                 return;
             }
             /* Fall through */
         case CF_INT:
-            GenTSX();
-            AddCodeLine ("eorb 1,x");
-            AddCodeLine ("eora 2,x");
+            offs = GenTSXWord(1);
+            AddCodeLine ("eorb %d,x", offs + 1);
+            AddCodeLine ("eora %d,x", offs + 2);
             AddCodeLine ("pulx");
             InvalidateX();
             pop(flags);
@@ -3000,6 +3046,7 @@ void g_xor (unsigned flags, unsigned long val)
 void g_and (unsigned Flags, unsigned long Val)
 /* Primary = TOS & Primary */
 {
+    int offs;
     static const char* const ops[4] = {
         "tosandax", "tosandax", "tosandeax", "tosandeax"
     };
@@ -3081,17 +3128,17 @@ void g_and (unsigned Flags, unsigned long Val)
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (Flags & CF_FORCECHAR) {
-                GenTSX();
-                AddCodeLine ("andb 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("andb %d,x", offs + 1);
                 AddCodeLine ("ins");
                 pop(Flags);
                 return;
             }
             /* Fall through */
         case CF_INT:
-            GenTSX();
-            AddCodeLine ("andb 1,x");
-            AddCodeLine ("anda 2,x");
+            offs = GenTSXWord(1);
+            AddCodeLine ("andb %d,x", offs + 1);
+            AddCodeLine ("anda %d,x", offs + 2);
             AddCodeLine ("pulx");
             InvalidateX();
             pop(Flags);
@@ -3580,6 +3627,8 @@ void g_dec (unsigned flags, unsigned long val)
 void g_eq (unsigned flags, unsigned long val)
 /* Test for equal */
 {
+    int offs;
+
     static const char* const ops[4] = {
         "toseqax", "toseqax", "toseqeax", "toseqeax"
     };
@@ -3629,8 +3678,8 @@ void g_eq (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
-                GenTSX();
-                AddCodeLine ("cmpb 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("cmpb %d,x", offs + 1);
                 AddCodeLine("ins");
                 AddCodeLine ("jsr booleq");
                 pop(flags);
@@ -3638,8 +3687,8 @@ void g_eq (unsigned flags, unsigned long val)
             }
             /* Fall through */
         case CF_INT:
-            GenTSX();
-            AddCodeLine ("subd 1,x");
+            offs = GenTSXByte(1);
+            AddCodeLine ("subd %d,x", offs + 1);
             AddCodeLine ("pulx");
             InvalidateX();
             AddCodeLine ("jsr booleq");
@@ -3656,6 +3705,8 @@ void g_eq (unsigned flags, unsigned long val)
 void g_ne (unsigned flags, unsigned long val)
 /* Test for not equal */
 {
+    int offs;
+
     static const char* const ops[4] = {
         "tosneax", "tosneax", "tosneeax", "tosneeax"
     };
@@ -3705,8 +3756,8 @@ void g_ne (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
-                GenTSX();
-                AddCodeLine ("cmpb 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("cmpb %d,x", offs + 1);
                 AddCodeLine ("ins");
                 AddCodeLine ("jsr boolne");
                 pop(flags);
@@ -3714,8 +3765,8 @@ void g_ne (unsigned flags, unsigned long val)
             }
             /* Fall through */
         case CF_INT:
-            GenTSX();
-            AddCodeLine ("subd 1,x");
+            offs = GenTSXByte(1);
+            AddCodeLine ("subd %d,x", offs + 1);
             AddCodeLine ("pulx");
             InvalidateX();
             AddCodeLine ("jsr boolne");
@@ -3842,7 +3893,6 @@ void g_lt (unsigned flags, unsigned long val)
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
                         Label = GetLocalLabel ();
-                        GenTSX();
                         AddCodeLine ("subb #%02X", val);
                         AddCodeLine ("bvc %s", LocalLabelName (Label));
                         AddCodeLine ("eorb #$80");
@@ -3856,7 +3906,6 @@ void g_lt (unsigned flags, unsigned long val)
 
                 case CF_INT:
                     /* Do a subtraction */
-                    GenTSX();
                     Label = GetLocalLabel ();
                     AddCodeLine ("subd #$%04X", val);
                     AddCodeLine ("bvc %s", LocalLabelName (Label));
@@ -4026,13 +4075,14 @@ void g_le (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     } else {
+        int offs;
         /* We can optimize some of these in terms of 1,x */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
                     /* Do a subtraction. Condition is true if carry set */
-                    GenTSX();
-                    AddCodeLine ("cmpb 1,x");
+                    offs = GenTSXByte(1);
+                    AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
                     AddCodeLine("jsr boolle");
                     pop (flags);
@@ -4041,7 +4091,8 @@ void g_le (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
             case CF_INT:
                 /* Do a subtraction. Condition is true if carry set */
-                AddCodeLine ("subd 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 AddCodeLine ("jsr boolle");
                 pop (flags);
@@ -4181,13 +4232,14 @@ void g_gt (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     } else {
+        int offs;
         /* We can optimize some of these in terms of 1,x */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
                     /* Do a subtraction. Condition is true if carry set */
-                    GenTSX();
-                    AddCodeLine ("cmpb 1,x");
+                    offs = GenTSXByte(1);
+                    AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
                     AddCodeLine("jsr boolgt");
                     pop (flags);
@@ -4196,7 +4248,8 @@ void g_gt (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
             case CF_INT:
                 /* Do a subtraction. Condition is true if carry set */
-                AddCodeLine ("subd 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 AddCodeLine ("jsr boolgt");
                 pop (flags);
@@ -4351,13 +4404,15 @@ void g_ge (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     } else {
+        int offs;
+
         /* We can optimize some of these in terms of 1,x */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
                     /* Do a subtraction. Condition is true if carry set */
-                    GenTSX();
-                    AddCodeLine ("cmpb 1,x");
+                    offs = GenTSXByte(1);
+                    AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
                     AddCodeLine("jsr boolge");
                     pop (flags);
@@ -4366,7 +4421,8 @@ void g_ge (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
             case CF_INT:
                 /* Do a subtraction. Condition is true if carry set */
-                AddCodeLine ("subd 1,x");
+                offs = GenTSXByte(1);
+                AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 AddCodeLine ("jsr boolge");
                 pop (flags);
@@ -4587,6 +4643,8 @@ void g_switch (Collection* Nodes, unsigned DefaultLabel, unsigned Depth)
     unsigned I;
 
     NotViaX();
+    InvalidateX();
+
     /* Setup registers and determine which compare insn to use */
     const char* Compare;
     switch (Depth) {
