@@ -123,6 +123,17 @@ void g_fileinfo (const char* Name, unsigned long Size, unsigned long MTime);
 
 
 /*****************************************************************************/
+/*                           Nww block hinting                               */
+/*****************************************************************************/
+
+
+
+void g_moveable(void);
+/* Tell the code generator this block must not assume existing state as it
+   will be moved about */
+
+
+/*****************************************************************************/
 /*                              Segment support                              */
 /*****************************************************************************/
 

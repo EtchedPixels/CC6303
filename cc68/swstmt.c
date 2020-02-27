@@ -174,7 +174,7 @@ void SwitchStatement (void)
         g_jump (ExitLabel);
 
     /* Remember the current position */
-    GetCodePos (&SwitchCodeStart);
+    GetCodePosMovable (&SwitchCodeStart);
 
     /* Output the switch code label */
     g_defcodelabel (SwitchCodeLabel);

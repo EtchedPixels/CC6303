@@ -68,6 +68,7 @@ typedef struct {
     TextList 	*Text;
     int         SP;             /* Stack pointer at this position */
     unsigned	X;		/* X state */
+    unsigned	Movable;
 } CodeMark;
 
 
@@ -80,6 +81,10 @@ typedef struct {
 
 void GetCodePos (CodeMark* M);
 /* Get a marker pointing to the current output position */
+
+void GetCodePosMovable (CodeMark* M);
+/* Get a marker pointing to the current output position, and tell the
+   code generator this block may be moved so must not assume state */
 
 void RemoveCodeRange (const CodeMark* Start, const CodeMark* End);
 /* Remove all code between two code markers */

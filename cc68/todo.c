@@ -125,6 +125,16 @@ void GetCodePos(CodeMark *m)
     m->Text = CodeHead.prev;
     m->SP = StackPtr;
     m->X = XState;
+    m->Movable = 0;
+}
+
+void GetCodePosMovable(CodeMark *m)
+{
+    m->Text = CodeHead.prev;
+    m->SP = StackPtr;
+    m->X = XState;
+    m->Movable = 1;
+    g_moveable();
 }
 
 /* Turn a mark into the right text pointer remembering that the mark
@@ -147,6 +157,8 @@ void RemoveCode(const CodeMark *m)
 */
 void MoveCode(const CodeMark *start,  const CodeMark *end, const CodeMark *target)
 {
+    if (!start->Movable)
+       Internal("Moving non-movable block");
     TextListSplice(MarkToText(target)->prev, MarkToText(start), MarkToText(end)->prev);
 }
 

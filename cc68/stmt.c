@@ -280,7 +280,7 @@ static void WhileStatement (void)
     g_jump (CondLabel);
 
     /* Remember the current position */
-    GetCodePos (&CondCodeStart);
+    GetCodePosMovable (&CondCodeStart);
 
     /* Test the loop condition */
     TestInParens (LoopLabel, 1);
@@ -464,7 +464,7 @@ static void ForStatement (void)
     ConsumeSemi ();
 
     /* Remember the start of the increment expression */
-    GetCodePos (&IncExprStart);
+    GetCodePosMovable (&IncExprStart);
 
     /* Label for the increment expression */
     g_defcodelabel (IncLabel);

@@ -3327,7 +3327,7 @@ static void hieQuest (ExprDesc* Expr)
             /* Emit conversion code for the second expression, but remember
             ** where it starts end ends.
             */
-            GetCodePos (&CvtCodeStart);
+            GetCodePosMovable (&CvtCodeStart);
             TypeConversion (&Expr2, ResultType);
             GetCodePos (&CvtCodeEnd);
 

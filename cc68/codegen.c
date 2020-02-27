@@ -167,10 +167,11 @@ unsigned XState;
 #define XSTATE_VALID	0x8000
 
 /* Force a TSX and reset the tracking state */
-static void ForceTSX(void)
+static int ForceTSX(void)
 {
         AddCodeLine("tsx");
         XState = XSTATE_VALID;
+        return 0;
 }
 
 /* Return the offset between S and X, if need be issue a TSX. The
@@ -182,10 +183,8 @@ static int GenTSX(int low)
 
     /* If our TSX value is below the desired range then it's cheaper
        to TSX. */
-    if (!(XState & XSTATE_VALID) || n < low) {
-        ForceTSX();
-        return 0;
-    }
+    if (!(XState & XSTATE_VALID) || n > low || n + low < 0)
+        return ForceTSX();
     return n;
 }
 
@@ -196,10 +195,8 @@ static int GenTSX(int low)
 static int GenTSXByte(int low)
 {
     int n = GenTSX(low);
-    if (n + low > 255) {
-        ForceTSX();
-        return 0;
-    }
+    if (n + low > 255)
+        return ForceTSX();
     return n;
 }
 
@@ -392,6 +389,18 @@ void g_fileinfo (const char* Name, unsigned long Size, unsigned long MTime)
     }
 }
 
+/* The code that follows may be moved around */
+void g_moveable (void)
+{
+    InvalidateX();
+}
+
+/* We have generted code and thrown it away. FIXME: we can do better in this
+   case I think */
+void g_removed (void)
+{
+    InvalidateX();
+}
 
 
 /*****************************************************************************/
@@ -3072,9 +3081,9 @@ void g_and (unsigned Flags, unsigned long Val)
             case CF_INT:
                 if ((Val & 0xFFFF) != 0xFFFF) {
                     if (Val <= 0xFF) {
-                        AddCodeLine ("clrb");
+                        AddCodeLine ("clra");
                         if (Val == 0) {
-                            AddCodeLine ("clra");
+                            AddCodeLine ("clrb");
                         } else if (Val != 0xFF) {
                             AddCodeLine ("andb #$%02X", (unsigned char)Val);
                         }
@@ -3175,6 +3184,7 @@ void g_asr (unsigned flags, unsigned long val)
                 if (val >= 8) {
                     if (flags & CF_UNSIGNED) {
                         AddCodeLine ("tab");
+                        AddCodeLine ("clra");
                     } else {
                         unsigned L = GetLocalLabel();
                         AddCodeLine ("tab");
@@ -4281,6 +4291,8 @@ void g_ge (unsigned flags, unsigned long val)
         /* Because the handling of the overflow flag is too complex for
         ** inlining, we can handle only unsigned compares, and signed
         ** compares against zero here.
+        *
+        * FIXME: 6502 C is backwards to 680x
         */
         if (flags & CF_UNSIGNED) {
 
