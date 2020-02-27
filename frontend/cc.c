@@ -59,7 +59,7 @@
 #define COPT_FILE LIBPATH"cc68.rules"
 #define CMD_LD	BINPATH"ld68"
 #define CRT0	LIBPATH"crt0.o"
-#define LIBC	LIBPATH"libc.o"
+#define LIBC	LIBPATH"libc.a"
 
 struct obj {
 	struct obj *next;
