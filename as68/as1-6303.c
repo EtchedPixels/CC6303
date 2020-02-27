@@ -469,7 +469,7 @@ loop:
 		if (c) {
 			outab(opcode^1);	/* Inverted branch */
 			outab(3);		/* Skip over the jump */
-			outab(0x6E);		/* Jump */
+			outab(0x7E);		/* Jump */
 			outraw(&a1);
 		} else {
 			outab(opcode);
