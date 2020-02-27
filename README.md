@@ -10,9 +10,6 @@ which is parsed as it goes into all sorts of asm level info which drives
 optimizer logic. It also uses it to allow the compiler to re-order blocks
 and generate code then change its mind.
 
-cc65 alas doesn't use it to generate classic C ordered argument evaluations
-which it could have done so easily, but cc6303 does.
-
 ## Status
 
 The basic structure is now reasonably functional. You can "make" and "make

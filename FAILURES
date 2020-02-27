@@ -2,6 +2,15 @@
   codes and stuff
 - overlong names clashing in assembler
 
+
+Optimizing Rules
+----------------
+
+Why is it not fixing up function entry ldd pshb psha pshx ?
+
+Lots of cases where we generate extra TSX calls - check our InvalidateX
+are not overdone somewhere silly
+
 Libc test compiling
 -------------------
 
@@ -24,6 +33,12 @@ syscall_fs.c(405): Error: ';' expected
 syscall_fs.c(422): Internal compiler error:
 g_leave: stack unbalanced by 2
 
+Linker
+------
+
+Sometimes a ZP asm reference to a non existing variable ends up as U 0 in
+the map and we didn't error
+What is causing @zero to end up 4 bytes into ZP not at start of ZP ?
 
 FIXED:
 
