@@ -11,4 +11,4 @@ tossubax:
 	tsx
 	ldd 3,x		; top of maths stack as seen by caller
 	subd @tmp
-	rts
+	jmp pop2
