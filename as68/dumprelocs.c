@@ -12,6 +12,7 @@
 
 static char *symbols;
 static int numsyms;
+static struct objhdr hdr;
 
 static char bogus[19] = { "\0OUT OF RANGE\0\0\0\0\0\0" };
 
@@ -71,6 +72,17 @@ static int nextbyte(int fd)
     return n;
 }
 
+static int nextbyteq(int fd)
+{
+    int n = nextbyte(fd);
+    if (n != REL_ESC)
+        return n;
+    n = nextbyte(fd);
+    if (n != REL_REL)
+        fprintf(stderr, "Corrupt relocation data.\n");
+    return n;
+}
+
 static int bytect;
 static char relbuf[33];
 static char *relptr;
@@ -127,10 +139,10 @@ static void reloc_value(int fd, int size)
 {
     int n;
     if (size == 1)
-        n = nextbyte(fd);
+        n = nextbyteq(fd);
     else if (size == 2){
-        n = (nextbyte(fd) << 8);
-        n |= nextbyte(fd);
+        n = (nextbyteq(fd) << 8);
+        n |= nextbyteq(fd);
     } else
         fprintf(stderr, "Invalid size %d.\n", size);
         
@@ -144,8 +156,8 @@ static void reloc_symvalue(int fd, int seg, int size)
         char *p;
         uint16_t v;
         
-        n = (nextbyte(fd) << 8);
-        n |= nextbyte(fd);
+        n = (nextbyteq(fd) << 8);
+        n |= nextbyteq(fd);
 
         p = find_symbol_before(seg, n, &v);
         if (p) {
@@ -185,6 +197,12 @@ static int dump_data(const char *p, int seg, int fd)
     
     while((c = nextbyte_eof(fd)) != -1) {
 
+        /* ABS is special */
+        if (dot > hdr.o_size[seg]) {
+            fprintf(stderr, "Segment exceeds header size (%04X > %04X).\n",
+                dot, hdr.o_size[seg]);
+            break;
+        }
         if (c != REL_ESC) {
             byte(seg, c);
             dot++;
@@ -201,6 +219,11 @@ static int dump_data(const char *p, int seg, int fd)
             reloc_type("END");
             reloc_end();
             printf("\n\n");
+            if (dot != hdr.o_size[seg]) {
+                fprintf(stderr, "Segment is short (%04X < %04X).\n",
+                    dot, hdr.o_size[seg]);
+                return 1;
+            }
             return 0;
         }
         /* Ok an actual relocation */
@@ -262,7 +285,6 @@ static int load_symbols(int fd, struct objhdr *oh)
 static int process(const char *p)
 {
     int fd = open(p, O_RDONLY);
-    struct objhdr hdr;
     int err = 0;
     int i;
 
