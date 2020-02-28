@@ -3,15 +3,11 @@
 ;
 	.setcpu	6803
 
-	.export zero
-	.export one
-	.export tmp
-
 	.code
 
 start:
 	ldaa #1
-	staa @onel
+	staa @one
 	ldx @zero
 	pshx
 	pshx
@@ -19,15 +15,4 @@ start:
 	pulx
 	pulx
 	rts
-
-	.zp
-zero:
-	.byte 0
-one:
-	.byte 0
-onel:
-	.byte 0
-tmp:
-	.word 0
-
 

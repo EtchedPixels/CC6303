@@ -8,6 +8,7 @@
 	.export tmp
 	.export tmp1
 	.export sreg
+	.export fp
 
 zero:
 	.byte 0		; Patterns that form a word 0
@@ -29,3 +30,5 @@ tmp4:
 	.word 0
 sreg:			; Upper 16bits of working long
 	.word 0
+fp:
+	.word 0		; frame pointer for varargs
