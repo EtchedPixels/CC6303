@@ -348,9 +348,9 @@ loop:
 			outab(opcode);
 			outab(a1.a_value);
 			break;
-		case TDIRECT:
 		case TIMMED:
 			aerr(INVALIDAMODE);
+		case TDIRECT:
 		default:
 			opcode += 0x10;
 			outab(opcode);
