@@ -596,21 +596,50 @@ static void set_segment_bases(void)
 }
 
 /*
+ *	Write a target byte with correct quoting if needed
+ *
+ *	We quote if we are outputing a new link binary (ld -r), or a
+ *	relocatable.
+ */
+
+static void target_pquoteb(uint8_t v, FILE *op)
+{
+	if (v == REL_ESC && ldmode != LD_ABSOLUTE) {
+		fputc(v, op);
+		fputc(REL_REL, op);
+	} else
+		fputc(v, op);
+}
+
+/*
  *	Write a word to the target in the correct endianness
  */
 static void target_put(struct object *o, uint16_t value, uint16_t size, FILE *op)
 {
 	if (size == 1)
-		fputc(value, op);
+		target_pquoteb(value, op);
 	else {
 		if (o->oh.o_flags&OF_BIGENDIAN) {
-			fputc(value >> 8, op);
-			fputc(value, op);
+			target_pquoteb(value >> 8, op);
+			target_pquoteb(value, op);
 		} else {
-			fputc(value, op);
-			fputc(value >> 8, op);
+			target_pquoteb(value, op);
+			target_pquoteb(value >> 8, op);
 		}
 	}
+}
+
+static int target_pgetb(FILE *ip)
+{
+	int c = fgetc(ip);
+	if (c == EOF)
+		error("unexpected EOF");
+	if (c != REL_ESC)
+		return c;
+	c = fgetc(ip);
+	if (c != REL_REL)
+		error("corrupt relocations");
+	return REL_ESC;
 }
 
 /*
@@ -622,12 +651,12 @@ static void target_put(struct object *o, uint16_t value, uint16_t size, FILE *op
 static uint16_t target_get(struct object *o, uint16_t size, FILE *ip)
 {
 	if (size == 1)
-		return fgetc(ip);
+		return target_pgetb(ip);
 	else {
 		if (o->oh.o_flags & OF_BIGENDIAN)
-			return (fgetc(ip) << 8) + fgetc(ip);
+			return (target_pgetb(ip) << 8) + target_pgetb(ip);
 		else
-			return fgetc(ip) + (fgetc(ip) << 8);
+			return target_pgetb(ip) + (target_pgetb(ip) << 8);
 	}
 }
 
@@ -654,6 +683,11 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 		uint8_t optype;
 		uint8_t overflow = 1;
 		uint8_t high = 0;
+
+		if (ldmode == LD_ABSOLUTE && ftell(op) != dot) {
+			fprintf(stderr, "%ld not %d\n",
+				(long)ftell(op), dot);
+		}
 
 		/* Unescaped material is just copied over */
 		if (code != REL_ESC) {
