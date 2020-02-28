@@ -5,7 +5,8 @@ OBJ += leq.o lge.o lgt.o lle.o llt.o lne.o lor.o lsave.o
 OBJ += lsubeq.o ltest.o luge.o lugt.o lule.o lult.o lxor.o 
 OBJ += makebool.o mulax3.o mulax10.o strlen.o sub.o swap.o
 OBJ += shr.o shrax.o shreax1.o shreax8.o
-OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumulax.o
+OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumodax.o
+OBJ += tosumulax.o
 OBJ += divide.o
 
 CRT = crt0.o

@@ -2,14 +2,12 @@
 ;	D = TOS / D (unsigned)
 ;
 
-	.export tosudivax
-
+	.export tosumodax
+	.setcpu 6303
 	.code
 
-tosudivax:
+tosumodax:
 	tsx
-	ldx 3,x			; get top of stack
-	xgdx			; swich over for divide helper
-	jsr div16x16		; D is now quotient
-	rts
-	
+	ldx 3,x
+	jsr div16x16	
+	jmp pop2
