@@ -353,8 +353,8 @@ tsx
 subd 1,x
 pulx
 =
-ldd %1
-subd %2
+ldd %2
+subd %1
 
 ldd %1
 pshb
@@ -374,8 +374,8 @@ ldd %2
 subd 1,x
 pulx
 =
-ldd %1
-subd %2
+ldd %2
+subd %1
 
 ldd %1
 pshb
