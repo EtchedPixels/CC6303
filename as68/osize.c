@@ -14,19 +14,13 @@
 #include "obj.h"
 
 static char *arg0;
-static int err;
 
 static char segname[] = "ATDB???????????U";
 
 static int do_osize(FILE *fp, const char *name)
 {
+    int i;
     static struct objhdr oh;
-    off_t base;
-    uint8_t type;
-    int c;
-    uint8_t i;
-    uint16_t addr;
-    char symname[17];
 
     if (fread(&oh, sizeof(oh), 1, fp) != 1 ||
         oh.o_magic != MAGIC_OBJ) {
@@ -35,6 +29,7 @@ static int do_osize(FILE *fp, const char *name)
     }
     for(i = 0; i < 8; i++)
         printf("%s: %c %4x\n", name, segname[i], oh.o_size[i]);
+    return 0;
 }
 
 int main(int argc, char *argv[])

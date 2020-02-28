@@ -85,9 +85,7 @@ static int segment_incompatible(ADDR *ap)
  */
 void getaddr(ADDR *ap)
 {
-	int reg;
 	int c;
-	ADDR tmp;
 	int dp = 0;
 
 	ap->a_type = 0;
@@ -164,9 +162,6 @@ void asmline(void)
 	int c;
 	int opcode;
 	int disp;
-	int reg;
-	int srcreg;
-	int cc;
 	VALUE value;
 	int delim;
 	SYM *sp1;
@@ -174,7 +169,6 @@ void asmline(void)
 	char id1[NCPS];
 	ADDR a1;
 	ADDR a2;
-	int user;
 
 loop:
 	if ((c=getnb())=='\n' || c==';')

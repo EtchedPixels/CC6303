@@ -1084,7 +1084,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (ldmode == LD_ABSOLUTE && split_id) {
-		fprintf(stderr, "%s: split I/D absolute is not yet supported.\n");
+		fprintf(stderr, "%s: split I/D absolute is not yet supported.\n", argv[0]);
 		/* TODO */
 		exit(1);
 	}

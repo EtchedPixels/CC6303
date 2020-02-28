@@ -7,7 +7,7 @@ HDR = as.h ld.h obj.h
 
 AOBJ = as0.o as1-6303.o as2.o as3.o as4.o as6-6303.o
 
-CFLAGS = -DTARGET_6303
+CFLAGS = -DTARGET_6303 -Wall -pedantic
 
 as68: $(HDR) $(AOBJ)
 	cc -o as68 $(AOBJ)

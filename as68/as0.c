@@ -92,8 +92,6 @@ int main(int argc, char *argv[])
 	char *ifn;
 	char *ofn = NULL;
 	char *p, *e;
-	int i;
-	int c;
 
 	int opt;
 

@@ -27,7 +27,6 @@ static int do_nm(FILE *fp, const char *name)
     off_t base;
     uint8_t type;
     int c;
-    uint8_t i;
     uint16_t addr;
     char symname[17];
 
