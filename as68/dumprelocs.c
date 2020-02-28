@@ -10,6 +10,46 @@
 
 #include "obj.h"
 
+static char *symbols;
+static int numsyms;
+
+static char bogus[19] = { "\0OUT OF RANGE\0\0\0\0\0\0" };
+
+static char *symptr(unsigned int n)
+{
+    if (n < numsyms)
+        return symbols + S_SIZE * n;
+    return bogus;
+}
+
+static char *find_symbol(int seg, unsigned short addr)
+{
+    uint8_t *p = (uint8_t *)symbols;
+    int n = 0;
+    while(n++ < numsyms) {
+        if (((p[18] << 8) | p[17]) == addr && seg == (p[0] & S_SEGMENT))
+            return (char *)p;
+        p += S_SIZE;
+    }
+    return NULL;
+}
+
+static char *find_symbol_before(int seg, unsigned short addr, unsigned short *ap)
+{
+    uint8_t *p = (uint8_t *)symbols;
+    uint8_t *candidate = 0;
+    int n = 0;
+    while(n++ < numsyms) {
+        uint16_t a = (p[18] << 8) | p[17];
+        if (a <= addr && seg == (p[0] & S_SEGMENT)) {
+            *ap = a;
+            candidate = p;
+        }
+        p += S_SIZE;
+    }
+    return (char *)candidate;
+}
+
 static int nextbyte_eof(int fd)
 {
     uint8_t c;
@@ -32,11 +72,20 @@ static int nextbyte(int fd)
 }
 
 static int bytect;
-static char relbuf[20];
+static char relbuf[33];
 static char *relptr;
+static uint16_t dot;
 
-static void byte(uint8_t v)
+static void byte(int seg, uint8_t v)
 {
+    char *p;
+    if ((p = find_symbol(seg, dot)) != NULL) {
+        if (bytect) {
+            printf("\n");
+            bytect = 0;
+        }
+        printf("%.16s:\n", p + 1);
+    }
     if (bytect == 0)
         printf("\t");
     printf("%02X ", v);
@@ -67,24 +116,53 @@ static void reloc_size(int n)
     relbuf[5] = "0123456789ABCDEF"[n];
 }
 
+static void reloc_symbol(int fd)
+{
+    int  n = nextbyte(fd);
+    n |= (nextbyte(fd) << 8);
+    sprintf(relbuf + 12, "%.16s", symptr(n) + 1);
+}
+
 static void reloc_value(int fd, int size)
 {
     int n;
     if (size == 1)
         n = nextbyte(fd);
     else if (size == 2){
-        n = nextbyte(fd);
-        n |= (nextbyte(fd) << 8);
+        n = (nextbyte(fd) << 8);
+        n |= nextbyte(fd);
     } else
         fprintf(stderr, "Invalid size %d.\n", size);
         
     sprintf(relbuf + 12, "%-5d", n);
 }
 
+static void reloc_symvalue(int fd, int seg, int size)
+{
+    if (size == 2) {
+        uint16_t n;
+        char *p;
+        uint16_t v;
+        
+        n = (nextbyte(fd) << 8);
+        n |= nextbyte(fd);
+
+        p = find_symbol_before(seg, n, &v);
+        if (p) {
+            if (v)
+                sprintf(relbuf + 12, "%.16s+%d", p + 1, n - v );
+            else
+                sprintf(relbuf + 12, "%.16s", p + 1);
+        } else
+            sprintf(relbuf + 12, "%-5d", n);
+    } else
+        reloc_value(fd, size);
+}
+
 static void reloc_init(void)
 {
-    memset(relbuf, ' ', 20);
-    relbuf[20] = 0;
+    memset(relbuf, ' ', 32);
+    relbuf[32] = 0;
     relptr = relbuf;
 }
 
@@ -97,22 +175,25 @@ static void reloc_end(void)
     printf("%s\n", relbuf);
 } 
 
-static int dump_data(const char *p, int fd)
+static int dump_data(const char *p, int seg, int fd)
 {
     int c;
     int size;
+    
+    dot = 0;
     bytect = 0;
-
+    
     while((c = nextbyte_eof(fd)) != -1) {
-        int high = 0;
 
         if (c != REL_ESC) {
-            byte(c);
+            byte(seg, c);
+            dot++;
             continue;
         }
         c = nextbyte(fd);
         if (c == REL_REL) {
-            byte(REL_ESC);
+            byte(seg, REL_ESC);
+            dot++;
             continue;
         }
         reloc_init();
@@ -134,7 +215,6 @@ static int dump_data(const char *p, int fd)
             c = nextbyte(fd);
         }
         if (c == REL_HIGH) {
-            high = 1;
             reloc_tag("H");
             c = nextbyte(fd);
         }
@@ -143,8 +223,9 @@ static int dump_data(const char *p, int fd)
         if (c & REL_SIMPLE) {
             reloc_type("SEG");
             reloc_seg(c & S_SEGMENT);
-            reloc_value(fd, size);
+            reloc_symvalue(fd, c & S_SEGMENT, size);
             reloc_end();
+            dot += size;
             continue;
         }
         switch(c & REL_TYPE) {
@@ -152,7 +233,7 @@ static int dump_data(const char *p, int fd)
             reloc_tag("R");
         case REL_SYMBOL:
             reloc_type("SYM");
-            reloc_value(fd, 2);
+            reloc_symbol(fd);
             reloc_end();
             continue;  
         }         
@@ -160,6 +241,22 @@ static int dump_data(const char *p, int fd)
     }
     fprintf(stderr, "%s: Unexpected EOF.\n", p);
     return 1;
+}
+
+static int load_symbols(int fd, struct objhdr *oh)
+{
+    int symsize = oh->o_dbgbase - oh->o_symbase;
+    symbols = malloc(symsize);
+    if (symbols == NULL) {
+        fprintf(stderr, "Out of memory.\n");
+        exit(1);
+    }
+    numsyms = symsize / S_SIZE;
+    if (lseek(fd, oh->o_symbase, 0) < 0)
+        return -1;
+    if (read(fd, symbols, symsize) != symsize)
+        return -1;
+    return 0;
 }
 
 static int process(const char *p)
@@ -178,6 +275,11 @@ static int process(const char *p)
         close(fd);
         return 1;
     }
+    if (load_symbols(fd, &hdr) < 0) {
+        fprintf(stderr, "%s: cannot load symbols.\n", p);
+        close(fd);
+        return 1;
+    }
     for (i = 0; i < OSEG; i++) {
         printf("Segment %d:\n\tSize: %u\n\tOffset: %lu\n", i, hdr.o_size[i],
             (long)hdr.o_segbase[i]);
@@ -189,7 +291,7 @@ static int process(const char *p)
             perror(p);
             continue;
         }
-        err |= dump_data(p, fd);
+        err |= dump_data(p, i, fd);
     }
     close(fd);
     return err;
