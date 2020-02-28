@@ -317,12 +317,12 @@ invalid X,D,P
 jsr booleq
 jeq %1
 =
-jeq %1
+jne %1
 
 jsr boolne
 jne %1
 =
-jne %1
+jeq %1
 
 # Clean up tsx tsx
 
@@ -535,16 +535,6 @@ stab %1
 inc %1
 ldab %1
 clra
-
-# Byte compares
-clra
-ldab %1
-cmpb %2
-ldd %3
-=
-ldab %1
-cmpb %2
-ldd %3
 
 # Call cleanups(no internal X using helpers start with an underscore) 
 
