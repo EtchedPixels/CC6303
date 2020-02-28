@@ -162,6 +162,7 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
 
 /* X versus S tracking */
 
+unsigned FramePtr;		/* True if we are using a frame pointer */
 unsigned XState;
 
 #define XSTATE_VALID	0x8000
@@ -265,13 +266,45 @@ static void XToD(void)
 /* Generate an offset from the stack into X. We try and minimise the
    required code by using off,x for smaller offsets and maths only
    for bigger ones. The maths for really big offsets is horrible so don't
-   write C with big stack arrays ... */
+   write C with big stack arrays ....
+
+   To further complicate things we may be an L-R stacked vararg function
+   in which case @fp is the base for arguments (Offs >= 0)
+ */
 
 static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
 {
     unsigned s = sizeofarg(Flags) - 1;
     int curoffs;
 
+    /* Frame pointer using function, use the frame pointer only for
+       arguments not locals */
+    if (Offs > 0 && FramePtr) {
+        Offs += 1;	/* FP is from SP so one below */
+        if (Offs < 256) {
+            if (save_d)
+                AddCodeLine("pshb");
+            AddCodeLine("ldx @fp");
+            AddCodeLine("ldab #$%02X", Offs);
+            AddCodeLine("abx");
+            if (save_d)
+                AddCodeLine("pulb");
+        } else {
+            /* TODO optimize - but > 250 bytes of args ?? really ?? */
+            if (save_d) {
+                AddCodeLine("pshb");
+                AddCodeLine("psha");
+            }
+            AddCodeLine("ldd @fp");
+            AddCodeLine("addd #$%04X", Offs);
+            DToX();
+            if (save_d) {
+                AddCodeLine("pula");
+                AddCodeLine("pulb");
+            }
+        }
+        return 0;
+    }
     /* S points below the data so we need to look further up */
     Offs += 1;
 
@@ -615,8 +648,6 @@ void g_importmainargs (void)
 /*                          Function entry and exit                          */
 /*****************************************************************************/
 
-static int varargs;
-
 void g_enter (const char *name, unsigned flags, unsigned argsize)
 /* Function prologue */
 {
@@ -624,12 +655,19 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
     AddCodeLine(".export _%s", name);
     AddCodeLine("_%s:",name);
     /* We have no valid X state on entry */
+
+    /* Uglies from the L->R stack handling for varargs */
+    if ((flags & CF_FIXARGC) == 0) {
+        /* Frame pointer is required for varargs mode */
+        AddCodeLine("ldx @fp");
+        AddCodeLine("pshx");
+        AddCodeLine("tsx");
+        AddCodeLine("abx");
+        AddCodeLine("stx @fp");
+        FramePtr = 1;
+    } else
+        FramePtr = 0;
     InvalidateX();
-    varargs = !(flags & CF_FIXARGC);
-    /* FIXME: we really want to fold the magic around varargs into the
-       normal stack management */
-    if (varargs)
-        AddCodeLine("pshb");
 }
 
 
@@ -637,13 +675,16 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
 void g_leave(void)
 /* Function epilogue */
 {
+    /* Recover the previous frame pointer if we were vararg */
+    if (FramePtr) {
+        AddCodeLine("pulx");
+        AddCodeLine("stx @fp");
+    }
     /* Should always be zero */
     if (StackPtr)
         Internal("g_leave: stack unbalanced by %d", StackPtr);
     /* FIXME: we really want to fold the magic around varargs into the
        normal stack management */
-    if (varargs)
-        AddCodeLine("ins");
     AddCodeLine("rts");
 }
 
@@ -965,17 +1006,43 @@ void g_getind (unsigned Flags, unsigned Offs)
 void g_leasp (unsigned Flags, int Offs)
 /* Fetch the address of the specified symbol into the primary register */
 {
+    /* FramePtr indicates a Varargs function where arguments are relative
+       to fp */
+    AddCodeLine(";leasp %d %d\n", FramePtr, Offs);
+    if (FramePtr && Offs < 0) {
+        Offs = -Offs;
+        Offs += 3;
+        if (!(Flags & CF_USINGX) || Offs > 255) {
+            AddCodeLine("ldd @fp");
+            AddCodeLine("addd #$%04X", Offs);
+            if (Flags & CF_USINGX)
+                DToX();
+        } else {
+            AddCodeLine("ldx @fp");
+            AddCodeLine("ldab #$%02X", Offs);
+            AddCodeLine("abx");
+        }
+        return;
+    }
     /* Calculate the offset relative to sp */
-    Offs -= StackPtr;
+    Offs += StackPtr;
 
-    AddCodeLine("tsx");
     if (!(Flags & CF_USINGX)) {
         /* No smarter way when going via D */
-        XToD();
-        AddCodeLine("addd #$%04X", Offs);
+        AddCodeLine("sts @tmp1");
+        if (Offs) {
+            AddCodeLine("ldd #$%04X", -Offs);
+            AddCodeLine("addd @tmp1");
+        } else {
+            AddCodeLine("ldd @tmp1");
+        }
         return;
     }
 
+    /* Easier to work backwards */
+    Offs = -Offs;
+
+    AddCodeLine("tsx");
     /* FIXME: probably > 1018 - work this out properly */
     if (Offs < 1018) {
         InvalidateX();	/* FIXME: rework off existing X if we can */
@@ -1168,17 +1235,17 @@ void g_putind (unsigned Flags, unsigned Offs)
        allow for. D holds the stuff to store */                
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
-            AddCodeLine ("stab $%02X, x", Offs);
+            AddCodeLine ("stab $%02X,x", Offs);
             break;
 
         case CF_INT:
-            AddCodeLine ("std $%02X, x", Offs);
+            AddCodeLine ("std $%02X,x", Offs);
             break;
 
         case CF_LONG:
-            AddCodeLine ("std $%02X, x", Offs);
+            AddCodeLine ("std $%02X,x", Offs);
             AddCodeLine ("ldd @sreg");
-            AddCodeLine ("std $%02X, x", Offs + 2);
+            AddCodeLine ("std $%02X,x", Offs + 2);
             break;
 
         default:
@@ -1790,9 +1857,9 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
         case CF_INT:
             Offs = GenOffset(flags, Offs, (flags & CF_CONST) ? 0 : 1, 0);
             if (flags & CF_CONST)
-                AddCodeLine("ldd $%02X, x", Offs);
+                AddCodeLine("ldd $%02X,x", Offs);
             AddCodeLine("addd #$%04X", (unsigned short) val);
-            AddCodeLine("std $%02X, x", Offs);
+            AddCodeLine("std $%02X,x", Offs);
             break;
 
         case CF_LONG:
@@ -2036,16 +2103,16 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
             /* FIXME: would a combo makebyteoffs/dtox(offs) help */
             DToX();
             AddCodeLine ("clra");
-            AddCodeLine ("ldab $%02X, x", offs);
+            AddCodeLine ("ldab $%02X,x", offs);
             AddCodeLine ("adda #$%02X", (unsigned char)val);
-            AddCodeLine ("stab $%02X, x", offs);
+            AddCodeLine ("stab $%02X,x", offs);
             break;
 
         case CF_INT:
             DToX();
-            AddCodeLine ("ldd $%02X, x", offs);
+            AddCodeLine ("ldd $%02X,x", offs);
             AddCodeLine ("subd #$%04X", (unsigned short)val);
-            AddCodeLine ("std $%02X, x", offs);
+            AddCodeLine ("std $%02X,x", offs);
             break;
         case CF_LONG:
             InvalidateX();
@@ -2394,17 +2461,23 @@ void g_swap (unsigned flags)
 
 
 
+/* Flags tells us if it is varargs, ArgSize is the number of *extra* bytes
+   pushed for the ... */
 void g_call (unsigned Flags, const char* Label, int ArgSize)
 /* Call the specified subroutine name */
 {
     InvalidateX();
-    if ((Flags & CF_FIXARGC) == 0)
+    if ((Flags & CF_FIXARGC) == 0) {
+        /* FIXME error somewhere above if > 254 */
         AddCodeLine("ldab #$%02X", ArgSize);
+    }
     AddCodeLine ("jsr _%s", Label);
 }
 
 
 
+/* Flags tells us if it is varargs, ArgSize is the number of *extra* bytes
+   pushed for the ... */
 void g_callind (unsigned Flags, int Offs, int ArgSize)
 /* Call subroutine indirect */
 {
@@ -2460,6 +2533,7 @@ void g_lateadjustSP (unsigned label)
     AddCodeLine ("sts @tmp");
     AddCodeLine ("ldd @tmp");
     AddCodeLine ("addd %s", LocalLabelName (label));
+    AddCodeLine ("lds @tmp");
     InvalidateX();
 }
 

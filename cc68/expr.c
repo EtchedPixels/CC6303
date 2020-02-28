@@ -571,8 +571,8 @@ static void FunctionCall (ExprDesc* Expr)
             LoadExpr (CF_NONE, Expr);
         }
 
-            /* Call the function */
-        g_callind (TypeOf (Expr->Type+1), PtrOffs, ParamSize);
+        /* Call the function */
+        g_callind (TypeOf (Expr->Type+1), PtrOffs, ParamSize - Func->ParamSize);
 
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
@@ -588,7 +588,7 @@ static void FunctionCall (ExprDesc* Expr)
 
     } else {
         /* Normal function */
-        g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize);
+        g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize - Func->ParamSize);
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize, NotVoid);
         StackPtr += ParamSize;

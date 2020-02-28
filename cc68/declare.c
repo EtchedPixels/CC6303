@@ -1365,8 +1365,6 @@ static FuncDesc* ParseFuncDecl (void)
     */
     Offs = 2;		/* Because of the return */
     Sym = F->LastParam;
-    if (F->Flags & FD_VARIADIC)
-        Offs++;		/* There is an argument size byte hack */
     while (Sym) {
         unsigned Size = CheckedSizeOf (Sym->Type);
         Sym->V.Offs = Offs;
