@@ -3023,8 +3023,8 @@ void g_or (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("orab %d,x", offs + 1);
-            AddCodeLine ("oraa %d,x", offs + 2);
+            AddCodeLine ("orab %d,x", offs + 2);
+            AddCodeLine ("oraa %d,x", offs + 1);
             AddCodeLine ("pulx");
             InvalidateX();
             pop(flags);
@@ -3111,8 +3111,8 @@ void g_xor (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("eorb %d,x", offs + 1);
-            AddCodeLine ("eora %d,x", offs + 2);
+            AddCodeLine ("eorb %d,x", offs + 2);
+            AddCodeLine ("eora %d,x", offs + 1);
             AddCodeLine ("pulx");
             InvalidateX();
             pop(flags);
@@ -3219,8 +3219,8 @@ void g_and (unsigned Flags, unsigned long Val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("andb %d,x", offs + 1);
-            AddCodeLine ("anda %d,x", offs + 2);
+            AddCodeLine ("andb %d,x", offs + 2);
+            AddCodeLine ("anda %d,x", offs + 1);
             AddCodeLine ("pulx");
             InvalidateX();
             pop(Flags);
@@ -3872,6 +3872,7 @@ void g_lt (unsigned flags, unsigned long val)
 
     unsigned Label;
 
+//    AddCodeLine(";g_lt");
     NotViaX();
     InvalidateX();	/*FIXME: for now */
     /* If the right hand side is const, the lhs is not on stack but still
@@ -3885,6 +3886,7 @@ void g_lt (unsigned flags, unsigned long val)
         */
         if (flags & CF_UNSIGNED) {
 
+            AddCodeLine(";unsigned constant");
             /* Give a warning in some special cases */
             if (val == 0) {
                 Warning ("Condition is never true");
@@ -3948,7 +3950,7 @@ void g_lt (unsigned flags, unsigned long val)
 
                 case CF_INT:
                     /* Just check the high byte */
-                    AddCodeLine ("cmpa #$80");           /* Bit 7 -> carry */
+                    AddCodeLine ("asla");           /* Bit 15 -> carry */
                     AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
                     return;
@@ -4004,12 +4006,14 @@ void g_lt (unsigned flags, unsigned long val)
         g_push (flags & ~CF_CONST, 0);
     } else {
         if (flags & CF_UNSIGNED) {
+//            AddCodeLine(";unsigned non constant");
+            /* We did the subtraction backwards and check for >= */
             switch (flags & CF_TYPEMASK) {
                     case CF_CHAR:
                         if (flags & CF_FORCECHAR) {
                             AddCodeLine("pula");
                             AddCodeLine("sba");
-                            AddCodeLine("jsr boolult");
+                            AddCodeLine("jsr booluge");
                             pop (flags);
                             return;
                         }
@@ -4017,7 +4021,7 @@ void g_lt (unsigned flags, unsigned long val)
                         InvalidateX();
                         AddCodeLine ("subd 1,x");
                         AddCodeLine ("pulx");
-                        AddCodeLine ("jsr boolult");
+                        AddCodeLine ("jsr booluge");
                         pop (flags);
                         return;
             }
@@ -4025,6 +4029,7 @@ void g_lt (unsigned flags, unsigned long val)
     }
 
     /* Use long way over the stack */
+    AddCodeLine(";via oper");
     oper (flags, val, ops);
 }
 
@@ -4142,6 +4147,7 @@ void g_le (unsigned flags, unsigned long val)
     } else {
         int offs;
         /* We can optimize some of these in terms of 1,x */
+        /* We do them backwards so the condition bool is inverted too */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
@@ -4150,9 +4156,9 @@ void g_le (unsigned flags, unsigned long val)
                     AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
                     if (flags & CF_UNSIGNED)
-                        AddCodeLine("jsr boolule");
+                        AddCodeLine("jsr boolugt");
                     else
-                        AddCodeLine("jsr boolle");
+                        AddCodeLine("jsr boolgt");
                     pop (flags);
                     return;
                 }
@@ -4163,9 +4169,9 @@ void g_le (unsigned flags, unsigned long val)
                 AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 if (flags & CF_UNSIGNED)
-                    AddCodeLine("jsr boolule");
+                    AddCodeLine("jsr boolugt");
                 else
-                    AddCodeLine ("jsr boolle");
+                    AddCodeLine ("jsr boolgt");
                 pop (flags);
                 return;
         }
@@ -4305,6 +4311,7 @@ void g_gt (unsigned flags, unsigned long val)
     } else {
         int offs;
         /* We can optimize some of these in terms of 1,x */
+        /* We do the subtraction backwards so invert the test */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
@@ -4313,9 +4320,9 @@ void g_gt (unsigned flags, unsigned long val)
                     AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
                     if (flags & CF_UNSIGNED)
-                        AddCodeLine ("jsr boolugt");
+                        AddCodeLine ("jsr boolule");
                     else
-                        AddCodeLine ("jsr boolgt");
+                        AddCodeLine ("jsr boolle");
                     pop (flags);
                     return;
                 }
@@ -4326,9 +4333,9 @@ void g_gt (unsigned flags, unsigned long val)
                 AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 if (flags & CF_UNSIGNED)
-                     AddCodeLine ("jsr boolugt");
+                     AddCodeLine ("jsr boolule");
                 else
-                     AddCodeLine ("jsr boolgt");
+                     AddCodeLine ("jsr boolle");
                 pop (flags);
                 return;
         }
@@ -4474,6 +4481,7 @@ void g_ge (unsigned flags, unsigned long val)
         int offs;
 
         /* We can optimize some of these in terms of 1,x */
+        /* Again we do the maths backwards, so invert the test */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
@@ -4481,7 +4489,10 @@ void g_ge (unsigned flags, unsigned long val)
                     offs = GenTSXByte(1);
                     AddCodeLine ("cmpb %d,x", offs + 1);
                     AddCodeLine ("ins");
-                    AddCodeLine("jsr boolge");
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr boolult");
+                    else
+                        AddCodeLine ("jsr boollt");
                     pop (flags);
                     return;
                 }
@@ -4491,7 +4502,10 @@ void g_ge (unsigned flags, unsigned long val)
                 offs = GenTSXByte(1);
                 AddCodeLine ("subd %d,x", offs + 1);
                 AddCodeLine ("pulx");
-                AddCodeLine ("jsr boolge");
+                if (flags & CF_UNSIGNED)
+                    AddCodeLine ("jsr boolult");
+                else
+                    AddCodeLine ("jsr boollt");
                 pop (flags);
                 return;
         }
