@@ -280,8 +280,19 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
     /* Frame pointer using function, use the frame pointer only for
        arguments not locals */
     if (Offs > 0 && FramePtr) {
-        Offs += 1;	/* FP is from SP so one below */
+        AddCodeLine(";Genoffset %u %d %d %d\n",
+            Flags, Offs, save_d, exact);
+        Offs += 3;	/* FP is from SP so one below but also have stacked fp */
         if (Offs < 256) {
+            if (!exact) {
+                AddCodeLine("ldx @fp");
+                return Offs;
+            }
+            if (exact && Offs < save_d ? 5 : 7) {
+                while(Offs--)
+                    AddCodeLine("inx");
+                return 0;
+            }
             if (save_d)
                 AddCodeLine("pshb");
             AddCodeLine("ldx @fp");
@@ -305,6 +316,10 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
         }
         return 0;
     }
+
+    /* Adjust for current stack pointer */
+    Offs -= StackPtr;
+
     /* S points below the data so we need to look further up */
     Offs += 1;
 
@@ -845,8 +860,6 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
 void g_getlocal (unsigned Flags, int Offs)
 /* Fetch specified local object (local var). */
 {
-    Offs -= StackPtr;
-
     NotViaX();
 
     Offs = GenOffset(Flags, Offs, 0, 0);
@@ -888,8 +901,6 @@ void g_getlocal (unsigned Flags, int Offs)
 void g_getlocal_x (unsigned Flags, int Offs)
 /* Fetch specified local object (local var) into x. */
 {
-    Offs -= StackPtr;
-
     Offs = GenOffset(Flags, Offs, 0, 0);
 
     InvalidateX();
@@ -1117,8 +1128,6 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
 void g_putlocal (unsigned Flags, int Offs, long Val)
 /* Put data into local object. */
 {
-    Offs -= StackPtr;
-
     Offs = GenOffset (Flags, Offs, (Flags & CF_CONST) ? 0 : 1, 0);
 
     NotViaX();		/* We need X for our index */
@@ -1644,9 +1653,6 @@ void g_scale (unsigned flags, long val)
 void g_addlocal (unsigned flags, int offs)
 /* Add a local variable to d */
 {
-    /* Correct the offset and check it */
-    offs -= StackPtr;
-
     NotViaX();
 
     switch (flags & CF_TYPEMASK) {
@@ -1827,9 +1833,6 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
 void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
 /* Emit += for a local variable */
 {
-    /* Calculate the true offset, check it, load it into Y */
-    Offs -= StackPtr;
-
     NotViaX();
     
     /* Check the size and determine operation */
@@ -2025,9 +2028,6 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
 void g_subeqlocal (unsigned flags, int Offs, unsigned long val)
 /* Emit -= for a local variable */
 {
-    /* Calculate the true offset, check it, load it into Y */
-    Offs -= StackPtr;
-
     NotViaX();
 
     /* Check the size and determine operation */
@@ -2139,6 +2139,7 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
 void g_addaddr_local (unsigned flags attribute ((unused)), int offs)
 /* Add the address of a local variable to d */
 {
+    /* FIXME: varargs */
     /* Add the offset */
     NotViaX();		/* For now: can improve on this due to abx */
     offs -= StackPtr;
@@ -2490,8 +2491,6 @@ void g_callind (unsigned Flags, int Offs, int ArgSize)
             AddCodeLine("ldab #$%02X", ArgSize);
         AddCodeLine ("jsr ,x");
     } else {
-        /* The address is on stack, offset is on Val */
-        Offs -= StackPtr;
         /* FIXME: check flag type is right here */
         GenOffset(Flags, Offs, 1, 1);
         if ((Flags & CF_FIXARGC) == 0)
