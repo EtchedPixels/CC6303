@@ -684,10 +684,10 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 		uint8_t overflow = 1;
 		uint8_t high = 0;
 
-		if (ldmode == LD_ABSOLUTE && ftell(op) != dot) {
-			fprintf(stderr, "%ld not %d\n",
-				(long)ftell(op), dot);
-		}
+//		if (ldmode == LD_ABSOLUTE && ftell(op) != dot) {
+//			fprintf(stderr, "%ld not %d\n",
+//				(long)ftell(op), dot);
+//		}
 
 		/* Unescaped material is just copied over */
 		if (code != REL_ESC) {
