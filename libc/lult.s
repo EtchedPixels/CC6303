@@ -4,4 +4,6 @@
 
 tosulteax:
 	jsr toslcmp
-	jmp boolult
+	jsr boolult
+	jmp pop4
+

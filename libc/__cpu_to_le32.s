@@ -8,7 +8,7 @@
 
 __cpu_to_le32:
 __le32_to_cpu:
-	; The argument is top of stack 3,s-7,s
+	; The argument is top of stack 3,s-6,s
 	tsx
 	ldx 3,x
 	pshx

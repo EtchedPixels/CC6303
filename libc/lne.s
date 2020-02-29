@@ -4,4 +4,5 @@
 
 tosneeax:
 	jsr toslcmp
-	jmp boolne
+	jsr boolne
+	jmp pop4

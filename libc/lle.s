@@ -4,5 +4,7 @@
 
 tosleeax:
 	jsr toslcmp
-	jmp boolle
+	jsr boolle
+	jmp pop4
+
 

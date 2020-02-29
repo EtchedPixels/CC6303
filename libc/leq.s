@@ -4,4 +4,6 @@
 
 toseqeax:
 	jsr toslcmp
-	jmp booleq
+	jsr booleq
+	jmp pop4
+
