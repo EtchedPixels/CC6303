@@ -259,19 +259,17 @@ static void ParseAutoDecl (Declaration* Decl)
                 /* Parse the expression */
                 hie1 (&Expr);
 
-                /* Convert it to the target type */
-                TypeConversion (&Expr, Sym->Type);
-
                 /* If the value is not const, load it into the primary.
                 ** Otherwise pass the information to the code generator.
                 */
-                if (ED_IsConstAbsInt (&Expr)) {
+                if (ED_IsConstAbsInt (&Expr))
                     Flags |= CF_CONST;
-                } else {
+                else {
                     LoadExpr (CF_NONE, &Expr);
                     ED_MakeRVal (&Expr);
+                    /* Convert it to the target type */
+                    TypeConversion (&Expr, Sym->Type);
                 }
-
                 /* Push the value */
                 g_push (Flags | TypeOf (Sym->Type), Expr.IVal);
 
