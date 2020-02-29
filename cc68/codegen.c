@@ -280,6 +280,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
     /* Frame pointer using function, use the frame pointer only for
        arguments not locals */
     if (Offs > 0 && FramePtr) {
+        InvalidateX();
         AddCodeLine(";Genoffset %u %d %d %d\n",
             Flags, Offs, save_d, exact);
         Offs += 3;	/* FP is from SP so one below but also have stacked fp */
@@ -1029,14 +1030,19 @@ void g_leasp (unsigned Flags, int Offs)
             if (Flags & CF_USINGX)
                 DToX();
         } else {
+            InvalidateX();
             AddCodeLine("ldx @fp");
             AddCodeLine("ldab #$%02X", Offs);
             AddCodeLine("abx");
         }
         return;
     }
+    Offs = -Offs;
     /* Calculate the offset relative to sp */
     Offs += StackPtr;
+    Offs --;		/* Because 1,sp is the top of stack vars */
+
+    AddCodeLine(";leasp %d %d\n", FramePtr, Offs);
 
     if (!(Flags & CF_USINGX)) {
         /* No smarter way when going via D */
@@ -1053,6 +1059,7 @@ void g_leasp (unsigned Flags, int Offs)
     /* Easier to work backwards */
     Offs = -Offs;
 
+    InvalidateX();		/* FIXME: can we use GenOffset type logic */
     AddCodeLine("tsx");
     /* FIXME: probably > 1018 - work this out properly */
     if (Offs < 1018) {
