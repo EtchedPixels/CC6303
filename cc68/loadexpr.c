@@ -102,10 +102,13 @@ static void LoadConstant (unsigned Flags, ExprDesc* Expr)
 int CanLoadViaX(unsigned Flags, struct ExprDesc *Expr)
 {
     if (ED_IsBitField(Expr) || ED_NeedsTest(Expr)) {
-        printf("no - bitfield/test.\n");
         return 0;
     }
-    if ((Flags & CF_TYPEMASK) == CF_CHAR) {
+    if ((Flags & CF_TYPEMASK) == CF_CHAR || (Flags & CF_FORCECHAR)) {
+        return 0;
+    }
+    if (IsTypeChar(Expr->Type)) {
+        //AddCodeLine("; target type char\n");
         return 0;
     }
     if (ED_IsLVal(Expr)) {
@@ -252,8 +255,17 @@ void LoadExpr (unsigned Flags, struct ExprDesc* Expr)
                 break;
 
             case E_LOC_EXPR:
+            {
+                int ch = 0;
+                if (IsTypePtr(Expr->Type) && IsTypeChar(Indirect(Expr->Type)))
+                    ch = 1;
+                if (IsTypeChar(Expr->Type))
+                    ch = 2;
                 /* Reference to address in primary with offset in Expr */
+//                AddCodeLine(";E_LOC_EXPR IVal %u Flags %u IsChar %d\n",
+//                    Expr->IVal, Flags, ch);
                 g_getind (Flags, Expr->IVal);
+                }
                 break;
 
             default:

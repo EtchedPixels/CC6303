@@ -425,7 +425,7 @@ static unsigned FunctionParamList (FuncDesc* Func)
         }
 
         /* Use the type of the argument for the push */
-        Flags |= TypeOf (Expr.Type);
+//      Flags |= TypeOf (Expr.Type);
 
         /* Load the value into the primary if it is not already there */
         if (CanLoadViaX(Flags, &Expr)) {
@@ -434,6 +434,9 @@ static unsigned FunctionParamList (FuncDesc* Func)
         } else {
             LoadExpr (Flags, &Expr);
         }
+
+        /* Use the type of the argument for the push but not the fetch */
+        Flags |= TypeOf (Expr.Type);
 
         ArgSize = sizeofarg (Flags);
         g_push (Flags, Expr.IVal);
@@ -1868,9 +1871,16 @@ void hie10 (ExprDesc* Expr)
             NextToken ();
             ExprWithCheck (hie10, Expr);
             if (ED_IsLVal (Expr) || !(ED_IsLocConst (Expr) || ED_IsLocStack (Expr))) {
+//                int n = 0;
                 /* Not a const, load it into the primary and make it a
                 ** calculated value.
                 */
+                /* FIXME: this needs more review. We want to force char loads this way
+                   but we should look at long v int as well . Basically
+                   Expr->Ival + TypeSize(ptr) - TypeSize(target) */
+//                if (IsTypePtr(Expr->Type) && IsTypeChar(Indirect(Expr->Type)))
+//                     n = 1;
+//                AddCodeLine(";CharPtr %d\n", n);
                 LoadExpr (CF_NONE, Expr);
                 ED_MakeRValExpr (Expr);
             }
@@ -1897,6 +1907,7 @@ void hie10 (ExprDesc* Expr)
                     ED_MakeLVal (Expr);
                 }
             }
+//            AddCodeLine(";After splat Char %d\n", IsTypeChar(Expr->Type));
             break;
 
         case TOK_AND:

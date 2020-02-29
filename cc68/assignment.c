@@ -69,7 +69,6 @@ void Assignment (ExprDesc* Expr)
     ExprDesc Expr2;
     Type* ltype = Expr->Type;
 
-
     /* We must have an lvalue for an assignment */
     if (ED_IsRVal (Expr)) {
         Error ("Invalid lvalue in assignment");
@@ -261,11 +260,12 @@ void Assignment (ExprDesc* Expr)
         /* Read the expression on the right side of the '=' */
         hie1 (&Expr2);
 
+        LoadExpr (CF_NONE, &Expr2);
         /* Do type conversion if necessary */
         TypeConversion (&Expr2, ltype);
 
-        /* If necessary, load the value into the primary register */
-        LoadExpr (CF_NONE, &Expr2);
+//        /* If necessary, load the value into the primary register */
+//        LoadExpr (CF_NONE, &Expr2);
 
         /* Generate a store instruction */
         Store (Expr, 0);
