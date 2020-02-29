@@ -15,6 +15,7 @@ tosor0ax:
 ;	or D and @sreg with the top of stack (1,X as called)
 ;
 tosoreax:
+	tsx
 	oraa	3,x
 	orab	4,x
 	std	@tmp

@@ -15,6 +15,7 @@ tosxor0ax:
 ;	xor D and @sreg with the top of stack (1,X as called)
 ;
 tosxoreax:
+	tsx
 	eora	3,x
 	eorb	4,x
 	std	@tmp

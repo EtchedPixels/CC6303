@@ -15,6 +15,7 @@ tosand0ax:
 ;	and D and @sreg with the top of stack (1,X as called)
 ;
 tosandeax:
+	tsx
 	anda	3,x
 	andb	4,x
 	std	@tmp

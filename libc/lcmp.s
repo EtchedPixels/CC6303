@@ -6,6 +6,7 @@
 ;	Compare the 4 bytes stack top with the 32bit accumulator
 ;
 toslcmp:
+	tsx
 	std @tmp		; Save the low 16bits
 	ldd @sreg
 	subd 3,x	; Compare the high word

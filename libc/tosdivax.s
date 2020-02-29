@@ -13,11 +13,9 @@
 	.setcpu 6303
 
 tosmodax:
-	anda #$7F		; make positive
 	tsx
+	anda #$7F		; make positive
 	ldx 3,x
-	xgdx
-	; D is now the dividend
 	psha			; save the sign of the dividend
 	anda #$7F		; make positive
 	jsr div16x16		; do the unsigned divide
@@ -36,12 +34,10 @@ dd_unsigned:
 	
 
 tosdivax:
+	tsx
 	psha			; save sign of divisor
 	anda #$7F		; make positive
-	tsx
 	ldx 3,x
-	xgdx
-	; D is now the dividend
 	psha			; save the sign of the dividend
 	anda #$7F		; make positive
 	jsr div16x16		; do the unsigned divide

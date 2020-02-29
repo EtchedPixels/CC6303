@@ -10,6 +10,7 @@ tosadd0ax:
 	clr	sreg
 	clr	sreg+1
 tosaddeax:
+	tsx
 	addd	3,x
 	std	@tmp
 	ldab	2,x
