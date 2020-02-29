@@ -3,11 +3,14 @@ OBJ += bneg.o directpage.o jumpx.o
 OBJ += laddeq.o ladd.o land.o lbneg.o lcmp.o
 OBJ += leq.o lge.o lgt.o lle.o llt.o lne.o lor.o lsave.o
 OBJ += lsubeq.o ltest.o luge.o lugt.o lule.o lult.o lxor.o 
-OBJ += makebool.o mulax3.o mulax10.o strlen.o sub.o swap.o
+OBJ += makebool.o mulax3.o mulax10.o sub.o
 OBJ += shr.o shrax.o shreax1.o shreax8.o
 OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumodax.o
 OBJ += tosumulax.o
 OBJ += divide.o
+
+OBJ += __cpu_to_le32.o swap.o
+OBJ += _memcpy.o _memset.o _strlen.o _strcpy.o
 
 CRT = crt0.o
 
