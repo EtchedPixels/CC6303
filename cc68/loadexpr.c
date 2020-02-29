@@ -105,7 +105,7 @@ int CanLoadViaX(unsigned Flags, struct ExprDesc *Expr)
         printf("no - bitfield/test.\n");
         return 0;
     }
-    if ((Flags & CF_FORCECHAR) && (Flags & CF_TYPEMASK) == CF_CHAR) {
+    if ((Flags & CF_TYPEMASK) == CF_CHAR) {
         return 0;
     }
     if (ED_IsLVal(Expr)) {
