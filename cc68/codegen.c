@@ -4004,32 +4004,38 @@ void g_lt (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
-    } else {
-        if (flags & CF_UNSIGNED) {
-//            AddCodeLine(";unsigned non constant");
-            /* We did the subtraction backwards and check for >= */
-            switch (flags & CF_TYPEMASK) {
-                    case CF_CHAR:
-                        if (flags & CF_FORCECHAR) {
-                            AddCodeLine("pula");
-                            AddCodeLine("sba");
-                            AddCodeLine("jsr booluge");
-                            pop (flags);
-                            return;
-                        }
-                    case CF_INT:
-                        InvalidateX();
-                        AddCodeLine ("subd 1,x");
-                        AddCodeLine ("pulx");
-                        AddCodeLine ("jsr booluge");
-                        pop (flags);
-                        return;
-            }
+    }
+     else {
+        int offs;
+        switch (flags & CF_TYPEMASK) {
+            case CF_CHAR:
+                if (flags & CF_FORCECHAR) {
+                    AddCodeLine("tba");
+                    AddCodeLine("pulb");
+                    AddCodeLine("sba");
+                    AddCodeLine("tba");
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr boolult");
+                    else
+                        AddCodeLine ("jsr boollt");
+                    pop (flags);
+                    return;
+                }
+            case CF_INT:
+                offs = GenTSXByte(1);
+                AddCodeLine ("std @tmp");
+                AddCodeLine ("ldd %d,x", offs + 1);
+                AddCodeLine ("pulx");
+                AddCodeLine ("subd @tmp");
+                if (flags & CF_UNSIGNED)
+                    AddCodeLine ("jsr boolult");
+                else
+                    AddCodeLine ("jsr boollt");
+                pop (flags);
+                return;
         }
     }
-
     /* Use long way over the stack */
-    AddCodeLine(";via oper");
     oper (flags, val, ops);
 }
 
@@ -4144,39 +4150,37 @@ void g_le (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
-    } else {
+    }
+    else {
         int offs;
-        /* We can optimize some of these in terms of 1,x */
-        /* We do them backwards so the condition bool is inverted too */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    /* Do a subtraction. Condition is true if carry set */
-                    offs = GenTSXByte(1);
-                    AddCodeLine ("cmpb %d,x", offs + 1);
-                    AddCodeLine ("ins");
+                    AddCodeLine("tba");
+                    AddCodeLine("pulb");
+                    AddCodeLine("sba");
+                    AddCodeLine("tba");
                     if (flags & CF_UNSIGNED)
-                        AddCodeLine("jsr boolugt");
+                        AddCodeLine ("jsr boolule");
                     else
-                        AddCodeLine("jsr boolgt");
+                        AddCodeLine ("jsr boolle");
                     pop (flags);
                     return;
                 }
-                /* FALLTHROUGH */
             case CF_INT:
-                /* Do a subtraction. Condition is true if carry set */
                 offs = GenTSXByte(1);
-                AddCodeLine ("subd %d,x", offs + 1);
+                AddCodeLine ("std @tmp");
+                AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
+                AddCodeLine ("subd @tmp");
                 if (flags & CF_UNSIGNED)
-                    AddCodeLine("jsr boolugt");
+                    AddCodeLine ("jsr boolule");
                 else
-                    AddCodeLine ("jsr boolgt");
+                    AddCodeLine ("jsr boolle");
                 pop (flags);
                 return;
         }
     }
-
     /* Use long way over the stack */
     oper (flags, val, ops);
 }
@@ -4308,39 +4312,37 @@ void g_gt (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
-    } else {
+    }
+    else {
         int offs;
-        /* We can optimize some of these in terms of 1,x */
-        /* We do the subtraction backwards so invert the test */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    /* Do a subtraction. Condition is true if carry set */
-                    offs = GenTSXByte(1);
-                    AddCodeLine ("cmpb %d,x", offs + 1);
-                    AddCodeLine ("ins");
+                    AddCodeLine("tba");
+                    AddCodeLine("pulb");
+                    AddCodeLine("sba");
+                    AddCodeLine("tba");
                     if (flags & CF_UNSIGNED)
-                        AddCodeLine ("jsr boolule");
+                        AddCodeLine ("jsr boolugt");
                     else
-                        AddCodeLine ("jsr boolle");
+                        AddCodeLine ("jsr boolgt");
                     pop (flags);
                     return;
                 }
-                /* FALLTHROUGH */
             case CF_INT:
-                /* Do a subtraction. Condition is true if carry set */
                 offs = GenTSXByte(1);
-                AddCodeLine ("subd %d,x", offs + 1);
+                AddCodeLine ("std @tmp");
+                AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
+                AddCodeLine ("subd @tmp");
                 if (flags & CF_UNSIGNED)
-                     AddCodeLine ("jsr boolule");
+                    AddCodeLine ("jsr boolugt");
                 else
-                     AddCodeLine ("jsr boolle");
+                    AddCodeLine ("jsr boolgt");
                 pop (flags);
                 return;
         }
     }
-
     /* Use long way over the stack */
     oper (flags, val, ops);
 }
@@ -4415,22 +4417,30 @@ void g_ge (unsigned flags, unsigned long val)
 
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
-                        AddCodeLine ("tba");
-                        AddCodeLine ("jsr boolge");
+                        AddCodeLine ("comb");
+                        AddCodeLine ("rolb");
+                        AddCodeLine ("ldab #0");
+                        AddCodeLine ("rolb");
                         return;
                     }
                     /* FALLTHROUGH */
 
                 case CF_INT:
                     /* Just test the high byte */
-                    AddCodeLine ("tab");
-                    AddCodeLine ("jsr boolge");
+                    AddCodeLine ("coma");
+                    AddCodeLine ("rola");
+                    AddCodeLine ("ldd #$0");
+                    AddCodeLine ("rolb");
                     return;
 
                 case CF_LONG:
+                    /* TODO 6303 can use TIM */
                     /* Just test the high byte */
                     AddCodeLine ("ldab @sreg+1");
-                    AddCodeLine ("jsr boolge");
+                    AddCodeLine ("comb");
+                    AddCodeLine ("rolb");
+                    AddCodeLine ("ldd #0");
+                    AddCodeLine ("rolb");
                     return;
 
                 default:
@@ -4477,40 +4487,37 @@ void g_ge (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
-    } else {
+    }
+    else {
         int offs;
-
-        /* We can optimize some of these in terms of 1,x */
-        /* Again we do the maths backwards, so invert the test */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    /* Do a subtraction. Condition is true if carry set */
-                    offs = GenTSXByte(1);
-                    AddCodeLine ("cmpb %d,x", offs + 1);
-                    AddCodeLine ("ins");
+                    AddCodeLine("tba");
+                    AddCodeLine("pulb");
+                    AddCodeLine("sba");
+                    AddCodeLine("tba");
                     if (flags & CF_UNSIGNED)
-                        AddCodeLine ("jsr boolult");
+                        AddCodeLine ("jsr booluge");
                     else
-                        AddCodeLine ("jsr boollt");
+                        AddCodeLine ("jsr boolge");
                     pop (flags);
                     return;
                 }
-                /* FALLTHROUGH */
             case CF_INT:
-                /* Do a subtraction. Condition is true if carry set */
                 offs = GenTSXByte(1);
-                AddCodeLine ("subd %d,x", offs + 1);
+                AddCodeLine ("std @tmp");
+                AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
+                AddCodeLine ("subd @tmp");
                 if (flags & CF_UNSIGNED)
-                    AddCodeLine ("jsr boolult");
+                    AddCodeLine ("jsr booluge");
                 else
-                    AddCodeLine ("jsr boollt");
+                    AddCodeLine ("jsr boolge");
                 pop (flags);
                 return;
         }
     }
-
     /* Use long way over the stack */
     oper (flags, val, ops);
 }
