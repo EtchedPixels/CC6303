@@ -1789,9 +1789,9 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
 
                 if (val == 1) {
                     unsigned L = GetLocalLabel ();
-                    AddCodeLine ("inc %s", lbuf);
-                    AddCodeLine ("bne %s", LocalLabelName (L));
                     AddCodeLine ("inc %s+1", lbuf);
+                    AddCodeLine ("bne %s", LocalLabelName (L));
+                    AddCodeLine ("inc %s", lbuf);
                     g_defcodelabel (L);
                     AddCodeLine ("ldd %s", lbuf);
                 } else {
