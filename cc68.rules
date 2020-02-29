@@ -322,7 +322,7 @@ jne %1
 jsr boolne
 jne %1
 =
-jeq %1
+jne %1
 
 # Clean up tsx tsx
 
