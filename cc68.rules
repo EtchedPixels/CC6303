@@ -518,15 +518,6 @@ ldx %1
 clra
 clrb
 
-ldd %1
-pshb
-psha
-ldd %2
-pulx
-=
-ldx %1
-ldd %2
-
 # Byte increments
 ldd @one
 addb %1
