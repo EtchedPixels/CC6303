@@ -98,15 +98,11 @@ static void DoConversion (ExprDesc* Expr, const Type* NewType)
     /* lvalue? */
     if (ED_IsLVal (Expr)) {
 
-        /* We have an lvalue. If the new size is smaller than the old one,
-        ** we don't need to do anything. The compiler will generate code
-        ** to load only the portion of the value that is actually needed.
-        ** This works only on a little endian architecture, but that's
-        ** what we support.
-        ** If both sizes are equal, do also leave the value alone.
+        /* We have an lvalue.
+        ** If both sizes are equal, leave the value alone.
         ** If the new size is larger, we must convert the value.
         */
-        if (NewSize > OldSize) {
+        if (NewSize != OldSize) {
             /* Load the value into the primary */
             LoadExpr (CF_NONE, Expr);
 
