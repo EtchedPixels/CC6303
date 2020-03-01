@@ -2873,6 +2873,9 @@ void g_mul (unsigned flags, unsigned long val)
                         return;
                     case 10:
                         AddCodeLine ("jsr mulax10");
+                        break;
+                    case 12:
+                        AddCodeLine ("jsr mulax12");
                         return;
                 }
                 break;
