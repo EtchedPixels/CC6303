@@ -12,22 +12,14 @@ tosxor0ax:
 	clr	sreg
 	clr	sreg+1
 ;
-;	xor D and @sreg with the top of stack (1,X as called)
+;	xor D and @sreg with the top of stack (3,X as called)
 ;
 tosxoreax:
 	tsx
-	eora	3,x
-	eorb	4,x
+	eora	5,x
+	eorb	6,x
 	std	@tmp
 	ldd	@sreg
-	eora	1,x
-	eorb	2,x
-	std	@sreg
-	; and unstack
-unwind4:
-	pulx		; return
-	ins	
-	ins
-	ins
-	ins
-	jmp ,x
+	eora	3,x
+	eorb	4,x
+	jmp	swap32pop4

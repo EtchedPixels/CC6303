@@ -12,22 +12,14 @@ tosand0ax:
 	clr	sreg
 	clr	sreg+1
 ;
-;	and D and @sreg with the top of stack (1,X as called)
+;	and D and @sreg with the top of stack (3,X as called)
 ;
 tosandeax:
 	tsx
-	anda	3,x
-	andb	4,x
+	anda	5,x
+	andb	6,x
 	std	@tmp
 	ldd	@sreg
-	anda	1,x
-	andb	2,x
-	std	@sreg
-	; and unstack
-unwind4:
-	pulx		; return
-	ins	
-	ins
-	ins
-	ins
-	jmp ,x
+	anda	3,x
+	andb	4,x
+	jmp	swap32pop4

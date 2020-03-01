@@ -12,22 +12,14 @@ tosor0ax:
 	clr	sreg
 	clr	sreg+1
 ;
-;	or D and @sreg with the top of stack (1,X as called)
+;	or D and @sreg with the top of stack (3,X as called)
 ;
 tosoreax:
 	tsx
-	oraa	3,x
-	orab	4,x
+	oraa	5,x
+	orab	6,x
 	std	@tmp
 	ldd	@sreg
-	oraa	1,x
-	orab	2,x
-	std	@sreg
-	; and unstack
-unwind4:
-	pulx		; return
-	ins	
-	ins
-	ins
-	ins
-	jmp ,x
+	oraa	3,x
+	orab	4,x
+	jmp	swap32pop4
