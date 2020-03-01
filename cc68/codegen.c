@@ -1866,8 +1866,8 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
         case CF_INT:
             Offs = GenOffset(flags, Offs, (flags & CF_CONST) ? 0 : 1, 0);
             if (flags & CF_CONST)
-                AddCodeLine("ldd $%02X,x", Offs);
-            AddCodeLine("addd #$%04X", (unsigned short) val);
+                AddCodeLine("ldd #$%04X", (unsigned short) val);
+            AddCodeLine("addd $%02X,x", Offs);
             AddCodeLine("std $%02X,x", Offs);
             break;
 
@@ -3387,7 +3387,7 @@ void g_asl (unsigned flags, unsigned long val)
                 val &= 0x0F;
                 if (val >= 8) {
                     AddCodeLine ("tba");
-                    AddCodeLine ("clra");
+                    AddCodeLine ("clrb");
                     val -= 8;
                 }
                 /* We don't have a 16bit rotate right so there isn't a

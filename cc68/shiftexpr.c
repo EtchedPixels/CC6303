@@ -182,12 +182,8 @@ void ShiftExpr (struct ExprDesc* Expr)
                 goto Next;
             }
 
-            /* If we're shifting an integer or unsigned to the right, the
-            ** lhs has a const address, and the shift count is larger than 8,
-            ** we can load just the high byte as a char with the correct
-            ** signedness, and reduce the shift count by 8. If the remaining
-            ** shift count is zero, we're done.
-            */
+            /* For big endian an 8bit shift of an int is just a straight
+               load as char rather than offsetting as on little endian */
             if (Tok == TOK_SHR &&
                 IsTypeInt (Expr->Type) &&
                 ED_IsLVal (Expr) &&
@@ -196,8 +192,7 @@ void ShiftExpr (struct ExprDesc* Expr)
 
                 Type* OldType; 
 
-                /* Increase the address by one and decrease the shift count */
-                ++Expr->IVal;
+                /* Will be 16 for long if we ever add long to this trickery */
                 Expr2.IVal -= 8;
 
                 /* Replace the type of the expression temporarily by the
