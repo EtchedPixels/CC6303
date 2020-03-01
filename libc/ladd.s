@@ -11,11 +11,11 @@ tosadd0ax:
 	clr	sreg+1
 tosaddeax:
 	tsx
-	addd	3,x
+	addd	5,x
 	std	@tmp
-	ldab	2,x
+	ldab	4,x
 	adcb	@sreg+1
-	ldaa	1,x
+	ldaa	3,x
 	adca	@sreg
 	std	@sreg
 	ldd	@tmp
