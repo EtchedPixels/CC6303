@@ -998,9 +998,9 @@ void g_getind (unsigned Flags, unsigned Offs)
 
         case CF_LONG:
             DToX();
-            AddCodeLine ("ldd $%02X,x", Offs + 2);
-            AddCodeLine ("std @sreg");
             AddCodeLine ("ldd $%02X,x", Offs);
+            AddCodeLine ("std @sreg");
+            AddCodeLine ("ldd $%02X,x", Offs + 2);
             if (Flags & CF_TEST) {
                 g_test (Flags);
             }
