@@ -761,9 +761,8 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                         AddCodeLine("clrb");
                     } else
                         AddCodeLine ("ldd #$%04X", W2);
-                    if (W1 == W2)
-                        AddCodeLine ("std @sreg");
-                    else {
+                    AddCodeLine ("std @sreg");
+                    if (W1 != W2) {
                         if (W1 == 0) {
                             AddCodeLine("clra");
                             AddCodeLine("clrb");
@@ -1113,14 +1112,14 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
 
         case CF_LONG:
             if (flags & CF_USINGX) {
-                AddCodeLine ("stx %s", lbuf);
-                AddCodeLine ("ldx @sreg");
                 AddCodeLine ("stx %s+2", lbuf);
+                AddCodeLine ("ldx @sreg");
+                AddCodeLine ("stx %s", lbuf);
                 InvalidateX();
             } else {
-                AddCodeLine ("std %s", lbuf);
-                AddCodeLine ("ldd @sreg");
                 AddCodeLine ("std %s+2", lbuf);
+                AddCodeLine ("ldd @sreg");
+                AddCodeLine ("std %s", lbuf);
             }
             break;
 
@@ -1149,21 +1148,21 @@ void g_putlocal (unsigned Flags, int Offs, long Val)
 
         case CF_INT:
             if (Flags & CF_CONST)
-                AddCodeLine ("ldd #$%02X", (unsigned char)Val);
+                AddCodeLine ("ldd #$%04X", (unsigned char)Val);
             AddCodeLine ("std $%02X,x", (unsigned char)Offs);
             break;
 
         case CF_LONG:
             if (Flags & CF_CONST) {
                 AddCodeLine ("ldd #$%04X", (unsigned short)(Val >> 16));
-                AddCodeLine ("std $%02X,x", (unsigned char)(Offs + 2));
-                AddCodeLine ("ldd #$%04X", (unsigned short)Val);
                 AddCodeLine ("std $%02X,x", (unsigned char)Offs);
+                AddCodeLine ("ldd #$%04X", (unsigned short)Val);
+                AddCodeLine ("std $%02X,x", (unsigned char)(Offs + 2));
             } else {
                 NotViaX();	/* For now. May be worth it via X and @tmp */
-                AddCodeLine ("std $%02X,x", (unsigned char)Offs);
+                AddCodeLine ("std $%02X,x", (unsigned char)Offs + 2);
                 AddCodeLine ("ldd @sreg");
-                AddCodeLine ("std $%02X,x", (unsigned char)(Offs + 2));
+                AddCodeLine ("std $%02X,x", (unsigned char)(Offs));
             }
             break;
 
@@ -1259,9 +1258,9 @@ void g_putind (unsigned Flags, unsigned Offs)
             break;
 
         case CF_LONG:
-            AddCodeLine ("std $%02X,x", Offs);
-            AddCodeLine ("ldd @sreg");
             AddCodeLine ("std $%02X,x", Offs + 2);
+            AddCodeLine ("ldd @sreg");
+            AddCodeLine ("std $%02X,x", Offs);
             break;
 
         default:
@@ -4436,7 +4435,7 @@ void g_ge (unsigned flags, unsigned long val)
                     /* Just test the high byte */
                     AddCodeLine ("coma");
                     AddCodeLine ("rola");
-                    AddCodeLine ("ldd #$0");
+                    AddCodeLine ("ldd #$0000");
                     AddCodeLine ("rolb");
                     return;
 
