@@ -17,14 +17,13 @@ lsubeqysp:
 	addd @tmp
 lsubeqa:
 	std @tmp
-	ldd 3,x		; do the low 16bits
+	ldd 5,x		; do the low 16bits
 	subd @tmp
-	bcc l1
-	inc sreg	; borrow - we don't have sbcd
-l1:
+	std 5,x
+	ldd 3,x
+	sbcb @sreg+1
+	sbca @sreg
 	std 3,x
-	ldd 1,x
-	subd @sreg
-	std 1,x
+	ldd 5,x
 	rts
 
