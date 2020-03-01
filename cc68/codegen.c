@@ -840,13 +840,13 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
                 AddCodeLine ("orab %s+1", lbuf);
                 AddCodeLine ("orab %s+0", lbuf);
             } else {
-                AddCodeLine ("ldd %s+2", lbuf);
+                AddCodeLine ("ldd %s", lbuf);
                 AddCodeLine ("std @sreg");
                 if (flags & CF_USINGX) {
                     InvalidateX();
-                    AddCodeLine ("ldx %s", lbuf);
+                    AddCodeLine ("ldx %s+2", lbuf);
                 } else
-                    AddCodeLine ("ldd %s", lbuf);
+                    AddCodeLine ("ldd %s+2", lbuf);
             }
             break;
 
@@ -1403,8 +1403,8 @@ void g_reglong (unsigned Flags)
                 AddCodeLine("clra");
                 if ((Flags & CF_UNSIGNED) == 0) {
                     L = GetLocalLabel();
-                    AddCodeLine ("cmpb #$80");
-                    AddCodeLine ("bcc %s", LocalLabelName (L));
+                    AddCodeLine ("bitb #$80");
+                    AddCodeLine ("beq %s", LocalLabelName (L));
                     AddCodeLine ("dex");
                     AddCodeLine ("coma");
                     g_defcodelabel (L);
@@ -1420,8 +1420,8 @@ void g_reglong (unsigned Flags)
             AddCodeLine ("ldx #$0000");
             if ((Flags & CF_UNSIGNED)  == 0) {
                 L = GetLocalLabel();
-                AddCodeLine ("cmpa #$80");
-                AddCodeLine ("bcc %s", LocalLabelName (L));
+                AddCodeLine ("bita #$80");
+                AddCodeLine ("beq %s", LocalLabelName (L));
                 AddCodeLine ("dex");
                 g_defcodelabel (L);
             }
@@ -3914,11 +3914,11 @@ void g_lt (unsigned flags, unsigned long val)
 
                 case CF_INT:
                     /* If the low byte is zero, we must only test the high byte */
-                    AddCodeLine ("cmpb #$%02X", (unsigned char)(val >> 8));
+                    AddCodeLine ("cmpa #$%02X", (unsigned char)(val >> 8));
                     if ((val & 0xFF) != 0) {
                         unsigned L = GetLocalLabel();
                         AddCodeLine ("bne %s", LocalLabelName (L));
-                        AddCodeLine ("cmpa #$%02X", (unsigned char)val);
+                        AddCodeLine ("cmpb #$%02X", (unsigned char)val);
                         g_defcodelabel (L);
                     }
                     AddCodeLine ("jsr boolult");
