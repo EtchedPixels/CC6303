@@ -1902,28 +1902,18 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            if (CPU == CPU_6303) {
-                InvalidateX();
-                AddCodeLine("xgdx");
-                AddCodeLine("ldab ,x");
-                AddCodeLine("addb #$%04X", (unsigned char)val);
-                AddCodeLine("stab ,x");
-                /* Do we need to handle signed differently here FIXME */
-                AddCodeLine("coma");
-            } else {
-                /* TODO */
-            }
+            DToX();
+            AddCodeLine("ldab %d,x", offs);
+            AddCodeLine("addb #$%04X", (unsigned char)val);
+            AddCodeLine("stab %d,x", offs);
             break;
 
         case CF_INT:
-            if (CPU == CPU_6303) {
-                InvalidateX();
-                AddCodeLine("xgdx");
-                AddCodeLine("ldd ,x");
-                AddCodeLine("addd #$%04X", (unsigned short)val);
-                AddCodeLine("std ,x");
-                break;
-            }
+            DToX();
+            AddCodeLine("ldd %d,x", offs);
+            AddCodeLine("addd #$%04X", (unsigned short)val);
+            AddCodeLine("std %d,x", offs);
+            break;
             
             /* Fall through */
         case CF_LONG:
@@ -2184,14 +2174,13 @@ void g_save (unsigned flags)
 
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
-                AddCodeLine ("pshb");
+                AddCodeLine ("stab @tmp1");
                 break;
             }
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine ("pshb");
-            AddCodeLine ("psha");
+            AddCodeLine ("std @tmp1");
             break;
 
         case CF_LONG:
@@ -2215,14 +2204,13 @@ void g_restore (unsigned flags)
 
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
-                AddCodeLine ("pulb");
+                AddCodeLine ("ldab @tmp1");
                 break;
             }
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine ("pula");
-            AddCodeLine ("pulb");
+            AddCodeLine ("ldd @tmp1");
             break;
 
         case CF_LONG:
