@@ -239,7 +239,7 @@ ldd %3
 ldd %1
 ldd %2
 =
-;
+ldd %1
 
 # n++/n-- with unused result
 
