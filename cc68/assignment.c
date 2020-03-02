@@ -260,12 +260,11 @@ void Assignment (ExprDesc* Expr)
         /* Read the expression on the right side of the '=' */
         hie1 (&Expr2);
 
-        LoadExpr (CF_NONE, &Expr2);
         /* Do type conversion if necessary */
         TypeConversion (&Expr2, ltype);
 
-//        /* If necessary, load the value into the primary register */
-//        LoadExpr (CF_NONE, &Expr2);
+        /* If necessary, load the value into the primary register */
+        LoadExpr (CF_NONE, &Expr2);
 
         /* Generate a store instruction */
         Store (Expr, 0);
