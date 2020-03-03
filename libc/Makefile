@@ -1,11 +1,11 @@
-OBJ = asrax.o asreax1.o asreax8.o
-OBJ += bneg.o directpage.o jumpx.o 
+OBJ = asrax.o asreax.o asreax8.o
+OBJ += bneg.o compleax.o directpage.o jumpx.o 
 OBJ += laddeq.o ladd.o land.o lbneg.o lcmp.o
 OBJ += leq.o lge.o lgt.o lle.o llt.o lne.o lor.o lsave.o
 OBJ += lsubeq.o ltest.o luge.o lugt.o lule.o lult.o lxor.o 
 OBJ += makebool.o mulax3.o mulax5.o mulax7.o mulax9.o mulax10.o mulax12.o
-OBJ += pop4.o sub.o
-OBJ += shr.o shrax.o shreax1.o shreax8.o swap.o
+OBJ += negeax.o pop4.o sub.o
+OBJ += shleax.o shr.o shrax.o shreax.o shreax8.o swap.o
 OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumodax.o
 OBJ += tosumulax.o
 OBJ += divide.o
