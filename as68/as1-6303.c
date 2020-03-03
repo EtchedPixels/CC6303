@@ -123,8 +123,15 @@ void getaddr(ADDR *ap)
 		ap->a_value = 0;
 		ap->a_segment = ABSOLUTE;
 		return;
-	} else
-		unget(c);
+	} else {
+		if (c == '<')
+			ap->a_flags |= A_LOW;
+		else if (c == '>')
+			ap->a_flags |= A_HIGH;
+		else
+			unget(c);
+	}
+
 	expr1(ap, LOPRI, 1);
 
 	c = getnb();
