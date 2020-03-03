@@ -1,6 +1,10 @@
 - cc a non existing C file gives bogus error - need to check cc68 return
   codes and stuff
 - overlong names clashing in assembler
+- incorrect code error causes an internal
+
+cp.c	fails with unknown symbol L023E/L0241
+
 
 
 Optimizing Rules
@@ -10,6 +14,13 @@ Why is it not fixing up function entry ldd pshb psha pshx ?
 
 Lots of cases where we generate extra TSX calls - check our InvalidateX
 are not overdone somewhere silly
+
+Endianness
+----------
+
+Fix cases the cc65 core seems to assume that types don't matter only width
+when loading via indirect, and check if storing has the same bug
+
 
 Libc test compiling
 -------------------
