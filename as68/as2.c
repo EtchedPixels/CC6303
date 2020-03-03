@@ -105,8 +105,6 @@ void getid(char *id, int c)
 	p = &id[0];
 	do {
 		if (p < &id[NCPS]) {
-			if (isupper(c))
-				c = tolower(c);
 			*p++ = c;
 		}
 		if ((c = *ip) != '\n')
