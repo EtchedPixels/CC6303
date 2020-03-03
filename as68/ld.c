@@ -461,7 +461,7 @@ restart:
 		/* In library mode we look for a symbol that means we will load
 		   this object - and then restart wih lib = 0 */
 		if (lib) {
-			if (is_undefined(name)) {
+			if (!(type & S_UNKNOWN) && is_undefined(name)) {
 				if (verbose)
 					printf("importing for '%s'\n", name);
 				lib = 0;
