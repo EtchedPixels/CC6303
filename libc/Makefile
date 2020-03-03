@@ -7,8 +7,8 @@ OBJ += makebool.o mulax3.o mulax5.o mulax7.o mulax9.o mulax10.o mulax12.o
 OBJ += negeax.o pop4.o sub.o
 OBJ += shleax.o shr.o shrax.o shreax.o shreax8.o swap.o
 OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumodax.o
-OBJ += tosumulax.o
-OBJ += divide.o
+OBJ += tosumulax.o tosumuleax.o
+OBJ += divide.o divide32x32.o multiply32x32.o
 
 OBJ += __cpu_to_le16.o __cpu_to_le32.o
 OBJ += _memcpy.o _memset.o _strlen.o _strcpy.o
