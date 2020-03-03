@@ -149,7 +149,7 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
 
         case CF_REGVAR:
             /* Variable in register bank */
-            xsprintf (Buf, sizeof (Buf), "@_reg%u", (unsigned)((Label+Offs) & 0xFFFF));
+            xsprintf (Buf, sizeof (Buf), "@reg+%u", (unsigned)((Label+Offs) & 0xFFFF));
             break;
 
         default:
@@ -1620,8 +1620,12 @@ void g_scale (unsigned flags, long val)
                             AddCodeLine("lsrd");
                     } else  {
                         InvalidateX();
-                        /* There is no asrd */
-                        AddCodeLine ("jsr asrax%d", p2);
+                        if (p2 == 1) {
+                            AddCodeLine("asra");
+                            AddCodeLine("rorb");
+                        } else
+                            /* There is no asrd */
+                            AddCodeLine ("jsr asrax%d", p2);
                     }
                     break;
 
@@ -3276,10 +3280,11 @@ void g_asr (unsigned flags, unsigned long val)
                 }
                 while(val--) {
                     if (flags & CF_UNSIGNED)
-                        AddCodeLine("lsra");
-                    else
+                        AddCodeLine("lsrd");
+                    else {
                         AddCodeLine("asra");
-                    AddCodeLine("rorb");
+                        AddCodeLine("rorb");
+                    }
                 }
                 return;
 
@@ -3462,9 +3467,9 @@ void g_neg (unsigned Flags)
             /* FALLTHROUGH */
 
         case CF_INT:
-            /* FIXME: check this can just be coma negb ? */
+            AddCodeLine ("subd #$0001");
             AddCodeLine ("coma");
-            AddCodeLine ("negb");
+            AddCodeLine ("comb");
             break;
 
         case CF_LONG:
@@ -4553,7 +4558,8 @@ void g_defdata (unsigned flags, unsigned long val, long offs)
                 break;
 
             case CF_LONG:
-                AddDataLine ("\t.dword\t$%08lX", val & 0xFFFFFFFF);
+                AddDataLine ("\t.word\t$%04lX", (val >> 16) & 0xFFFF);
+                AddDataLine ("\t.word\t$%04lX", val & 0xFFFF);
                 break;
 
             default:
@@ -4698,7 +4704,7 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
 void g_save_regvar(int Offset, int Reg, unsigned Size)
 {
     AddCodeLine(";offset %d\n", Offset);
-    AddCodeLine("ldx @_reg%u", Reg);
+    AddCodeLine("ldx @reg+%u", Reg);
     AddCodeLine("pshx");
     push(CF_INT);
     InvalidateX();
@@ -4709,7 +4715,7 @@ void g_restore_regvar(int Offset, int Reg, unsigned Size)
 {
     AddCodeLine(";offset %d\n", Offset);
     AddCodeLine("pulx");
-    AddCodeLine("stx @_reg%u", Reg);
+    AddCodeLine("stx @reg+%u", Reg);
     pop(CF_INT);
     InvalidateX();
     NotViaX();
