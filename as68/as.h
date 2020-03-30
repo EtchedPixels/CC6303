@@ -455,7 +455,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define ARCH_FLAGS OF_BIGENDIAN
 #define ARCH_CPUFLAGS OA_6800_6303		/* For now until CPU type properly settable */
 
-#define TARGET_BE
+#define TARGET_BIGENDIAN
 
 /*
  * Types. These are used
