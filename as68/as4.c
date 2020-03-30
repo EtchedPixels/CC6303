@@ -97,7 +97,7 @@ void outsegment(int seg)
  */
 void outaw(uint16_t w)
 {
-#ifdef TARGET_BE
+#ifdef TARGET_BIGENDIAN
 	outab(w >> 8);
 	outab(w);
 #else
