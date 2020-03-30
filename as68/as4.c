@@ -150,6 +150,8 @@ void outraw(ADDR *a)
 	}
 	if (a->a_flags & A_LOW)
 		outab(a->a_value);
+	else if (a->a_flags & A_HIGH)
+		outab(a->a_value >> 8);
 	else
 		outaw(a->a_value);
 }
@@ -230,8 +232,8 @@ void outrab(ADDR *a)
 			outbyte(a->a_sym->s_number >> 8);
 		}
 	}
-	if (s)
-		outaw(a->a_value);
+	if (a->a_flags & A_HIGH)
+		outabchk(a->a_value >> 8);
 	else
 		outabchk(a->a_value);
 }
