@@ -36,9 +36,7 @@ static void constify(ADDR *ap)
  */
 void getaddr(ADDR *ap)
 {
-	int reg;
 	int c;
-	ADDR tmp;
 
 	ap->a_type = 0;
 	ap->a_flags = 0;
@@ -86,6 +84,19 @@ void getio(ADDR *ap)
 }
 
 /*
+ *	We don't have short/long jumps to fix up by hand so we don't
+ *	want to do pass 1 and 2 just 0 and 3.
+ */
+int passbegin(int pass)
+{
+	if (pass == 1 || pass == 2)
+		return 0;
+	segment = 1;			/* Default to code */
+	return 1;
+}
+
+
+/*
  * Assemble one line.
  * The line in in "ib", the "ip"
  * scans along it. The code is written
@@ -96,10 +107,6 @@ void asmline(void)
 	SYM *sp;
 	int c;
 	int opcode;
-	int disp;
-	int reg;
-	int srcreg;
-	int cc;
 	VALUE value;
 	int delim;
 	SYM *sp1;
@@ -107,7 +114,6 @@ void asmline(void)
 	char id1[NCPS];
 	ADDR a1;
 	ADDR a2;
-	int user;
 
 loop:
 	if ((c=getnb())=='\n' || c==';')
@@ -236,6 +242,7 @@ loop:
 		outab(opcode);
 		break;
 	case TIMM8:
+		outab(opcode);
 		getaddr(&a1);
 		if ((a1.a_type & TMADDR) != TIMMED)
 			aerr(SYNTAX_ERROR);
@@ -252,6 +259,7 @@ loop:
 		outab(opcode | a1.a_value);
 		break;
 	case TADDR16:
+		outab(opcode);
 		getaddr(&a1);
 		outraw(&a1);
 		break;
