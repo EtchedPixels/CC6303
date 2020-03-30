@@ -19,12 +19,14 @@ static struct objhdr obh;
 
 static void numbersymbols(void);
 
-void outpass(void)
+int outpass(void)
 {
 	off_t base = sizeof(obh);
 	int i;
 
-	passbegin(pass);
+	/* Skip any passes we don't want to do for this platform */
+	if (!passbegin(pass))
+		return 0;
 
 	/* Pass 2 locks everything down so we can then set up truesize. For
 	   a 2 pass (0/3 CPU) we are fine as pass 0 will lock down and truesize
@@ -55,6 +57,7 @@ void outpass(void)
 		numbersymbols();
 		outsegment(segment);
 	}
+	return 1;
 }
 
 /*
@@ -235,7 +238,6 @@ void outrab(ADDR *a)
 
 static void putsymbol(SYM *s, FILE *ofp)
 {
-	int i;
 	uint8_t flag = 0;
 	if (s->s_type == TNEW)
 		flag |= S_UNKNOWN;
