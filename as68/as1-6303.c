@@ -15,12 +15,13 @@ static int cputype;
 static uint8_t reltab[1024];
 static unsigned int nextrel;
 
-void passbegin(int pass)
+int passbegin(int pass)
 {
 	cputype = 6803;
 	segment = 1;		/* Default to code */
 	if (pass == 3)
 		nextrel = 0;
+	return 1;		/* All passes required */
 }
 
 static void setnextrel(int flag)

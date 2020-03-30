@@ -144,8 +144,8 @@ int main(int argc, char *argv[])
 	syminit();
 	fname = xstrdup(ifn);
 	for (pass=0; pass<4; ++pass) {
-		/* FIXME: for some platforms we should just do 0 and 3 */
-		outpass();
+		if (outpass() == 0)
+			continue;
 		line = 1;
 		memset(dot, 0, sizeof(dot));
 		fseek(ifp, 0L, 0);
