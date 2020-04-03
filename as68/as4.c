@@ -177,8 +177,10 @@ void outab(uint8_t b)
 
 void outabchk(uint16_t b)
 {
-	if (b > 255)
+	if (b > 255) {
 		err('o', CONSTANT_RANGE);
+		printf("CR %04X\n",b);
+	}
 	outab(b);
 }
 
@@ -234,6 +236,8 @@ void outrab(ADDR *a)
 	}
 	if (a->a_flags & A_HIGH)
 		outabchk(a->a_value >> 8);
+	else if (a->a_flags & A_LOW)
+		outabchk(a->a_value & 0xFF);
 	else
 		outabchk(a->a_value);
 }

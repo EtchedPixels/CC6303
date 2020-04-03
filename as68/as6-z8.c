@@ -171,7 +171,6 @@ char *etext[] = {
 void isokaors(ADDR *ap, int paren)
 {
 	int mode;
-	int reg;
 
 	mode = ap->a_type&TMMODE;
 	if (mode == TUSER)

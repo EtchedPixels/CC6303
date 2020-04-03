@@ -282,6 +282,9 @@ void expr3(ADDR *ap, int c)
 	if (num[0] == '$') {
 		np2 = &num[1];
 		radix = 16;
+	} else if (num[0] == '0' && num[1] == 'x') {
+		np2 = &num[2];
+		radix = 16;
 	} else {
 		/* Look for trailing information on the radix */
 		switch (*--np1) {

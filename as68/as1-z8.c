@@ -16,6 +16,15 @@
  */
 #include	"as.h"
 
+int passbegin(int pas)
+{
+	segment = 1;
+	/* No branch adjustment passes */
+	if (pass == 1 || pass == 2)
+		return 0;
+	return 1;
+}
+
 static void constify(ADDR *ap)
 {
 	if ((ap->a_type & TMMODE) == (TUSER|TMINDIR))
@@ -43,13 +52,11 @@ static void constify(ADDR *ap)
  * @n - register indirect
  * #n - 8bit constant
  */
-void getaddr(ADDR *ap)
+void getaddr_r(ADDR *ap)
 {
 	int indirect = 0;
 	int pair = 0;
-	int reg;
 	int c;
-	ADDR tmp;
 
 	ap->a_type = 0;
 	ap->a_flags = 0;
@@ -78,9 +85,9 @@ void getaddr(ADDR *ap)
 		c = getnb();
 	}
 	/* Register short forms */
-	if (c == 'R') {
+	if (c == 'R' || c == 'r') {
 		c = getnb();
-		if (c == 'R')
+		if (c == 'R' || c == 'r')
 			pair = 1;
 		else
 			unget(c);
@@ -124,7 +131,7 @@ void getaddr(ADDR *ap)
 	if (c == '(') {
 		ADDR tmp;
 		ap->a_type = TINDEX;
-		if (index)
+		if (indirect)
 			aerr(INVALID_FORM);
 		getaddr(&tmp);
 		if ((tmp.a_type & TMADDR) != TRS)
@@ -145,7 +152,7 @@ void getaddr(ADDR *ap)
 
 void getaddr8(ADDR *ap)
 {
-	getaddr(ap);
+	getaddr_r(ap);
 	if (ap->a_value < -128 || ap->a_value > 255)
 		aerr(CONSTANT_RANGE);
 }
@@ -155,6 +162,21 @@ int getcond(ADDR *ap)
 	if ((ap->a_type & TMMODE) == TCC)
 		return (ap->a_type & TMREG);
 	return -1;
+}
+
+void getaddr(ADDR *ap)
+{
+	int c = getnb();
+	if (c == '<')
+		ap->a_flags |= A_LOW;
+	else if (c == '>')
+		ap->a_flags |= A_HIGH;
+	else
+		unget(c);
+	expr1(ap, LOPRI, 0);
+	istuser(ap);
+	constify(ap);
+	ap->a_type |= TIMMED;
 }
 
 /*
@@ -168,9 +190,6 @@ void asmline(void)
 	SYM *sp;
 	int c;
 	int opcode;
-	int disp;
-	int reg;
-	int srcreg;
 	int cc;
 	VALUE value;
 	int delim;
@@ -179,7 +198,6 @@ void asmline(void)
 	char id1[NCPS];
 	ADDR a1;
 	ADDR a2;
-	int user;
 	int ta1;
 	int ta2;
 
@@ -433,11 +451,11 @@ loop:
 				qerr(INVALID_FORM);
 			/* JP @RR */
 			outab(0x30);
-			outab(a2.a_value);
+			outab(a1.a_value);
 		} else {
 			outab(opcode + (cc << 4));
 			/* Relocatable label */
-			outraw(&a2);
+			outraw(&a1);
 		}
 		break;
 		
@@ -454,7 +472,7 @@ loop:
 		}
 		break;		
 	case TRA:	/* DJNZ */
-		getaddr(&a1);
+		getaddr8(&a1);
 		if ((a1.a_type & TMADDR) != TRS)
 			qerr(INVALID_FORM);
 		outab(0x0A | (a1.a_value << 4));
@@ -475,14 +493,12 @@ loop:
 		ta2 = a2.a_type & TMADDR;
 		if (ta1 == TRS && ta2 == TRRIND) {
 			outab(opcode);
+			outab((a1.a_value << 4) | a2.a_value);
 			/* dst, src */
-			outab(a1.a_value);
-			outab(a2.a_value);
 		} else if (ta1 == TRRIND && ta2 == TRS) {
 			/* src, dst */
-			outab(opcode + 0x01);
-			outab(a2.a_value);
-			outab(a1.a_value);
+			outab(opcode + 0x10);
+			outab((a1.a_value << 4) | a2.a_value);
 		} else
 			qerr(INVALID_FORM);
 		break;
@@ -497,13 +513,13 @@ loop:
 		if (ta1 == TSIND && ta2 == TRRIND) {
 			/* dst, src */
 			outab(opcode);
-			outab(a1.a_value);
+			outab((a1.a_value << 4) | a2.a_value);
 			outab(a2.a_value);
 		} else if (ta1 == TRRIND && ta2 == TSIND) {
-			outab(opcode + 0x01);
+			outab(opcode + 0x10);
 			/* src, dst */
+			outab((a1.a_value << 4) | a2.a_value);
 			outab(a2.a_value);
-			outab(a1.a_value);
 		} else
 			qerr(INVALID_FORM);
 		break;
@@ -563,6 +579,24 @@ loop:
 			a1.a_value &= 0xFF;
 			outrab(&a1);
 			break;
+		}
+		/* If we get here in short form we need to try the long
+		   form alias */
+		if (ta1 == TRS) {
+			ta1 = TREG;
+			a1.a_value |= 0xE0;
+		}
+		if (ta2 == TRS) {
+			ta2 = TREG;
+			a2.a_value |= 0xE0;
+		}
+		if (ta1 == TSIND) {
+			ta1 = TINDEX;
+			a1.a_value |= 0xE0;
+		}
+		if (ta2 == TSIND) {
+			ta2 = TINDEX;
+			a2.a_value |= 0xE0;
 		}
 		if (ta1 == TREG && ta2 == TREG) {
 			/* op, src, dst */

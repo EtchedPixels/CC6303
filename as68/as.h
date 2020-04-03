@@ -556,9 +556,10 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 typedef	uint16_t	VALUE;		/* For symbol values */
 
 #define ARCH OA_Z8
-#define ARCH_FLAGS 0
+#define ARCH_FLAGS OF_BIGENDIAN
 #define ARCH_CPUFLAGS 0			/* For now until CPU type properly settable */
 
+#define TARGET_BIGENDIAN
 
 /*
  * Types. These are used
