@@ -1,18 +1,21 @@
 ;
 ;	A dummy minimal crt0.s for now
 ;
-	.setcpu	6803
-
 	.code
 
 start:
 	ldaa #1
 	staa @one
-	ldx @zero
-	pshx
-	pshx
+	clra
+	clrb
+	psha
+	pshb
+	psha
+	pshb
 	jsr _main
-	pulx
-	pulx
+	ins
+	ins
+	ins
+	ins
 	rts
 
