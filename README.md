@@ -17,7 +17,16 @@ install" to get a complete compiler/assembler/linker/tools that appear
 to generate actual binaries.
 
 Simple code appears to be producing valid looking if not very good code.
-Lots of more complicating things will blow up.
+Lots of more complicated things will blow up. In general integer code is
+likely to be ok. Longs need a lot more debugging and 32bit support code
+writing and debugging.
+
+## How to use
+
+For a simple test environment the easiest approach at this point is to
+compile the code with cc68 and then link with a suitable crt.o (entry code)
+
+ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 
 ## TODO
 
@@ -43,8 +52,7 @@ Lots of more complicating things will blow up.
   means extending the back end to handle all the fp cases (probably via
   stack) and using the long handling paths for the non maths ops.
 
-- Teach as68 to behave like a classic unix assembler. Then go fix up the
-  Fuzix makefiles to match.
+- Fuzix integration for the front end
 
 ## BIG ISSUES
 
