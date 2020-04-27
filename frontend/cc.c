@@ -60,6 +60,9 @@
 #define CMD_LD	BINPATH"ld68"
 #define CRT0	LIBPATH"crt0.o"
 #define LIBC	LIBPATH"libc.a"
+#define LIB6800	LIBPATH"lib6800.a"
+#define LIB6803	LIBPATH"lib6803.a"
+#define LIB6303	LIBPATH"lib6303.a"
 
 struct obj {
 	struct obj *next;
@@ -92,6 +95,7 @@ char *target;
 int strip;
 int c_files;
 int standalone;
+int cpu = 6303;
 
 #define MAXARG	64
 
@@ -270,6 +274,10 @@ void convert_s_to_o(char *path)
 void convert_c_to_s(char *path)
 {
 	char *tmp, *t;
+	if (cpu == 6800) {
+		fprintf(stderr, "cc: C compiler does not support 6800 CPU\n");
+		exit(1);
+	}
 	build_arglist(CMD_CC);
 	add_argument_list("-I", &inclist);
 	add_argument_list("-D", &deflist);
@@ -326,9 +334,15 @@ void link_phase(void)
 	add_argument("-o");
 	add_argument(target);
 	if (!standalone) {
-		/* Start with crt0.o, end with libc.a */
+		/* Start with crt0.o, end with libc.a and support libraries */
 		add_argument(CRT0);
 		append_obj(&liblist, LIBC, TYPE_A);
+		if (cpu == 6303)
+			append_obj(&liblist, LIB6303, TYPE_A);
+		else if (cpu == 6803)
+			append_obj(&liblist, LIB6803, TYPE_A);
+		else
+			append_obj(&liblist, LIB6800, TYPE_A);
 	}
 	add_argument_list(NULL, &objlist);
 	add_argument_list(NULL, &liblist);
@@ -548,6 +562,13 @@ int main(int argc, char *argv[])
 			uniopt(*p);
 			keep_temp = 1;
 			break;
+		case 'm':
+			cpu = atoi(*p + 2);
+			if (cpu != 6800 && cpu != 6803 && cpu != 6303) {
+				fprintf(stderr, "Only 6800, 6803 or 6303 supported.\n");
+				exit(1);
+			}
+			break;	
 		default:
 			usage();
 		}
