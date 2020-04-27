@@ -17,7 +17,7 @@ static unsigned int nextrel;
 
 int passbegin(int pass)
 {
-	cputype = 6803;
+	cputype = 6800;
 	segment = 1;		/* Default to code */
 	if (pass == 3)
 		nextrel = 0;
@@ -330,14 +330,18 @@ loop:
 		getaddr(&a1);
 		constify(&a1);
 		istuser(&a1);
-		/* FIXME: add raw 6800 eventually */
-		if (a1.a_value != 6303 && a1.a_value != 6803)
+		if (a1.a_value != 6303 && a1.a_value != 6800 && a1.a_value != 6803)
 			aerr(SYNTAX_ERROR);
 		cputype = a1.a_value;
 		break;
 
 	case TIMPL6303:
 		if (cputype != 6303)
+			aerr(BADCPU);
+		outab(opcode);
+		break;
+	case TIMPL6803:
+		if (cputype == 6800)
 			aerr(BADCPU);
 	case TIMPL:
 		outab(opcode);
@@ -362,6 +366,11 @@ loop:
 		}
 		break;
 
+		/* Most 16bit ops are 6803/6303 */
+	case TDXE3:
+	case TDIXE3:
+		if (cputype == 6800)
+			aerr(BADCPU);
 	case TDIXE:
 	case TDXE:
 		getaddr(&a1);
@@ -393,6 +402,10 @@ loop:
 		}
 		break;
 
+	case T16DIXE3:
+	case T16DXE3:
+		if (cputype == 6800)
+			aerr(BADCPU);
 	case T16DIXE:
 	case T16DXE:
 		getaddr(&a1);

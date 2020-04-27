@@ -513,6 +513,12 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 /* Assembler extras for resolving branch ranges */
 #define TBRA16		0x1A00		/* Jcc asm magic */
 #define TSETCPU		0x1B00		/* .setcpu */
+/* 6803/303 specifics */
+#define TIMPL6803	0x1C00
+#define T16DIXE3	0x1D00
+#define T16DXE3		0x1E00
+#define TDXE3		0x1F00
+#define TDIXE3		0x2000
 /*
  * Registers.
  */
