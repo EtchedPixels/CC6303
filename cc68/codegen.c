@@ -1293,19 +1293,24 @@ void g_toslong (unsigned flags)
             InvalidateX();
             if (flags & CF_UNSIGNED) {
                 /* Push a new upper 16bits of zero */
-                AddCodeLine("ldx #$0000");
+                AddCodeLine("pulx");
+                AddCodeLine("clra");
+                AddCodeLine("psha");
+                AddCodeLine("psha");
                 AddCodeLine("pshx");
             } else {
                 /* need to sign extend */
-                /* FIXME non 6303 ... */
                 unsigned L = GetLocalLabel();
-                AddCodeLine("clra");
-                AddCodeLine("tim #$0x80,1,x");
-                AddCodeLine("beq %s", LocalLabelName (L));
-                AddCodeLine("coma");
+                AddCodeLine("pulb");
+                AddCodeLine("pula");
+                AddCodeLine("ldx @zero");
+                AddCodeLine("oraa #0");	/* generate N flag */
+                AddCodeLine("bpl %s", LocalLabelName (L));
+                AddCodeLine("dex");	/* X to -1 */
                 g_defcodelabel (L);
+                AddCodeLine("pshx");
                 AddCodeLine("psha");
-                AddCodeLine("psha");
+                AddCodeLine("pshb");
             }
             push (CF_INT);
             break;
@@ -3909,26 +3914,19 @@ void g_lt (unsigned flags, unsigned long val)
 
                 case CF_INT:
                     /* If the low byte is zero, we must only test the high byte */
-                    AddCodeLine ("cmpa #$%02X", (unsigned char)(val >> 8));
-                    if ((val & 0xFF) != 0) {
-                        unsigned L = GetLocalLabel();
-                        AddCodeLine ("bne %s", LocalLabelName (L));
-                        AddCodeLine ("cmpb #$%02X", (unsigned char)val);
-                        g_defcodelabel (L);
-                    }
+                    AddCodeLine ("subd #$%04X", (unsigned int)val);
                     AddCodeLine ("jsr boolult");
                     return;
 
                 case CF_LONG:
                     /* Do a subtraction */
                     /* TODO */
-                    AddCodeLine ("cmp #$%02X", (unsigned char)val);
-                    AddCodeLine ("txa");
-                    AddCodeLine ("sbc #$%02X", (unsigned char)(val >> 8));
-                    AddCodeLine ("lda @sreg");
-                    AddCodeLine ("sbc #$%02X", (unsigned char)(val >> 16));
-                    AddCodeLine ("lda @sreg+1");
-                    AddCodeLine ("sbc #$%02X", (unsigned char)(val >> 24));
+                    AddCodeLine ("subb #$%02X", (unsigned char)val);
+                    AddCodeLine ("sbca #$%02X", (unsigned char)(val >> 8));
+                    AddCodeLine ("ldab @sreg+1");
+                    AddCodeLine ("sbcb #$%02X", (unsigned char)(val >> 16));
+                    AddCodeLine ("ldaa @sreg");
+                    AddCodeLine ("sbca #$%02X", (unsigned char)(val >> 24));
                     AddCodeLine ("jsr boolult");
                     return;
 
