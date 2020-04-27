@@ -6,18 +6,12 @@ OBJ += multiply32x32.o negeax.o pop4.o
 OBJ += shleax.o shrax.o shr.o _strcpy.o sub.o swap.o
 OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumulax.o
 
-CRT = crt0.o
-
-all: $(CRT) lib6803.a
-
-lib6803.a: $(OBJ)
-	ar rc lib6803.a $(OBJ)
+all: $(OBJ)
 
 %.o: %.s
 	../as68/as68 $^
 
-
 clean:
-	rm -f $(OBJ) $(CRT) lib6803.a *~
+	rm -f $(OBJ) *~
 
 	

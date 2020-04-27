@@ -4,14 +4,14 @@
 	.code
 	.export lsubeqa
 	.export lsubeqysp
-	.setcpu 6803
+	.setcpu 6303
 
 ; In this form X is the stack offset. Turn that into X is a pointer and
 ; fall into the static form
 lsubeqysp:
 	stx @tmp
-	sts @tmp2
-	ldd @tmp2
+	tsx
+	xgdx
 	addd @tmp
 lsubeqa:
 	std @tmp

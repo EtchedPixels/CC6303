@@ -13,18 +13,12 @@ OBJ += divide32x32.o
 OBJ += __cpu_to_le16.o __cpu_to_le32.o
 OBJ += _memcpy.o _memset.o _strlen.o _strcpy.o
 
-CRT = crt0.o
-
-all: $(CRT) libc.a
-
-libc.a: $(OBJ)
-	ar rc lib6800.a $(OBJ)
+all: $(OBJ)
 
 %.o: %.s
 	../as68/as68 $^
 
-
 clean:
-	rm -f $(OBJ) $(CRT) lib6800.a *~
+	rm -f $(OBJ) *~
 
 	
