@@ -120,10 +120,6 @@ void getaddr_r(ADDR *ap)
 
 	expr1(ap, LOPRI, 1);
 
-	/* Condition code */
-	if ((ap->a_type & TMMODE) == TCC)
-		return;
-
 	/* Must be an 8bit result */
 	if (ap->a_value < -128 || ap->a_value > 255)
 		qerr(CONSTANT_RANGE);
@@ -174,6 +170,9 @@ void getaddr(ADDR *ap)
 	else
 		unget(c);
 	expr1(ap, LOPRI, 0);
+	/* Condition code */
+	if ((ap->a_type & TMMODE) == TCC)
+		return;
 	istuser(ap);
 	constify(ap);
 	ap->a_type |= TIMMED;
@@ -351,6 +350,23 @@ loop:
 			outab((a1.a_value << 4) | a2.a_value);
 			break;
 		}
+		/* Look for long forms using 0xE0 for current reg set */
+		if (ta1 == TRS) {
+			a1.a_value |= 0xE0;
+			ta1 = TREG;
+		}
+		if (ta1 == TSIND) {
+			a1.a_value |= 0xE0;
+			ta1 = TIND;
+		}
+		if (ta2 == TRS) {
+			a2.a_value |= 0xE0;
+			ta2 = TREG;
+		}
+		if (ta2 == TSIND) {
+			a2.a_value |= 0xE0;
+			ta2 = TIND;
+		}
 		/* Long forms  are src, dst except when the are not (sigh)*/
 		/* OP R,R */
 		if (ta1 == TREG && ta2 == TREG)
@@ -496,9 +512,9 @@ loop:
 			outab((a1.a_value << 4) | a2.a_value);
 			/* dst, src */
 		} else if (ta1 == TRRIND && ta2 == TRS) {
-			/* src, dst */
+			/* dst, src */
 			outab(opcode + 0x10);
-			outab((a1.a_value << 4) | a2.a_value);
+			outab((a2.a_value << 4) | a1.a_value);
 		} else
 			qerr(INVALID_FORM);
 		break;
