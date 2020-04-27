@@ -177,10 +177,8 @@ void outab(uint8_t b)
 
 void outabchk(uint16_t b)
 {
-	if (b > 255) {
+	if (b > 255)
 		err('o', CONSTANT_RANGE);
-		printf("CR %04X\n",b);
-	}
 	outab(b);
 }
 
