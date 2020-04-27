@@ -15,9 +15,14 @@ libc:
 	+(cd lib6800; make)
 	+(cd lib6803; make)
 	+(cd lib6303; make)
-	ar rc lib6800.a lib6800/*.o
-	ar rc lib6803.a lib6803/*.o lib6800/*.o
-	ar rc lib6303.a lib6303/*.o lib6803/*.o lib6800/*.o
+	mkdir -p tmp
+	rm -f tmp/*
+	cp lib6800/*.o tmp
+	(cd tmp; ar rc ../lib6800.a *.o)
+	cp -f lib6803/*.o tmp
+	(cd tmp; ar rc ../lib6803.a *.o)
+	cp -f lib6303/*.o tmp
+	(cd tmp; ar rc ../lib6303.a *.o)
 
 copt: copt.c
 
