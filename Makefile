@@ -12,6 +12,12 @@ as68:
 
 libc:
 	+(cd libc; make)
+	+(cd lib6800; make)
+	+(cd lib6803; make)
+	+(cd lib6303; make)
+	ar rc lib6800.a lib6800/*.o
+	ar rc lib6803.a lib6803/*.o lib6800/*.o
+	ar rc lib6303.a lib6303/*.o lib6803/*.o lib6800/*.o
 
 copt: copt.c
 
@@ -24,7 +30,10 @@ clean:
 	(cd as68; make clean)
 	(cd frontend; make clean)
 	(cd libc; make clean)
-	rm copt
+	(cd lib6800; make clean)
+	(cd lib6803; make clean)
+	(cd lib6303; make clean)
+	rm copt lib6800.a lib6803.a lib6303.a
 
 #
 #	This aspect needs work
@@ -43,3 +52,6 @@ install:
 	cp cc68.rules /opt/cc68/lib
 	cp libc/crt0.o /opt/cc68/lib
 	cp libc/libc.a /opt/cc68/lib
+	cp lib6800.a /opt/cc68/lib
+	cp lib6803.a /opt/cc68/lib
+	cp lib6303.a /opt/cc68/lib
