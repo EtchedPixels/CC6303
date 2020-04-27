@@ -3,7 +3,14 @@
 - overlong names clashing in assembler
 - incorrect code error causes an internal
 
+- Some code causes duplicate symbol errors on shleax1/shreax1 which looks
+  like a linker bug
+
 cp.c	fails with unknown symbol L023E/L0241
+
+ps.c
+	fails with unknown symbol L015D
+
 
 
 
