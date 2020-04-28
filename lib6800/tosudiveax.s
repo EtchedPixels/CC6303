@@ -1,25 +1,26 @@
 ;
-;	Unsigned 32bit remainder TOS by sreg:d
+;	Unsigned 32bit divide TOS by sreg:d
 ;
 
-		.export tosumodeax
-		.setcpu 6803
+		.export tosudiveax
 		.code
 
-tosumodeax:
+tosudiveax:
 		; Arrange stack for the divide helper. TOS is already right
 		; so push the other 4 bytes we need. The divide helper knows
 		; about the fact there is junk (return address) between the
 		; two
-		ldx @sreg
 		pshb
 		psha
-		pshx
+		ldab @sreg+1
+		pshb
+		ldaa @sreg
+		psha
 		tsx
 		jsr div32x32
-		pulx
-		pulx
-		ldd @tmp2
-		std @sreg
-		ldd @tmp3
+		ins
+		ins
+		pulb
+		pula
+		stx @sreg
 		jmp pop4

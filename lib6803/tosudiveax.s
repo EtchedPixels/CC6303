@@ -12,13 +12,13 @@ tosudiveax:
 		; about the fact there is junk (return address) between the
 		; two
 		ldx @sreg
-		pshx
-		psha
 		pshb
+		psha
+		pshx
 		tsx
 		jsr div32x32
+		pulx
 		pulb
 		pula
-		pulx
 		stx @sreg
 		jmp pop4

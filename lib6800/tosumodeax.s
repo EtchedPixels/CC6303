@@ -3,7 +3,6 @@
 ;
 
 		.export tosumodeax
-		.setcpu 6803
 		.code
 
 tosumodeax:
@@ -11,15 +10,22 @@ tosumodeax:
 		; so push the other 4 bytes we need. The divide helper knows
 		; about the fact there is junk (return address) between the
 		; two
-		ldx @sreg
 		pshb
 		psha
-		pshx
+		ldab @sreg+1
+		pshb
+		ldaa @sreg
+		psha
 		tsx
 		jsr div32x32
-		pulx
-		pulx
-		ldd @tmp2
-		std @sreg
-		ldd @tmp3
+		ins
+		ins
+		ins
+		ins
+		ldaa @tmp2
+		staa @sreg
+		ldab @tmp2+1
+		stab @sreg+1
+		ldaa @tmp3
+		ldab @tmp3+1
 		jmp pop4

@@ -5,7 +5,6 @@
 ;
 
 		.export tosdiveax
-		.setcpu 6803
 		.code
 
 tosdiveax:
@@ -28,23 +27,30 @@ nosignfix:
 signfixed:
 		pshb
 		psha
-		ldx @sreg
-		pshx
+		ldaa @sreg
+		ldab @sreg+1
+		pshb
+		psha
 		;
 		;	Sign rules
 		;
 		ldaa 10,x		; sign of TOS
 		bpl nosignfix2
 		inc @tmp4
-		ldd 9,x
-		subd #1
-		std 9,x
-		ldd 7,x
+		ldaa 9,x
+		ldab 10,x
+		subb #1
+		sbca #0
+		staa 9,x
+		stab 10,x
+		ldaa 7,x
+		ldab 8,x
 		sbcb #0
 		sbca #0
 		coma
 		comb
-		std 7,x
+		staa 7,x
+		stab 8,x
 		com 9,x
 		com 10,x
 nosignfix2:
@@ -55,16 +61,20 @@ nosignfix2:
 		ldab @tmp4
 		anda #1
 		beq nosignfix3
-		pulx
 		pula
 		pulb
-		stx @sreg
+		staa @sreg
+		stab @sreg+1
+		pula
+		pulb
 		jsr negeax
 		jmp pop4
 nosignfix3:
-		pulx
 		pula
 		pulb
-		stx @sreg
+		staa @sreg
+		stab @sreg+1
+		pula
+		pulb
 		jmp pop4
 

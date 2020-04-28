@@ -1293,24 +1293,19 @@ void g_toslong (unsigned flags)
             InvalidateX();
             if (flags & CF_UNSIGNED) {
                 /* Push a new upper 16bits of zero */
-                AddCodeLine("pulx");
-                AddCodeLine("clra");
-                AddCodeLine("psha");
-                AddCodeLine("psha");
+                AddCodeLine("ldx @zero");
                 AddCodeLine("pshx");
             } else {
                 /* need to sign extend */
                 unsigned L = GetLocalLabel();
-                AddCodeLine("pulb");
                 AddCodeLine("pula");
                 AddCodeLine("ldx @zero");
                 AddCodeLine("oraa #0");	/* generate N flag */
                 AddCodeLine("bpl %s", LocalLabelName (L));
                 AddCodeLine("dex");	/* X to -1 */
                 g_defcodelabel (L);
-                AddCodeLine("pshx");
                 AddCodeLine("psha");
-                AddCodeLine("pshb");
+                AddCodeLine("pshx");
             }
             push (CF_INT);
             break;

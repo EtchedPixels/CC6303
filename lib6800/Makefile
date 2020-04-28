@@ -4,10 +4,10 @@ OBJ += land.o lbneg.o
 OBJ += leq.o lge.o lgt.o lle.o llt.o lne.o lor.o lsave.o
 OBJ += lsubeq.o luge.o lugt.o lule.o lult.o lxor.o 
 OBJ += makebool.o mulax3.o mulax5.o mulax9.o mulax10.o mulax12.o
-OBJ += sub.o
+OBJ += negeax.o sub.o
 OBJ += shleax.o shr.o shrax.o shreax.o shreax8.o swap.o
 OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumodax.o
-OBJ += tosumuleax.o
+OBJ += tosumuleax.o tosudiveax.o tosmodeax.o tosdiveax.o
 OBJ += divide.o divide32x32.o
 
 OBJ += __cpu_to_le16.o __cpu_to_le32.o
