@@ -154,7 +154,8 @@ Literal* UseLiteral (Literal* L)
     ++L->RefCount;
 
     /* If --local-strings was given, immediately output the literal */
-    if (IS_Get (&LocalStrings)) {
+    if (1 /* FIXME: we can't use the literal pool stuff unless we rework
+             our output side a lot later */|| IS_Get (&LocalStrings)) {
         /* Switch to the proper data segment */
         if (IS_Get (&WritableStrings)) {
             g_usedata ();
