@@ -96,6 +96,7 @@ int strip;
 int c_files;
 int standalone;
 int cpu = 6303;
+int mapfile;
 
 #define MAXARG	64
 
@@ -183,6 +184,37 @@ static void add_argument_list(char *header, struct objhead *h)
 		add_argument(i->name);
 		i->used = 1;
 		i = i->next;
+	}
+}
+
+static char *resolve_library(char *p)
+{
+	static char buf[512];
+	struct obj *o = libpathlist.head;
+	if (strchr(p, '/') || strchr(p, '.'))
+		return p;
+	while(o) {
+		snprintf(buf, 512, "%s/lib%s.a", o->name, p);
+		if (access(buf, 0) == 0)
+			return buf;
+		o = o->next;
+	}
+	return NULL;
+}
+
+/* This turns -L/opt/cc68/lib  -lfoo -lbar into resolved names like
+   /opt/cc68/lib/libfoo.a */
+static void resolve_libraries(void)
+{
+	struct obj *o = liblist.head;
+	while(o != NULL) {
+		char *p = resolve_library(o->name);
+		if (p == NULL) {
+			fprintf(stderr, "cc: unable to find library '%s'.\n", o->name);
+			exit(1);
+		}
+		add_argument(p);
+		o = o->next;
 	}
 }
 
@@ -333,19 +365,28 @@ void link_phase(void)
 		add_argument("-s");
 	add_argument("-o");
 	add_argument(target);
+	if (mapfile) {
+		/* For now output a map file. One day we'll have debug symbols
+		   nailed to the binary */
+		char *n = malloc(strlen(target) + 5);
+		sprintf(n, "%s.map", target);
+		add_argument("-m");
+		add_argument(n);
+	}
 	if (!standalone) {
 		/* Start with crt0.o, end with libc.a and support libraries */
 		add_argument(CRT0);
+		append_obj(&libpathlist, LIBPATH, 0);
 		append_obj(&liblist, LIBC, TYPE_A);
-		if (cpu == 6303)
-			append_obj(&liblist, LIB6303, TYPE_A);
-		else if (cpu == 6803)
-			append_obj(&liblist, LIB6803, TYPE_A);
-		else
-			append_obj(&liblist, LIB6800, TYPE_A);
 	}
+	if (cpu == 6303)
+		append_obj(&liblist, LIB6303, TYPE_A);
+	else if (cpu == 6803)
+		append_obj(&liblist, LIB6803, TYPE_A);
+	else
+		append_obj(&liblist, LIB6800, TYPE_A);
 	add_argument_list(NULL, &objlist);
-	add_argument_list(NULL, &liblist);
+	resolve_libraries();
 	run_command();
 }
 
@@ -451,7 +492,6 @@ char **add_includes(char **p)
 	return p;
 }
 
-
 void dunno(const char *p)
 {
 	fprintf(stderr, "cc: don't know what to do with '%s'.\n", p);
@@ -547,13 +587,17 @@ int main(int argc, char *argv[])
 		case 'o':
 			if (target != NULL) {
 				fprintf(stderr,
-					"-o can only be used once.\n");
+					"cc: -o can only be used once.\n");
 				fatal();
 			}
 			if ((*p)[2])
 				target = *p + 2;
-			else
+			else if (*p)
 				target = *++p;
+			else {
+				fprintf(stderr, "cc: no target given.\n");
+				fatal();
+			}
 			break;
 		case 's':	/* FIXME: for now - switch to getopt */
 			standalone = 1;
@@ -565,10 +609,13 @@ int main(int argc, char *argv[])
 		case 'm':
 			cpu = atoi(*p + 2);
 			if (cpu != 6800 && cpu != 6803 && cpu != 6303) {
-				fprintf(stderr, "Only 6800, 6803 or 6303 supported.\n");
-				exit(1);
+				fprintf(stderr, "cc: only 6800, 6803 or 6303 supported.\n");
+				fatal();
 			}
 			break;	
+		case 'M':
+			mapfile = 1;
+			break;
 		default:
 			usage();
 		}
