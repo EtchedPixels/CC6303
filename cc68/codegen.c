@@ -3964,7 +3964,7 @@ void g_lt (unsigned flags, unsigned long val)
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
                         Label = GetLocalLabel ();
-                        AddCodeLine ("subb #%02X", val);
+                        AddCodeLine ("subb #$%02X", val);
                         AddCodeLine ("jsr boollt");
                         return;
                     }
