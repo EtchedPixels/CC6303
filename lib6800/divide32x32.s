@@ -1,65 +1,76 @@
-;	Workspace:
-;	5-8,x	numerator		replaced with result
-;	9-12,x	denominator
-;	13-16,x	scratch			becomes remainder
+;
+;	32bit unsigned divide. Used as the core for the actual C library
+;	division routines. It expects to be called with the parameters
+;	offsets from X, and uses tmp/tmp2/tmp3.
+;
+;	tmp2/tmp3 end up holding the remainder
+;
+;	On entry the stack frame referenced by X looks like this
+;
+;	7-11	32bit dividend (C compiler TOS)
+;	5,6	A return address
+;	1-4	32bit divisor
+;
+
+DIVID		.equ	1
+;		5/6,x are a return address and it's easier to just leave
+;		the gap
+DIVIS		.equ	7
 
 		.export div32x32
-
 		.code
-;
-;	For speed we want to use sreg:@tmp1, probably also worth looking
-;	for div32_16 cases and having a faster path.
-;
 
 div32x32:
-		ldab #32
+		ldab #32		; 32 iterations for 32 bits
 		stab @tmp
 		clra
 		clrb
-		staa 13,x		; Clear remainder/scratch
-		stab 14,x
-		staa 15,x
-		stab 16,x
-loop:		; Shift the dividend
-		lsl 8,x			; Shift 32bits left
-		rol 7,x
-		rol 6,x
-		rol 5,x
+		; Clear the working register (tmp2/tmp3)
+		staa @tmp2
+		stab @tmp2+1
+		staa @tmp3
+		stab @tmp3+1
+loop:		; Shift the dividend left and set bit 0
+		sec
+		rol DIVID+3,x			; Shift 32bits left
+		rol DIVID+2,x
+		rol DIVID+1,x
+		rol DIVID,x
 		; Capture into the working register
-		rol 16,x		; capturing low bit into scratch
-		rol 15,x
-		rol 14,x
-		rol 13,x
+		rol @tmp3+1		; capturing low bit into scratch
+		rol @tmp3
+		rol @tmp2+1
+		rol @tmp2
 		; Do a 32bit subtract but skip writing the high 16bits
 		; back until we know the comparison
-		ldaa 15,x
-		ldab 16,x
-		subb 12,x
-		sbca 11,x
-		staa 15,x
-		stab 16,x
-		ldaa 13,x
-		ldab 14,x
-		sbcb 10,x
-		sbca 9,x
+		ldaa @tmp3
+		ldab @tmp3+1
+		subb DIVIS+3,x
+		sbca DIVIS+2,x
+		staa @tmp3
+		stab @tmp3+1
+		ldaa @tmp2
+		ldab @tmp2+1
+		sbcb DIVIS+1,x
+		sbca DIVIS,x
 		; Want to subtract
 		bcc skip
 		; No subtract, so put back the low 16bits we mushed
-		ldaa 15,x
-		ldab 16,x
-		subb 12,x
-		sbca 11,x
-		staa 15,x
-		stab 16,x
+		ldaa @tmp3
+		ldab @tmp3+1
+		addb DIVIS+3,x
+		adca DIVIS+2
+		andb #0xFE
+		staa @tmp3
+		stab @tmp3+1
 done:
 		dec tmp
 		bne loop
 		rts
 		; We do want to subtract - write back the other bits
 skip:
-		staa 13,x
-		stab 14,x
+		staa @tmp2
+		stab @tmp2+1
 		dec tmp
 		bne loop
 		rts
-
