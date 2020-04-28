@@ -2,6 +2,7 @@
 ;	On entry X points to the object
 ;
 	.code
+	.export lsubeq
 	.export lsubeqa
 	.export lsubeqysp
 
@@ -14,7 +15,8 @@ lsubeqysp:
 	ldab @tmp2+1
 	addb @tmp+1
 	adca @tmp
-lsubeqa:
+	ldx @tmp
+lsubeq:
 	staa @tmp
 	stab @tmp+1
 	ldaa 5,x	; do the low 16bits
@@ -32,4 +34,7 @@ lsubeqa:
 	ldaa 5,x
 	ldab 6,x
 	rts
-
+lsubeqa:
+	clr @tmp
+	clr @tmp+1
+	bra lsubeq

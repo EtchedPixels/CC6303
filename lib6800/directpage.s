@@ -8,6 +8,8 @@
 	.export tmp
 	.export tmp1
 	.export tmp2
+	.export tmp3
+	.export tmp4
 	.export sreg
 	.export fp
 	.export reg

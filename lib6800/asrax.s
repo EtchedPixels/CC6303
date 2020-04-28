@@ -8,6 +8,7 @@
 	.export asrax5
 	.export asrax4
 	.export asrax3
+	.export asrax2
 
 	.code
 asrax7:
@@ -25,6 +26,7 @@ asrax4:
 asrax3:
 	asra
 	rorb
+asrax2:
 	asra
 	rorb
 	asra

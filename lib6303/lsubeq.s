@@ -2,6 +2,7 @@
 ;	On entry X points to the object
 ;
 	.code
+	.export lsubeq
 	.export lsubeqa
 	.export lsubeqysp
 	.setcpu 6303
@@ -13,7 +14,8 @@ lsubeqysp:
 	tsx
 	xgdx
 	addd @tmp
-lsubeqa:
+	xgdx
+lsubeq:
 	std @tmp
 	ldd 5,x		; do the low 16bits
 	subd @tmp
@@ -24,4 +26,7 @@ lsubeqa:
 	std 3,x
 	ldd 5,x
 	rts
-
+lsubeqa:
+	clr @sreg
+	clr @sreg+1
+	bra lsubeq
