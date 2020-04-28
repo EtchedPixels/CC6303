@@ -1,7 +1,15 @@
-;	Workspace:
-;	5-8,x	numerator		replaced with result
-;	9-12,x	denominator
-;	13-16,x	scratch			becomes remainder
+;
+;	32bit unsigned divide. Used as the core for the actual C library
+;	division routines. It expects to be called with the parameters
+;	offsets from X, and uses tmp/tmp2/tmp3.
+;
+;	tmp2/tmp3 end up holding the remainder
+;
+
+DIVID		.equ	1
+;		5/6,x are a return address and it's easier to just leave
+;		the gap
+DENOM		.equ	7
 
 		.setcpu 6803
 
@@ -9,43 +17,42 @@
 		.code
 
 div32x32:
-		ldab #32
+		ldab #32		; 32 iterations for 32 bits
 		stab @tmp
-		ldd #0
-		std 13,x		; Clear remainder/scratch
-		std 15,x
+		ldd @zero
+		std @tmp2		; Clear remainder/scratch
+		std @tmp3
 loop:		; Shift the dividend
-		lsl 8,x			; Shift 32bits left
-		rol 7,x
-		rol 6,x
-		rol 5,x
+		lsl DIVID+3,x			; Shift 32bits left
+		rol DIVID+2,x
+		rol DIVID+1,x
+		rol DIVID,x
 		; Capture into the working register
-		rol 16,x		; capturing low bit into scratch
-		rol 15,x
-		rol 14,x
-		rol 13,x
+		rol @tmp3+1		; capturing low bit into scratch
+		rol @tmp3
+		rol @tmp2+1
+		rol @tmp2
 		; Do a 32bit subtract but skip writing the high 16bits
 		; back until we know the comparison
-		ldd 15,x
-		subd 11,x
-		std 15,x
-		ldd 13,x
-		sbcb 10,x
-		sbca 9,x
+		ldd @tmp3
+		subd DENOM+2,x
+		std @tmp3
+		ldd @tmp2
+		sbcb DENOM+1,x
+		sbca DENOM,x
 		; Want to subtract
 		bcc skip
 		; No subtract, so put back the low 16bits we mushed
-		ldd 15,x
-		subd 11,x
-		std 15,x
+		ldd @tmp3
+		addd DENOM+2,x
+		std @tmp3
 done:
 		dec tmp
 		bne loop
 		rts
 		; We do want to subtract - write back the other bits
 skip:
-		std 13,x
+		std @tmp2
 		dec tmp
 		bne loop
 		rts
-

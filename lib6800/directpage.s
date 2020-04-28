@@ -21,8 +21,8 @@ one:
 ;	These we need to switch on interrupt
 ;
 tmp:
-	.word 0		; Temporaries used by compiler
-tmp1:
+	.word 0		; Temporaries used by compiler must be in order
+tmp1:			; as sometimes used as a group
 	.word 0
 tmp2:
 	.word 0
