@@ -111,7 +111,6 @@ static void Usage (void)
             "\n"
             "Long options:\n"
             "  --add-source\t\t\tInclude source as comment\n"
-            "  --all-cdecl\t\t\tMake functions default to __cdecl__\n"
             "  --bss-name seg\t\tSet the name of the BSS segment\n"
             "  --check-stack\t\t\tGenerate stack overflow checks\n"
             "  --code-name seg\t\tSet the name of the CODE segment\n"
@@ -473,30 +472,6 @@ static void OptLocalStrings (const char* Opt attribute ((unused)),
 
 
 
-static void OptMemoryModel (const char* Opt, const char* Arg)
-/* Set the memory model */
-{
-    mmodel_t M;
-
-    /* Check the current memory model */
-    if (MemoryModel != MMODEL_UNKNOWN) {
-        AbEnd ("Cannot use option '%s' twice", Opt);
-    }
-
-    /* Translate the memory model name and check it */
-    M = FindMemoryModel (Arg);
-    if (M == MMODEL_UNKNOWN) {
-        AbEnd ("Unknown memory model: %s", Arg);
-    } else if (M == MMODEL_HUGE) {
-        AbEnd ("Unsupported memory model: %s", Arg);
-    }
-
-    /* Set the memory model */
-    SetMemoryModel (M);
-}
-
-
-
 static void OptRegisterSpace (const char* Opt, const char* Arg)
 /* Handle the --register-space option */
 {
@@ -661,7 +636,6 @@ int main (int argc, char* argv[])
         { "--inline-stdfuncs",      0,      OptInlineStdFuncs       },
         { "--list-warnings",        0,      OptListWarnings         },
         { "--local-strings",        0,      OptLocalStrings         },
-        { "--memory-model",         1,      OptMemoryModel          },
         { "--register-space",       1,      OptRegisterSpace        },
         { "--register-vars",        0,      OptRegisterVars         },
         { "--rodata-name",          1,      OptRodataName           },
@@ -827,11 +801,6 @@ int main (int argc, char* argv[])
     /* If no CPU given, use the default CPU for the target */
     if (CPU == CPU_UNKNOWN) {
             CPU = CPU_6803;
-    }
-
-    /* If no memory model was given, use the default */
-    if (MemoryModel == MMODEL_UNKNOWN) {
-        SetMemoryModel (MMODEL_NEAR);
     }
 
     /* If no language standard was given, use the default one */
