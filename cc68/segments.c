@@ -59,7 +59,6 @@
 #include "codeseg.h"
 #include "dataseg.h"
 #include "error.h"
-#include "textseg.h"
 #include "textlist.h"
 #include "segments.h"
 
@@ -153,7 +152,6 @@ static Segments* NewSegments (SymEntry* Func)
     Segments* S = xmalloc (sizeof (Segments));
 
     /* Initialize the fields */
-    S->Text     = NewTextSeg (Func);
     S->Code     = NewCodeSeg (GetSegName (SEG_CODE), Func);
     S->Data     = NewDataSeg (GetSegName (SEG_DATA), Func);
     S->ROData   = NewDataSeg (GetSegName (SEG_RODATA), Func);

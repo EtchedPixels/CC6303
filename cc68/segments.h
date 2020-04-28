@@ -66,7 +66,6 @@ struct CodeEntry;
 struct CodeLabel;
 struct CodeSeg;
 struct DataSeg;
-struct TextSeg;
 struct SymEntry;
 
 
@@ -89,7 +88,6 @@ typedef enum segment_t {
 /* A list of all segments used when generating code */
 typedef struct Segments Segments;
 struct Segments {
-    struct TextSeg*     Text;           /* Text segment */
     struct CodeSeg*     Code;           /* Code segment */
     struct DataSeg*     Data;           /* Data segment */
     struct DataSeg*     ROData;         /* Readonly data segment */

@@ -92,7 +92,6 @@
 #include "global.h"
 #include "segments.h"
 #include "stackptr.h"
-#include "textseg.h"
 #include "util.h"
 #include "codegen.h"
 
@@ -430,12 +429,7 @@ void g_preamble (void)
 void g_fileinfo (const char* Name, unsigned long Size, unsigned long MTime)
 /* If debug info is enabled, place a file info into the source */
 {
-    if (DebugInfo) {
-        /* We have to place this into the global text segment, so it will
-        ** appear before all .dbg line statements.
-        */
-        TS_AddLine (GS->Text, "\t.dbg\t\tfile, \"%s\", %lu, %lu", Name, Size, MTime);
-    }
+    /* TODO */
 }
 
 /* The code that follows may be moved around */

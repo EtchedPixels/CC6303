@@ -30,7 +30,6 @@
 #include "global.h"
 #include "segments.h"
 #include "stackptr.h"
-#include "textseg.h"
 #include "textlist.h"
 #include "util.h"
 #include "codegen.h"
