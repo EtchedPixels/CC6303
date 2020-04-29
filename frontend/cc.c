@@ -97,6 +97,7 @@ int c_files;
 int standalone;
 int cpu = 6303;
 int mapfile;
+int targetos;
 
 #define MAXARG	64
 
@@ -233,6 +234,7 @@ static void run_command(void)
 		fatal();
 	}
 	if (pid == 0) {
+#ifdef DEBUG
 		{
 			char **p = arglist;
 			printf("[");
@@ -240,6 +242,7 @@ static void run_command(void)
 				printf("%s ", *p++);
 			printf("]\n");
 		}
+#endif
 		fflush(stdout);
 		if (arginfd != -1) {
 			dup2(arginfd, 0);
@@ -358,9 +361,13 @@ void preprocess_c(char *path)
 void link_phase(void)
 {
 	build_arglist(CMD_LD);
-	add_argument("-b");
-	add_argument("-C");
-	add_argument("256");
+	if (targetos == 1) {
+		;
+	} else {
+		add_argument("-b");
+		add_argument("-C");
+		add_argument("256");
+	}
 	if (strip)
 		add_argument("-s");
 	add_argument("-o");
@@ -392,8 +399,8 @@ void link_phase(void)
 
 void sequence(struct obj *i)
 {
-	printf("Last Phase %d\n", last_phase);
-	printf("1:Processing %s %d\n", i->name, i->type);
+//	printf("Last Phase %d\n", last_phase);
+//	printf("1:Processing %s %d\n", i->name, i->type);
 	if (i->type == TYPE_S) {
 		convert_S_to_s(i->name);
 		i->type = TYPE_s;
@@ -406,7 +413,7 @@ void sequence(struct obj *i)
 	}
 	if (last_phase == 1)
 		return;
-	printf("2:Processing %s %d\n", i->name, i->type);
+//	printf("2:Processing %s %d\n", i->name, i->type);
 	if (i->type == TYPE_C_pp || i->type == TYPE_C) {
 		convert_c_to_s(i->name);
 		i->type = TYPE_s;
@@ -414,7 +421,7 @@ void sequence(struct obj *i)
 	}
 	if (last_phase == 2)
 		return;
-	printf("3:Processing %s %d\n", i->name, i->type);
+//	printf("3:Processing %s %d\n", i->name, i->type);
 	if (i->type == TYPE_s) {
 		convert_s_to_o(i->name);
 		i->type = TYPE_O;
@@ -615,6 +622,14 @@ int main(int argc, char *argv[])
 			break;	
 		case 'M':
 			mapfile = 1;
+			break;
+		case 't':
+			if (strcmp(*p + 2, "fuzix") == 0)
+				targetos = 1;
+			else {
+				fprintf(stderr, "cc: only fuzix target type is known.\n");
+				fatal();
+			}
 			break;
 		default:
 			usage();

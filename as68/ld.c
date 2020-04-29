@@ -57,10 +57,12 @@ static uint16_t base[OSEG];		/* Base of each segment */
 static uint16_t size[OSEG];		/* Size of each segment */
 static uint16_t align = 1;		/* Alignment */
 static uint16_t baseset[OSEG];		/* Did the user force this one */
-#define LD_RELOC	0		/* Output a relocatable binary */
+#define LD_RELOC	0		/* Output a relocatable binary stream */
 #define LD_RFLAG	1		/* Output an object module */
 #define LD_ABSOLUTE	2		/* Output a linked binary */
-static uint8_t ldmode = LD_RELOC;	/* Operating mode */
+#define LD_FUZIX	3		/* Output a Fuzix binary */
+static uint8_t ldmode = LD_FUZIX;	/* Operating mode */
+static uint8_t rawstream;		/* Outputting raw or quoted ? */
 
 static uint8_t split_id;		/* True if code and data both zero based */
 static uint8_t arch;			/* Architecture */
@@ -607,7 +609,7 @@ static void set_segment_bases(void)
 
 static void target_pquoteb(uint8_t v, FILE *op)
 {
-	if (v == REL_ESC && ldmode != LD_ABSOLUTE) {
+	if (v == REL_ESC && !rawstream) {
 		fputc(v, op);
 		fputc(REL_REL, op);
 	} else
@@ -701,7 +703,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 		/* Escaped 0xDA byte. Just copy it over, and if in absolute mode
 		   remove the REL_REL marker */
 		if (code == REL_REL) {
-			if (ldmode != LD_ABSOLUTE) {
+			if (!rawstream) {
 				fputc(REL_ESC, op);
 				fputc(REL_REL, op);
 			} else
@@ -742,7 +744,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 			if (seg == ABSOLUTE || seg >= OSEG || size > 2)
 				error("invalid reloc");
 			/* If we are not building an absolute then keep the tag */
-			if (ldmode != LD_ABSOLUTE) {
+			if (!rawstream) {
 				fputc(REL_ESC, op);
 				if (!overflow)
 					fputc(REL_OVERFLOW, op);
@@ -753,6 +755,8 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 			/* Relocate the value versus the new segment base and offset of the
 			   object */
 			r = target_get(o, size, ip);
+			if (high)
+				r <<= 8;
 //			fprintf(stderr, "Target is %x, Segment %d base is %x\n", 
 //				r, seg, o->base[seg]);
 			r += o->base[seg];
@@ -760,7 +764,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 				fprintf(stderr, "%d width relocation offset %d does not fit.\n", size, r);
 				error("relocation exceeded");
 			}
-			if (high && ldmode == LD_ABSOLUTE) {
+			if (high && rawstream) {
 				r >>= 8;
 				size = 1;
 			}
@@ -789,7 +793,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 							fprintf(stderr, "%s: Unknown symbol '%.16s'.\n", o->path, s->name);
 						err |= 1;
 					}
-					if (ldmode != LD_ABSOLUTE) {
+					if (!rawstream) {
 						/* Rewrite the record with the new symbol number */
 						fputc(REL_ESC, op);
 						if (!overflow)
@@ -828,7 +832,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 					}
 					/* If we are not fully resolving then turn this into a
 					   simple relocation */
-					if (ldmode != LD_ABSOLUTE && optype != REL_PCREL) {
+					if (!rawstream && optype != REL_PCREL) {
 						fputc(REL_ESC, op);
 						if (!overflow)
 							fputc(REL_OVERFLOW, op);
@@ -836,7 +840,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 							fputc(REL_HIGH, op);
 						fputc(REL_SIMPLE | (s->type & S_SEGMENT) | (size - 1) << 4, op);
 					}
-					if (ldmode == LD_ABSOLUTE && high) {
+					if (rawstream && high) {
 						r >>= 8;
 						size = 1;
 					}
@@ -879,18 +883,19 @@ static void write_stream(FILE * op, int seg)
 				o->path,
 				seg, o->oh.o_segbase[seg]);
 		dot = o->base[seg];
+		/* For Fuzix we place segments in absolute space but don't
+		   bother writing out the empty page before */
+		if (ldmode == LD_FUZIX) 
+			xfseek(op, dot - base[1]);
 		/* In absolute mode we place segments wherever they should
 		   be in the binary space */
-		/* FIXME: to support ORG we will need to add a reloc type that
-		   indicates an arbitrary dot change. We also then need the
-		   assembler to generate the right symbol behaviours */
-		if (ldmode == LD_ABSOLUTE)
+		else if (ldmode == LD_ABSOLUTE)
 			xfseek(op, dot);
 		relocate_stream(o, seg, op, ip);
 		xfclose(ip);
 		o = o->next;
 	}
-	if (ldmode != LD_ABSOLUTE) {
+	if (!rawstream) {
 		fputc(REL_ESC, op);
 		fputc(REL_EOF, op);
 	}
@@ -919,17 +924,18 @@ static void write_binary(FILE * op, FILE *mp)
 	hdr.o_size[3] = size[3];
 
 	rewind(op);
-	if (ldmode != LD_ABSOLUTE)
+	if (!rawstream)
 		fwrite(&hdr, sizeof(hdr), 1, op);
 	/* For LD_RFLAG number the symbols for output, for othe forms
 	   check for unknowmn symbols and error them out */
-	if (ldmode != LD_ABSOLUTE)
+	if (!rawstream)
 		renumber_symbols();
-	if (ldmode == LD_RFLAG && size[0]) {
-		fprintf(stderr, "Cannot build a relocatable binary including absolute segments.\n");
+	if ((ldmode == LD_FUZIX || ldmode == LD_RFLAG) && size[0]) {
+		fprintf(stderr, "Cannot build a Fuzix or relocatable binary including absolute segments.\n");
 		exit(1);
 	}
-	write_stream(op, ABSOLUTE);
+	if (ldmode != LD_FUZIX)
+		write_stream(op, ABSOLUTE);
 	write_stream(op, CODE);
 	hdr.o_segbase[1] = ftell(op);
 	write_stream(op, DATA);
@@ -940,13 +946,14 @@ static void write_binary(FILE * op, FILE *mp)
 		}
 	}
 	else {
-		for (i = 4; i < OSEG; i++) {
+		/* ZP is ok in Fuzix but is not initialized in a defined way */
+		for (i = ldmode == LD_FUZIX ? 5 : 4; i < OSEG; i++) {
 			if (size[i]) {
-				fprintf(stderr, "Unsupported data in non-standard segments.\n");
+				fprintf(stderr, "Unsupported data in non-standard segment %d.\n", i);
 				break;
 			}
 		}
-		if (!strip) {
+		if (!rawstream && !strip) {
 			hdr.o_symbase = ftell(op);
 			write_symbols(op);
 		}
@@ -957,7 +964,7 @@ static void write_binary(FILE * op, FILE *mp)
 	if (dbgsyms )
 		copy_debug_all(op, mp);*/ 
 	if (err == 0) {
-		if (ldmode != LD_ABSOLUTE) {
+		if (!rawstream) {
 			xfseek(op, 0);
 			fwrite(&hdr, sizeof(hdr), 1, op);
 		} else	/* FIXME: honour umask! */
@@ -1120,9 +1127,14 @@ int main(int argc, char *argv[])
 		/* TODO */
 		exit(1);
 	}
-
+	if (ldmode == LD_FUZIX) {
+		/* Fuzix binaries are for now 0x100 based */
+		baseset[1] = 1;
+		base[1] = 0x0100;
+	}
+	if (ldmode == LD_FUZIX || ldmode == LD_ABSOLUTE)
+		rawstream = 1;
 	while (optind < argc) {
-		/* FIXME: spot libraries and handle here */
 		if (verbose)
 			printf("Loading %s\n", argv[optind]);
 		add_object(argv[optind], 0, 0);

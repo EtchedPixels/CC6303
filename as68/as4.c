@@ -150,8 +150,10 @@ void outraw(ADDR *a)
 			outbyte(REL_OVERFLOW);
 			s = 0 << 4;
 		}
-		if (a->a_flags & A_HIGH)
+		if (a->a_flags & A_HIGH) {
 			outbyte(REL_HIGH);
+			s = 0 << 4;
+		}
 		if (a->a_sym == NULL) {
 			/* low bits of 16 bit is an 8bit relocation with
 			   overflow suppressed */
@@ -298,10 +300,8 @@ void outrab(ADDR *a)
 			outbyte(REL_OVERFLOW);
 			a->a_value &= 0xFF;
 		}
-		if (a->a_flags & A_HIGH) {
+		if (a->a_flags & A_HIGH)
 			outbyte(REL_HIGH);
-			s = 1 << 4;
-		}
 		if (a->a_sym == NULL) {
 			outbyte(s | REL_SIMPLE | a->a_segment);
 		} else {
@@ -408,8 +408,8 @@ void outeof(void)
 	rewind(ofp);
 	obh.o_magic = MAGIC_OBJ;
 	fwrite(&obh, sizeof(obh), 1, ofp);
-	printf("Abs %d bytes: Code %d bytes: Data %d bytes: BSS %d bytes\n",
-		truesize[ABSOLUTE], truesize[CODE], truesize[DATA], truesize[BSS]);
+//	printf("Abs %d bytes: Code %d bytes: Data %d bytes: BSS %d bytes\n",
+//		truesize[ABSOLUTE], truesize[CODE], truesize[DATA], truesize[BSS]);
 }
 
 /*
