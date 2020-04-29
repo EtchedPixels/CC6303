@@ -690,11 +690,11 @@ void g_leave(void)
         AddCodeLine("pulx");
         AddCodeLine("stx @fp");
     }
-    /* Should always be zero */
-    if (StackPtr)
+    /* Should always be zero : however ignore this being wrong if we took
+       a C level error as that may be the real cause. Only valid code failing
+       this check is a problem */
+    if (StackPtr && !ErrorCount)
         Internal("g_leave: stack unbalanced by %d", StackPtr);
-    /* FIXME: we really want to fold the magic around varargs into the
-       normal stack management */
     AddCodeLine("rts");
 }
 
