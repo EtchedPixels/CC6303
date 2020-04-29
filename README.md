@@ -21,6 +21,10 @@ Lots of more complicated things will blow up. In general integer code is
 likely to be ok. Longs need a lot more debugging and 32bit support code
 writing and debugging.
 
+The front end appears to be working. It can take all of the Fuzix tree and
+build it into final binaries. The output isn't yet too good, and also
+has lots of bugs.
+
 ## How to use
 
 For a simple test environment the easiest approach at this point is to
@@ -32,9 +36,6 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 
 - Strip out lots more unused cc65 code. There is a lot of unused code,
   and a load of dangling header references and so on left to resolve.
-
-- Support -lfoo not just -llibfoo.a in the front end. There are other
-  cc'isms we need to address as well.
 
 - Remove remaining '6502' references.
 
