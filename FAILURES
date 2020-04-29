@@ -1,23 +1,8 @@
 - cc a non existing C file gives bogus error - need to check cc68 return
   codes and stuff
-- overlong names clashing in assembler
-- incorrect code error causes an internal
-
-- Some of the adventures fail with
-[/opt/cc68/bin/ld68 -b -C 256 -o adv03 -m adv03.map /rotating/home/alan/UZI/External/FUZIX/Library/libs/crt0_6303.o adv03.o /rotating/home/alan/UZI/External/FUZIX/Library/libs/libc6303.a /opt/cc68/lib/lib6303.a ]
-While processing: adv03.o
-invalid reloc
-
-or
-
-[/opt/cc68/bin/ld68 -b -C 256 -o adv07 -m adv07.map /rotating/home/alan/UZI/External/FUZIX/Library/libs/crt0_6303.o adv07.o /rotating/home/alan/UZI/External/FUZIX/Library/libs/libc6303.a /opt/cc68/lib/lib6303.a ]
-While processing: adv07.o
-corrupt relocations
-
-[/opt/cc68/bin/ld68 -b -C 256 -o z1 -m z1.map /rotating/home/alan/UZI/External/FUZIX/Library/libs/crt0nostdio_6303.o z1.o /rotating/home/alan/UZI/External/FUZIX/Library/libs/libc6303.a /opt/cc68/lib/lib6303.a ]
-While processing: z1.o
-invalid reloc sym
-
+- overlong names clashing in assembler should be caught in the compiler name
+  compare - and we probably want to change the format a bit to allow longer
+  names 8(
 
 Optimizing Rules
 ----------------
@@ -27,34 +12,31 @@ Why is it not fixing up function entry ldd pshb psha pshx ?
 Lots of cases where we generate extra TSX calls - check our InvalidateX
 are not overdone somewhere silly
 
+Lots of easy wins on 8bit - eg spotting
+
+CLRA
+ANDB #n
+STAA @tmp
+ORAB @tmp
+JSR bool*
+
+and on static long = int (spot the clear sreg, and copy of sreg and just clear
+in target)
+
+and tons more
+
 Endianness
 ----------
 
 Fix cases the cc65 core seems to assume that types don't matter only width
 when loading via indirect, and check if storing has the same bug
+(Should all be done)
 
 
 Libc test compiling
 -------------------
 
 None at code generation
-
-Kernel test compiling
----------------------
-
-(error handling ?)
-2:Processing syscall_fs.c 4
-[/opt/cc68/lib/cc68 -I /rotating/home/alan/UZI/External/FUZIX/Kernel/cpu-6303 -I /rotating/home/alan/UZI/External/FUZIX/Kernel/platform-rc2014-6303 -I /rotating/home/alan/UZI/External/FUZIX/Kernel/include -r --add-source syscall_fs.c ]
-syscall_fs.c(405): Error: Undefined symbol: 'ssize_t'
-syscall_fs.c(405): Error: Illegal function call
-syscall_fs.c(405): Error: Variable identifier expected
-syscall_fs.c(405): Error: ')' expected
-syscall_fs.c(405): Error: ';' expected
-syscall_fs.c(405): Error: Expression expected
-syscall_fs.c(405): Warning: Statement has no effect
-syscall_fs.c(405): Error: ';' expected
-syscall_fs.c(422): Internal compiler error:
-g_leave: stack unbalanced by 2
 
 Linker
 ------
