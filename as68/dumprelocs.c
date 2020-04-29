@@ -13,6 +13,7 @@
 static char *symbols;
 static int numsyms;
 static struct objhdr hdr;
+static int bigendian;
 
 static char bogus[19] = { "\0OUT OF RANGE\0\0\0\0\0\0" };
 
@@ -42,7 +43,7 @@ static char *find_symbol_before(int seg, unsigned short addr, unsigned short *ap
     int n = 0;
     while(n++ < numsyms) {
         uint16_t a = (p[18] << 8) | p[17];
-        if (a <= addr && seg == (p[0] & S_SEGMENT)) {
+        if (a <= addr && seg == (p[0] & S_SEGMENT) && !(p[0] & S_UNKNOWN)) {
             *ap = a;
             candidate = p;
         }
@@ -72,17 +73,6 @@ static int nextbyte(int fd)
     return n;
 }
 
-static int nextbyteq(int fd)
-{
-    int n = nextbyte(fd);
-    if (n != REL_ESC)
-        return n;
-    n = nextbyte(fd);
-    if (n != REL_REL)
-        fprintf(stderr, "Corrupt relocation data.\n");
-    return n;
-}
-
 static int bytect;
 static char relbuf[33];
 static char *relptr;
@@ -99,7 +89,7 @@ static void byte(int seg, uint8_t v)
         printf("%.16s:\n", p + 1);
     }
     if (bytect == 0)
-        printf("\t");
+        printf("%04X\t", dot);
     printf("%02X ", v);
     bytect++;
     if (bytect == 16) {
@@ -128,25 +118,39 @@ static void reloc_size(int n)
     relbuf[5] = "0123456789ABCDEF"[n];
 }
 
-static void reloc_symbol(int fd)
+static int reloc_word(int fd, int size)
 {
-    int  n = nextbyte(fd);
-    n |= (nextbyte(fd) << 8);
-    sprintf(relbuf + 12, "%.16s", symptr(n) + 1);
+    int n;
+    if (size == 1)
+        n = nextbyte(fd);
+    else if (size == 2) {
+        if (bigendian) {
+            n = nextbyte(fd) << 8;
+            n |= nextbyte(fd);
+        } else {
+            n = nextbyte(fd);
+            n |= nextbyte(fd) << 8;
+        }
+    } else
+        fprintf(stderr, "invalid size %d.\n", size);
+    return n;
 }
 
 static void reloc_value(int fd, int size)
 {
-    int n;
-    if (size == 1)
-        n = nextbyteq(fd);
-    else if (size == 2){
-        n = (nextbyteq(fd) << 8);
-        n |= nextbyteq(fd);
-    } else
-        fprintf(stderr, "Invalid size %d.\n", size);
-        
+    int n = reloc_word(fd, size);
     sprintf(relbuf + 12, "%-5d", n);
+}
+
+static void reloc_symbol(int fd, int size)
+{
+    char *p = relbuf + 12;
+    int  n = nextbyte(fd);
+    n |= (nextbyte(fd) << 8);
+    p += sprintf(p, "%.16s", symptr(n) + 1);
+    n = reloc_word(fd, size);
+    if (n)
+        sprintf(p, "+%d", n);
 }
 
 static void reloc_symvalue(int fd, int seg, int size)
@@ -156,8 +160,9 @@ static void reloc_symvalue(int fd, int seg, int size)
         char *p;
         uint16_t v;
         
-        n = (nextbyteq(fd) << 8);
-        n |= nextbyteq(fd);
+        /* FIXME: endianness check from header */
+        n = nextbyte(fd) << 8;
+        n |= nextbyte(fd);
 
         p = find_symbol_before(seg, n, &v);
         if (p) {
@@ -187,6 +192,17 @@ static void reloc_end(void)
     printf("%s\n", relbuf);
 } 
 
+static int checkdot(int seg, int dot)
+{
+    /* ABS is special */
+    if (dot > hdr.o_size[seg]) {
+        fprintf(stderr, "Segment exceeds header size (%04X > %04X).\n",
+            dot, hdr.o_size[seg]);
+        return 1;
+    }
+    return 0;
+}
+
 static int dump_data(const char *p, int seg, int fd)
 {
     int c;
@@ -196,20 +212,17 @@ static int dump_data(const char *p, int seg, int fd)
     bytect = 0;
     
     while((c = nextbyte_eof(fd)) != -1) {
-
-        /* ABS is special */
-        if (dot > hdr.o_size[seg]) {
-            fprintf(stderr, "Segment exceeds header size (%04X > %04X).\n",
-                dot, hdr.o_size[seg]);
-            break;
-        }
         if (c != REL_ESC) {
+            if (checkdot(seg, dot))
+                break;
             byte(seg, c);
             dot++;
             continue;
         }
         c = nextbyte(fd);
         if (c == REL_REL) {
+            if (checkdot(seg, dot))
+                break;
             byte(seg, REL_ESC);
             dot++;
             continue;
@@ -256,11 +269,11 @@ static int dump_data(const char *p, int seg, int fd)
             reloc_tag("R");
         case REL_SYMBOL:
             reloc_type("SYM");
-            reloc_symbol(fd);
+            reloc_symbol(fd, size);
             reloc_end();
+            dot += size;
             continue;  
         }         
-        
     }
     fprintf(stderr, "%s: Unexpected EOF.\n", p);
     return 1;
@@ -297,6 +310,9 @@ static int process(const char *p)
         close(fd);
         return 1;
     }
+    if (hdr.o_flags & OF_BIGENDIAN)
+        bigendian = 1;
+
     if (load_symbols(fd, &hdr) < 0) {
         fprintf(stderr, "%s: cannot load symbols.\n", p);
         close(fd);
