@@ -837,8 +837,11 @@ extern int outpass(void);
 extern void outabsolute(int);
 extern void outsegment(int);
 extern void outaw(uint16_t);
+extern void outaw2(uint16_t);
 extern void outab(uint8_t);
-extern void outabchk(uint16_t);
+extern void outabyte(uint8_t);
+extern void outab2(uint8_t);
+extern void outabchk2(uint16_t);
 extern void outraw(ADDR *);
 extern void outrab(ADDR *);
 extern void outrabrel(ADDR *);
@@ -846,6 +849,7 @@ extern void outeof(void);
 extern void outbyte(uint8_t);
 extern void outflush(void);
 extern void syminit(void);
+extern void reservebyte(void);
 
 extern char *etext[];
 

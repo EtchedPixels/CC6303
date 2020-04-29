@@ -14,8 +14,21 @@
 static uint16_t segsize[OSEG];
 static uint16_t truesize[OSEG];
 static off_t segbase[OSEG];
+static uint16_t segpad[OSEG];
 
 static struct objhdr obh;
+
+static void dumpseginfo(void)
+{
+#if 0
+	int i;
+	printf("Pass %d:\n", pass);
+	for (i = 0; i < 8; i++) {
+		printf("\t%d: %04X %d@%ld (pad %d)\n", i, truesize[i],
+				segsize[i], segbase[i], segpad[i]);
+	}
+#endif
+}
 
 static void numbersymbols(void);
 
@@ -28,13 +41,18 @@ int outpass(void)
 	if (!passbegin(pass))
 		return 0;
 
+	if (pass)
+		dumpseginfo();
 	/* Pass 2 locks everything down so we can then set up truesize. For
 	   a 2 pass (0/3 CPU) we are fine as pass 0 will lock down and truesize
 	   is already clear */
 
-	if (pass == 2) {
-		for (i = 0; i < OSEG; i++)
+	if (pass < 3) {
+		for (i = 0; i < OSEG; i++) {
 			truesize[i] = 0;
+			segsize[i] = 0;
+			segpad[i] = 0;
+		}
 	}
 
 	if (pass == 3) {
@@ -43,9 +61,13 @@ int outpass(void)
 			segbase[i] = base;
 			if (i != BSS) {
 				obh.o_segbase[i] = base;
-				base += segsize[i] + 2; /* 2 for the EOF mark */
+				base += segsize[i] + segpad[i] + 2; /* 2 for the EOF mark */
 			}
 			obh.o_size[i] = truesize[i];
+			/* This will then count up again so we don't get
+			   a bogus segment limit error */
+			truesize[i] = 0;
+			segsize[i] = 0;
 		}
 		obh.o_magic = 0;
 		obh.o_arch = ARCH;
@@ -55,6 +77,7 @@ int outpass(void)
 		obh.o_dbgbase = 0;	/* for now */
 		/* Number the symbols for output */
 		numbersymbols();
+		dumpseginfo();
 		outsegment(segment);
 	}
 	return 1;
@@ -84,26 +107,17 @@ void outsegment(int seg)
 {
 	/* Seek to the current writing address for this segment */
 	if (pass == 3) {
-//		fprintf(stderr, "Writing segment %d at %ld\n",
-//			seg, (long)segbase[seg]);
+//		fprintf(stderr, "Writing segment %d(%x) at %ld\n",
+//			seg, segsize[seg],(long)segbase[seg]);
 		fseek(ofp, segbase[seg], SEEK_SET);
 	}
 }
 
 /*
- * Output a word. Use the
- * standard Z-80 ordering (low
- * byte then high byte).
+ * Output a word. Use the target word order with padding as needed
  */
-void outaw(uint16_t w)
+void outaw2(uint16_t w)
 {
-#ifdef TARGET_BIGENDIAN
-	outab(w >> 8);
-	outab(w);
-#else
-	outab(w);
-	outab(w >> 8);
-#endif
 }
 
 static void check_store_allowed(uint8_t segment, uint16_t value)
@@ -147,13 +161,37 @@ void outraw(ADDR *a)
 			outbyte(a->a_sym->s_number & 0xFF);
 			outbyte(a->a_sym->s_number >> 8);
 		}
+		/* Relocatable constant, store unquoted as know the size */
+		if (a->a_flags & A_LOW)
+			outabyte(a->a_value);
+		else if (a->a_flags & A_HIGH)
+			outabyte(a->a_value >> 8);
+		else {
+#ifdef TARGET_BIGENDIAN
+			outabyte(a->a_value >> 8);
+			outabyte(a->a_value);
+#else
+			outabyte(a->a_value);
+			outabyte(a->a_value >> 8);
+#endif
+		}
+	} else {
+		/* Relocatable constant. This may change and thus need
+		   to be padded */
+		   if (a->a_flags & A_LOW)
+			outab2(a->a_value);
+		else if (a->a_flags & A_HIGH)
+			outab2(a->a_value >> 8);
+		else {
+#ifdef TARGET_BIGENDIAN
+			outab2(a->a_value >> 8);
+			outab2(a->a_value);
+#else
+			outab2(a->a_value);
+			outab2(a->a_value >> 8);
+#endif
+		}
 	}
-	if (a->a_flags & A_LOW)
-		outab(a->a_value);
-	else if (a->a_flags & A_HIGH)
-		outab(a->a_value >> 8);
-	else
-		outaw(a->a_value);
 }
 
 /*
@@ -175,7 +213,46 @@ void outab(uint8_t b)
 	list_addbyte(b);
 }
 
-void outabchk(uint16_t b)
+/*
+ * Output an absolute unquoted program byte to the code and listing
+ * streams.
+ */
+void outabyte(uint8_t b)
+{
+	/* Not allowed to put data in the BSS except zero */
+	check_store_allowed(segment, b);
+	outbyte(b);
+	++dot[segment];
+	++truesize[segment];
+	if (truesize[segment] == SEGMENT_LIMIT || dot[segment] == SEGMENT_LIMIT)
+		err('o', SEGMENT_OVERFLOW);
+	list_addbyte(b);
+}
+
+/*
+ * Output an absolute byte to the code and listing
+ * streams. This version is used when the caller does not know the final
+ * value until the last pass. In that case we allocate an extra byte for
+ * unquoted values just in case. As the stream as an EOF marker a little bit
+ * of padding is fine and does no harm.
+ */
+void outab2(uint8_t b)
+{
+	/* Not allowed to put data in the BSS except zero */
+	check_store_allowed(segment, b);
+	outbyte(b);
+	if (b == REL_ESC)	/* Quote relocation markers */
+		outbyte(REL_REL);
+	else
+		reservebyte();
+	++dot[segment];
+	++truesize[segment];
+	if (truesize[segment] == SEGMENT_LIMIT || dot[segment] == SEGMENT_LIMIT)
+		err('o', SEGMENT_OVERFLOW);
+	list_addbyte(b);
+}
+
+void outabchk2(uint16_t b)
 {
 	if (b > 255)
 		err('o', CONSTANT_RANGE);
@@ -191,13 +268,14 @@ void outrabrel(ADDR *a)
 		outbyte(a->a_sym->s_number & 0xFF);
 		outbyte(a->a_sym->s_number >> 8);
 		outbyte(a->a_value);
-		outab(a->a_value >> 8);
+		outbyte(a->a_value >> 8);
 		return;
 	}
-	/* relatives without a symbol don't need relocation */
 	if (a->a_value < -128 || a->a_value > 127)
 		err('o', CONSTANT_RANGE);
-	outab(a->a_value);
+	/* relatives without a symbol don't need relocation but they
+	   still may need a pad byte */
+	outab2(a->a_value);
 }
 
 /*
@@ -231,13 +309,20 @@ void outrab(ADDR *a)
 			outbyte(a->a_sym->s_number & 0xFF);
 			outbyte(a->a_sym->s_number >> 8);
 		}
+		if (a->a_flags & A_HIGH)
+			outabyte(a->a_value >> 8);
+		else if (a->a_flags & A_LOW)
+			outabyte(a->a_value & 0xFF);
+		else
+			outabyte(a->a_value);
+	} else {
+		if (a->a_flags & A_HIGH)
+			outabchk2(a->a_value >> 8);
+		else if (a->a_flags & A_LOW)
+			outabchk2(a->a_value & 0xFF);
+		else
+			outabchk2(a->a_value);
 	}
-	if (a->a_flags & A_HIGH)
-		outabchk(a->a_value >> 8);
-	else if (a->a_flags & A_LOW)
-		outabchk(a->a_value & 0xFF);
-	else
-		outabchk(a->a_value);
 }
 
 static void putsymbol(SYM *s, FILE *ofp)
@@ -309,6 +394,7 @@ void outeof(void)
 	if (noobj || pass < 3)
 		return;
 
+	dumpseginfo();
 	for (i = 0; i < OSEG; i++) {
 		/* The BSS is not written out */
 		if (i == BSS)
@@ -322,8 +408,8 @@ void outeof(void)
 	rewind(ofp);
 	obh.o_magic = MAGIC_OBJ;
 	fwrite(&obh, sizeof(obh), 1, ofp);
-//	printf("Abs %d bytes: Code %d bytes: Data %d bytes: BSS %d bytes\n",
-//		truesize[ABSOLUTE], truesize[CODE], truesize[DATA], truesize[BSS]);
+	printf("Abs %d bytes: Code %d bytes: Data %d bytes: BSS %d bytes\n",
+		truesize[ABSOLUTE], truesize[CODE], truesize[DATA], truesize[BSS]);
 }
 
 /*
@@ -336,4 +422,10 @@ void outbyte(uint8_t b)
 		putc(b, ofp);
 	segbase[segment]++;
 	segsize[segment]++;
+}
+
+/* Reserve space for a possible size change on the final pass */
+void reservebyte(void)
+{
+	segpad[segment]++;
 }
