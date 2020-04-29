@@ -637,12 +637,7 @@ static int target_pgetb(FILE *ip)
 	int c = fgetc(ip);
 	if (c == EOF)
 		error("unexpected EOF");
-	if (c != REL_ESC)
-		return c;
-	c = fgetc(ip);
-	if (c != REL_REL)
-		error("corrupt relocations");
-	return REL_ESC;
+	return c;
 }
 
 /*
