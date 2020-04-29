@@ -299,8 +299,8 @@ static void F_RestoreRegVars (Function* F)
 
     /* FIXME: need to accumulate non regvar size */
     while (Sym) {
-        unsigned Bytes = CheckedSizeOf (Sym->Type);
         if (SymIsRegVar (Sym)) {
+            unsigned Bytes = CheckedSizeOf (Sym->Type);
 
             /* Check for more than one variable */
             /*int Offs       = Sym->V.R.SaveOffs; */
@@ -315,6 +315,7 @@ static void F_RestoreRegVars (Function* F)
         } else {
             /* Don't try and drop anything that's not a local auto variable */
             if (SymIsAuto (Sym) && !SymIsParam (Sym)) {
+                unsigned Bytes = CheckedSizeOf (Sym->Type);
                 /* Accumulate the space to drop */
                 ByteTotal += Bytes;
             }
