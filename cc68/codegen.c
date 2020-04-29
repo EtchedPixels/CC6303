@@ -2361,14 +2361,16 @@ void g_push (unsigned flags, unsigned long val)
             if ((flags & CF_TYPEMASK) != CF_CHAR || (flags & CF_FORCECHAR) == 0) {
                 /* Force immediates via X */
                 g_getimmed (flags | CF_USINGX, val, 0);
+                InvalidateX();
                 switch(flags & CF_TYPEMASK) {
                 case CF_INT:
                     AddCodeLine("pshx");
                     break;
                 case CF_LONG:
+                    /* X is the low bits in this case */
+                    AddCodeLine("pshx");
                     AddCodeLine("pshb");
                     AddCodeLine("psha");
-                    AddCodeLine("pshx");
                     break;
                 default:
                     typeerror (flags);

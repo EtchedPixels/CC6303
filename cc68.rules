@@ -388,19 +388,29 @@ ldd %1
 addd %2
 
 
-
-
 # Spot logic operations where we can use x to avoid going over the stack
+# We can't handle all cases because if the second op is ,x then we lose
 
 ldd %1
 pshb
 psha
-ldd %2
+ldd #%2
 tsx
 =
 ldx %1
 pshx
-ldd %2
+ldd #%2
+tsx
+
+ldd %1
+pshb
+psha
+ldd _%2
+tsx
+=
+ldx %1
+pshx
+ldd _%2
 tsx
 
 
