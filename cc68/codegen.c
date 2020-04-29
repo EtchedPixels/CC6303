@@ -4015,6 +4015,7 @@ void g_lt (unsigned flags, unsigned long val)
                 AddCodeLine ("std @tmp");
                 AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
+                InvalidateX();
                 AddCodeLine ("subd @tmp");
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("jsr boolult");
