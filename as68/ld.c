@@ -732,6 +732,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 		}
 		if (code == REL_HIGH) {
 			high = 1;
+			overflow = 0;
 			code = fgetc(ip);
 		}
 		/* Relocations */
