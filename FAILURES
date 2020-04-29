@@ -3,15 +3,20 @@
 - overlong names clashing in assembler
 - incorrect code error causes an internal
 
-- Some code causes duplicate symbol errors on shleax1/shreax1 which looks
-  like a linker bug
+- Some of the adventures fail with
+[/opt/cc68/bin/ld68 -b -C 256 -o adv03 -m adv03.map /rotating/home/alan/UZI/External/FUZIX/Library/libs/crt0_6303.o adv03.o /rotating/home/alan/UZI/External/FUZIX/Library/libs/libc6303.a /opt/cc68/lib/lib6303.a ]
+While processing: adv03.o
+invalid reloc
 
-cp.c	fails with unknown symbol L023E/L0241
+or
 
-ps.c
-	fails with unknown symbol L015D
+[/opt/cc68/bin/ld68 -b -C 256 -o adv07 -m adv07.map /rotating/home/alan/UZI/External/FUZIX/Library/libs/crt0_6303.o adv07.o /rotating/home/alan/UZI/External/FUZIX/Library/libs/libc6303.a /opt/cc68/lib/lib6303.a ]
+While processing: adv07.o
+corrupt relocations
 
-
+[/opt/cc68/bin/ld68 -b -C 256 -o z1 -m z1.map /rotating/home/alan/UZI/External/FUZIX/Library/libs/crt0nostdio_6303.o z1.o /rotating/home/alan/UZI/External/FUZIX/Library/libs/libc6303.a /opt/cc68/lib/lib6303.a ]
+While processing: z1.o
+invalid reloc sym
 
 
 Optimizing Rules
