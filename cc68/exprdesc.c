@@ -141,7 +141,7 @@ const char* ED_GetLabelName (const ExprDesc* Expr, long Offs)
 
         case E_LOC_REGISTER:
             /* Register variable */
-            SB_Printf (&Buf, "regbank+%u", (unsigned)((Offs + Expr->Name) & 0xFFFFU));
+            SB_Printf (&Buf, "@reg+%u", (unsigned)((Offs + Expr->Name) & 0xFFFFU));
             break;
 
         case E_LOC_LITERAL:
