@@ -41,6 +41,10 @@
 /*****************************************************************************/
 
 
+/* TODO: Look at reusing this properly. For that we'd have to work the
+   original cc65 output logic back into the tree which might actually make
+   sense once it's a bit more stable. For now we can't use RefCount to do
+   string elimination as we don't do the matching code elimination */
 
 #include <stdio.h>
 #include <string.h>
@@ -108,7 +112,7 @@ static Literal* NewLiteral (const void* Buf, unsigned Len)
 
     /* Initialize the fields */
     L->Label    = GetLocalLabel ();
-    L->RefCount = 0;
+    L->RefCount = 1;		/* We don't prune literals yet */
     L->Output   = 0;
     SB_Init (&L->Data);
     SB_AppendBuf (&L->Data, Buf, Len);
@@ -154,8 +158,14 @@ Literal* UseLiteral (Literal* L)
     ++L->RefCount;
 
     /* If --local-strings was given, immediately output the literal */
-    if (1 /* FIXME: we can't use the literal pool stuff unless we rework
-             our output side a lot later */|| IS_Get (&LocalStrings)) {
+    /* This is broken for string arrays because we still need to defer
+       the local string to the end of the object being initialized. We
+       should not therefore do this but should instead call the helper
+       to write out literals whenever we complete a function or a non
+       local initialization.
+
+       cc65 has the same bug (we inherited it) */
+    if (IS_Get (&LocalStrings)) {
         /* Switch to the proper data segment */
         if (IS_Get (&WritableStrings)) {
             g_usedata ();

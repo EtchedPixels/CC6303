@@ -181,11 +181,18 @@ int SymIsOutputFunc (const SymEntry* Sym)
     /* Symbol must be a function which is defined and either extern or
     ** static and referenced.
     */
+#if 0
+    /* FIXME */
+    /* We don't currently do function elimination as cc65 does so this
+       needs to happen without the Flags check */
     return IsTypeFunc (Sym->Type)               &&
            SymIsDef (Sym)                       &&
            (Sym->Flags & (SC_REF | SC_EXTERN));
+#else
+    return IsTypeFunc (Sym->Type)               &&
+           SymIsDef (Sym);
+#endif
 }
-
 
 
 const DeclAttr* SymGetAttr (const SymEntry* Sym, DeclAttrType AttrType)
