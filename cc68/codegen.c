@@ -1351,7 +1351,7 @@ static void g_regchar (unsigned Flags)
         /* Sign extend */
         L = GetLocalLabel();
         AddCodeLine ("cmpb #$80");
-        AddCodeLine ("bcc %s", LocalLabelName (L));
+        AddCodeLine ("bcs %s", LocalLabelName (L));
         AddCodeLine ("coma");
         g_defcodelabel (L);
     }
