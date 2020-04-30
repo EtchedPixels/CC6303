@@ -1180,6 +1180,7 @@ void g_putind (unsigned Flags, unsigned Offs)
 
     /* For now and probably always */
     NotViaX();
+    InvalidateX();
     
     if (CPU == CPU_6303)
         viaabx = 1024;
@@ -1708,10 +1709,13 @@ void g_addstatic (unsigned flags, uintptr_t label, long offs)
             break;
 
         case CF_LONG:
-            /* Do it the old way */
-            g_push (flags, 0);
-            g_getstatic (flags, label, offs);
-            g_add (flags, 0);
+            AddCodeLine("addd %s", lbuf+2);
+            AddCodeLine("std @tmp");
+            AddCodeLine("ldd %s", lbuf);
+            AddCodeLine("adcb @sreg+1");
+            AddCodeLine("adca @sreg");
+            AddCodeLine("std @sreg");
+            AddCodeLine("ldd @tmp");
             break;
 
         default:
@@ -2711,7 +2715,6 @@ void g_sub (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR; /* Handle chars as ints */
         g_push (flags & ~CF_CONST, 0);
     }
-    InvalidateX();
     oper (flags, val, ops);
 }
 
@@ -3717,7 +3720,6 @@ void g_eq (unsigned flags, unsigned long val)
 
     /* FIXME look at x for NULL case only */
     NotViaX();
-    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3794,7 +3796,6 @@ void g_ne (unsigned flags, unsigned long val)
 
     /* FIXME look at x for NULL case only */
     NotViaX();
-    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3872,7 +3873,6 @@ void g_lt (unsigned flags, unsigned long val)
 
 //    AddCodeLine(";g_lt");
     NotViaX();
-    InvalidateX();	/*FIXME: for now */
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -4042,7 +4042,6 @@ void g_le (unsigned flags, unsigned long val)
 
 
     NotViaX();
-    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -4169,6 +4168,7 @@ void g_le (unsigned flags, unsigned long val)
                     AddCodeLine ("jsr boolule");
                 else
                     AddCodeLine ("jsr boolle");
+                InvalidateX();
                 pop (flags);
                 return;
         }
@@ -4188,7 +4188,6 @@ void g_gt (unsigned flags, unsigned long val)
 
 
     NotViaX();
-    InvalidateX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -4326,6 +4325,7 @@ void g_gt (unsigned flags, unsigned long val)
                 AddCodeLine ("std @tmp");
                 AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
+                InvalidateX();
                 AddCodeLine ("subd @tmp");
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("jsr boolugt");
@@ -4349,7 +4349,6 @@ void g_ge (unsigned flags, unsigned long val)
     unsigned Label;
 
     NotViaX();
-    InvalidateX();
 
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -4501,6 +4500,7 @@ void g_ge (unsigned flags, unsigned long val)
                 AddCodeLine ("std @tmp");
                 AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
+                InvalidateX();
                 AddCodeLine ("subd @tmp");
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("jsr booluge");
@@ -4679,11 +4679,14 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
         InvalidateX();
         g_getimmed (CF_USINGX|CF_STATIC, VarLabel, 0);
         AddCodeLine ("pshx");
+        InvalidateX();
         g_getimmed (CF_STATIC|CF_USINGX, InitLabel, 0);
         AddCodeLine ("pshx");
         g_getimmed (CF_INT | CF_UNSIGNED | CF_CONST, Size, 0);
-        /* Assumes we do fastcall */
         AddCodeLine ("jsr %s", GetLabelName (CF_EXTERNAL, (uintptr_t) "memcpy", 0));
+        AddCodeLine ("pulx");
+        AddCodeLine ("pulx");
+        InvalidateX();
     }
 }
 
