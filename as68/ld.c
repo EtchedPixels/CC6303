@@ -1130,8 +1130,11 @@ int main(int argc, char *argv[])
 	}
 	if (ldmode == LD_FUZIX) {
 		/* Fuzix binaries are for now 0x100 based */
-		baseset[1] = 1;
-		base[1] = 0x0100;
+		/* FIXME: this is really arch dependent so we ought to
+		   have a table (and eventually do relocatables anyway) */
+		baseset[CODE] = 1;
+		base[CODE] = 0x0100;
+		base[ZP] = 0x20;	/* Skip I/O space */
 	}
 	if (ldmode == LD_FUZIX || ldmode == LD_ABSOLUTE)
 		rawstream = 1;
