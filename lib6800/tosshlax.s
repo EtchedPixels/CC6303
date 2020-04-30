@@ -3,7 +3,7 @@
 ;
 	.export tosshlax		; unsigned
 	.export tosaslax		; signed
-	.export pop2
+	.export pop2get
 
 	.code
 
@@ -21,6 +21,7 @@ shloop:
 	beq shiftdone
 	lsr 3,x
 	ror 4,x
+	decb
 	bra shloop
 shiftout:
 	clra
@@ -28,11 +29,11 @@ shiftout:
 	staa 3,x
 	stab 4,x
 shiftdone:
-pop2:
+pop2get:
 	tsx				; no pulx on original 6800
 	ldx 1,x				; so do it by hand
 	ins
 	ins
-	ins
-	ins
+	pula
+	pulb
 	jmp ,x

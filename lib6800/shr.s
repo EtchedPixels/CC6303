@@ -10,18 +10,16 @@ tosshrax:
 	cmpb #15		; More bits are meaningless
 	bgt ret0
 	tsx
+loop:
 	tstb
 	beq retdone
-loop:
 	lsr 3,x
 	lsr 4,x
 	decb
-	bne loop
-	ldaa 3,x		; Result into D
-	ldab 4,x
-	bra retdone
+	bra loop
 ret0:
 	clra
 	clrb
-retdone:
 	jmp pop2
+retdone:
+	jmp pop2get

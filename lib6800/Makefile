@@ -1,5 +1,5 @@
 OBJ =  asr.o asrax.o asreax.o
-OBJ += bneg.o compleax.o directpage.o jumpx.o pop4.o
+OBJ += bneg.o compleax.o directpage.o jumpx.o pop2.o pop4.o
 OBJ += land.o lbneg.o
 OBJ += leq.o lge.o lgt.o lle.o llt.o lne.o lor.o lsave.o
 OBJ += lsubeq.o luge.o lugt.o lule.o lult.o lxor.o 
