@@ -4373,7 +4373,7 @@ void g_ge (unsigned flags, unsigned long val)
 
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
-                        /* Do a subtraction. Condition is true if carry set */
+                        /* Do a subtraction. Condition is true if carry or z set */
                         AddCodeLine ("cmpb #$%02X", (unsigned char)val);
                         /* Do not usr clr as it clears carry */
                         AddCodeLine ("jsr booluge");
@@ -4382,13 +4382,13 @@ void g_ge (unsigned flags, unsigned long val)
                     /* FALLTHROUGH */
 
                 case CF_INT:
-                    /* Do a subtraction. Condition is true if carry set */
+                    /* Do a subtraction. Condition is true if carry clear */
                     AddCodeLine ("subd #$%04X", (unsigned short)val);
                     AddCodeLine ("jsr booluge");
                     return;
 
                 case CF_LONG:
-                    /* Do a subtraction. Condition is true if carry set */
+                    /* Do a subtraction. Condition is true if carry clear */
                     AddCodeLine ("subd #$%04X", (unsigned short) val);
                     AddCodeLine ("ldab @sreg");
                     AddCodeLine ("sbcb #$%02X", (unsigned char)(val >> 16));

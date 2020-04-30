@@ -35,19 +35,19 @@ ret0:
 	clrb
 	rts
 
-boollt:
-	beq	ret0
 boolle:
-	bgt	ret0
+	beq	ret1
+boollt:
+	blt	ret1
 	clra
-	ldab	#1
+	clrb
 	rts
 
-boolgt:
-	beq	ret0
-boolge:	blt	ret0
+boolge:
+	beq	ret1
+boolgt:	bgt	ret1
 	clra
-	ldab	#1
+	clrb
 	rts
 
 booluge:
