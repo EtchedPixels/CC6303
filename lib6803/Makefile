@@ -9,7 +9,7 @@ OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumulax.o
 OBJ += tosdiveax.o tosmodeax.o tosudiveax.o tosumodeax.o
 
 OBJ += __cpu_to_le16.o __cpu_to_le32.o
-OBJ += _memcpy.o _memset.o _strlen.o _strcpy.o _strchr.o _strrchr.o
+OBJ += _memcpy.o _memset.o _strcat.o _strcpy.o _strlen.o _strchr.o _strrchr.o
 
 all: $(OBJ)
 
