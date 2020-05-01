@@ -3483,10 +3483,10 @@ void g_asl (unsigned flags, unsigned long val)
                 if (val >= 8) {
                     /* One case that is awkward on 6803 */
                     AddCodeLine ("psha");
-                    AddCodeLine ("ldaa @sreg");
-                    AddCodeLine ("staa @sreg+1");
-                    AddCodeLine ("pula");
+                    AddCodeLine ("ldaa @sreg+1");
                     AddCodeLine ("staa @sreg");
+                    AddCodeLine ("pula");
+                    AddCodeLine ("staa @sreg+1");
                     AddCodeLine ("tba");
                     AddCodeLine ("clrb");
                     val -= 8;
