@@ -2483,11 +2483,14 @@ void g_push (unsigned flags, unsigned long val)
                 break;
 
             case CF_LONG:
-                /* FIXME: inline */
+                if (flags & CF_USINGX)
+                    AddCodeLine("pshx");
+                else {
+                    AddCodeLine ("pshb");
+                    AddCodeLine ("psha");
+                }
                 NotViaX();
                 InvalidateX();
-                AddCodeLine ("pshb");
-                AddCodeLine ("psha");
                 /* Could go via D if it helps other stuff */
                 AddCodeLine ("ldx @sreg");
                 AddCodeLine ("pshx");
