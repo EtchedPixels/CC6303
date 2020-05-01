@@ -230,12 +230,79 @@ static void InvalidateX(void)
     XState = 0;
 }
 
+/* Assign a value to D in the most efficient way possible. This is mostly
+   ready for when we add 6800 support */
+
+static void AssignD(unsigned short value, int keepc)
+{
+    /* Optimizations using clr. clr clears the C flag so we can't always
+       use it */
+    if (!keepc) {
+        if (value == 0) {
+            AddCodeLine("clra");
+            AddCodeLine("clrb");
+            return;
+        } else if (CPU == CPU_6800 && !(value & 0xFF00)) {
+            AddCodeLine("clra");
+            AddCodeLine("ldab #$%02X", value);
+            return;
+        } else if (CPU == CPU_6800 && !(value & 0x00FF)) {
+            AddCodeLine("ldaa #$%02X", value >> 8);
+            AddCodeLine("clrb");
+            return;
+        }
+    }
+    if (CPU == CPU_6800) {
+        /* For things like 0xFF this is a shade shorter */
+        if ((value & 0xFF) == (value >> 8)) {
+            AddCodeLine("ldaa #$%02X", value & 0xFF);
+            AddCodeLine("tab");
+        }
+        /* No 16bit ops on a 6800 */
+        AddCodeLine("ldaa #$%02X", value >> 8);
+        AddCodeLine("ldab #$%02X", value & 0xFF);
+        return;
+    }
+    /* We have LDD */
+    if (value == 0)
+        AddCodeLine("ldd @zero");
+    else if (value == 1)
+        AddCodeLine("ldd @one");
+    else
+        AddCodeLine("ldd #$%04X", value);
+}
+
+/* Store D somewhere */
+static void StoreD(const char *where)
+{
+    if (CPU == CPU_6800) {
+        AddCodeLine("stab %s+1", where);
+        AddCodeLine("staa %s", where);
+    } else
+        AddCodeLine("std %s", where);
+}
+
+static void StoreDViaX(int offset)
+{
+    if (CPU == CPU_6800) {
+        if (offset > 254)
+            Internal("Bad offset $%02X in StoreDViaX.\n", offset);
+        AddCodeLine("stab $%02X,x", offset + 1);
+        AddCodeLine("staa $%02X,x", offset);
+    } else {
+        if (offset > 255)
+            Internal("Bad offset $%02X in StoreDViaX.\n", offset);
+        AddCodeLine("std $%02X,x", offset);
+    }
+}
+
 /* Get D into X, may mash D */
 static void DToX(void)
 {
     switch (CPU) {
+        case CPU_6800:
         case CPU_6803:
-            AddCodeLine("std @tmp");
+            StoreD("@tmp");
             AddCodeLine("ldx @tmp");
             break;
         default:
@@ -288,7 +355,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
                 AddCodeLine("ldx @fp");
                 return Offs;
             }
-            if (exact && Offs < save_d ? 5 : 7) {
+            if (exact && Offs < (save_d ? 5 : 7)) {
                 while(Offs--)
                     AddCodeLine("inx");
                 return 0;
@@ -330,7 +397,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
             AddCodeLine("psha");
         }
         AddCodeLine("sts @tmp");
-        AddCodeLine("ldd #$%04X", Offs);
+        AssignD(Offs, 0);
         AddCodeLine("addd @tmp");
         DToX();
         if (save_d) {
@@ -669,11 +736,15 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
     /* Uglies from the L->R stack handling for varargs */
     if ((flags & CF_FIXARGC) == 0) {
         /* Frame pointer is required for varargs mode */
-        AddCodeLine("ldx @fp");
-        AddCodeLine("pshx");
-        AddCodeLine("tsx");
-        AddCodeLine("abx");
-        AddCodeLine("stx @fp");
+        if (CPU == CPU_6800)
+            AddCodeLine("jsr fixfp");
+        else {
+            AddCodeLine("ldx @fp");
+            AddCodeLine("pshx");
+            AddCodeLine("tsx");
+            AddCodeLine("abx");
+            AddCodeLine("stx @fp");
+        }
         FramePtr = 1;
     } else
         FramePtr = 0;
@@ -687,8 +758,12 @@ void g_leave(void)
 {
     /* Recover the previous frame pointer if we were vararg */
     if (FramePtr) {
-        AddCodeLine("pulx");
-        AddCodeLine("stx @fp");
+        if (CPU == CPU_6800)
+            AddCodeLine("jsr restorefp");
+        else {
+            AddCodeLine("pulx");
+            AddCodeLine("stx @fp");
+        }
     }
     /* Should always be zero : however ignore this being wrong if we took
        a C level error as that may be the real cause. Only valid code failing
@@ -732,37 +807,29 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                     AddCodeLine("ldx #$%04X", (unsigned short) Val);
                     InvalidateX();
                 } else
-                    AddCodeLine ("ldd #$%04X", (unsigned short)Val);
+                    AssignD(Val, 0);
                 break;
 
             case CF_LONG:
                 /* Split the value into 4 bytes */
                 W1 = (unsigned short) (Val >> 0);
                 W2 = (unsigned short) (Val >> 16);
-                
                 if (Flags & CF_USINGX) {
                     /* Important: This is deliberately arranged so that
                        the 32bit value is also in D:X so that callers can
                        go either way - TODO check ok to kill X in D case */
-                    AddCodeLine("ldd #$%04X", W2);
-                    AddCodeLine("std @sreg");
+                    AssignD(W2, 0);
+                    StoreD("@sreg");
                     AddCodeLine("ldx #$%04X", W1);
                     InvalidateX();
                 } else {
                     /* Load the value */
-                    if (W2 == 0) {
-                        AddCodeLine("clra");
-                        AddCodeLine("clrb");
-                    } else
-                        AddCodeLine ("ldd #$%04X", W2);
-                    AddCodeLine ("std @sreg");
-                    if (W1 != W2) {
-                        if (W1 == 0) {
-                            AddCodeLine("clra");
-                            AddCodeLine("clrb");
-                        } else
-                            AddCodeLine ("ldd #$%04X", W1);
-                    }
+                    AssignD(W2, 0);
+                    StoreD("@sreg");
+                    /* TODO: for 6800 we should try and do byte not word sized
+                       pair optimizing */
+                    if (W1 != W2)
+                        AssignD(W1, 0);
                 }
                 break;
 
@@ -781,8 +848,13 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
         if (Flags & CF_USINGX) {
             AddCodeLine("ldx #%s", Label);
             InvalidateX();
-        } else
-            AddCodeLine ("ldd #%s", Label);
+        } else {
+            if (CPU == CPU_6800) {
+                AddCodeLine("ldaa >#%s", Label);
+                AddCodeLine("ldab <#%s", Label);
+            } else
+                AddCodeLine ("ldd #%s", Label);
+        }
     }
 }
 
@@ -834,7 +906,7 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
                 AddCodeLine ("orab %s+0", lbuf);
             } else {
                 AddCodeLine ("ldd %s", lbuf);
-                AddCodeLine ("std @sreg");
+                StoreD("@sreg");
                 if (flags & CF_USINGX) {
                     InvalidateX();
                     AddCodeLine ("ldx %s+2", lbuf);
@@ -881,7 +953,7 @@ void g_getlocal (unsigned Flags, int Offs)
 
         case CF_LONG:
             AddCodeLine ("ldd $%02X,x", Offs + 2);
-            AddCodeLine ("std @sreg");
+            StoreD("@sreg");
             AddCodeLine ("ldd $%02X,x", Offs);
             if (Flags & CF_TEST)
                 g_test (Flags);
@@ -913,7 +985,7 @@ void g_getlocal_x (unsigned Flags, int Offs)
 
         case CF_LONG:
             AddCodeLine ("ldd $%02X,x", Offs + 2);
-            AddCodeLine ("std @sreg");
+            StoreD ("@sreg");
             AddCodeLine ("ldx $%02X,x", Offs);
             break;
 
@@ -993,7 +1065,7 @@ void g_getind (unsigned Flags, unsigned Offs)
         case CF_LONG:
             DToX();
             AddCodeLine ("ldd $%02X,x", Offs);
-            AddCodeLine ("std @sreg");
+            StoreD("@sreg");
             AddCodeLine ("ldd $%02X,x", Offs + 2);
             if (Flags & CF_TEST) {
                 g_test (Flags);
@@ -1041,7 +1113,7 @@ void g_leasp (unsigned Flags, int Offs)
         /* No smarter way when going via D */
         AddCodeLine("sts @tmp1");
         if (Offs) {
-            AddCodeLine("ldd #$%04X", -Offs);
+            AssignD(-Offs, 0);
             AddCodeLine("addd @tmp1");
         } else {
             AddCodeLine("ldd @tmp1");
@@ -1101,7 +1173,7 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
                 InvalidateX();
                 AddCodeLine ("stx %s", lbuf);
             } else
-                AddCodeLine ("std %s", lbuf);
+                StoreD(lbuf);
             break;
 
         case CF_LONG:
@@ -1111,9 +1183,9 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
                 AddCodeLine ("stx %s", lbuf);
                 InvalidateX();
             } else {
-                AddCodeLine ("std %s+2", lbuf);
+                AddCodeLine ("std %s+2", lbuf);	/* TODO */
                 AddCodeLine ("ldd @sreg");
-                AddCodeLine ("std %s", lbuf);
+                StoreD(lbuf);
             }
             break;
 
@@ -1135,22 +1207,27 @@ void g_putlocal (unsigned Flags, int Offs, long Val)
     switch (Flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            if (Flags & CF_CONST)
-                AddCodeLine ("ldab #$%02X", (unsigned char) Val);
+            if (Flags & CF_CONST) {
+                if ((Val & 0xFF) == 0)
+                    AddCodeLine("clrb");
+                else
+                    AddCodeLine ("ldab #$%02X", (unsigned char) Val);
+            }
             AddCodeLine ("stab $%02X,x", Offs);
             break;
 
         case CF_INT:
             if (Flags & CF_CONST)
-                AddCodeLine ("ldd #$%04X", (unsigned char)Val);
+                AssignD(Val, 0);
             AddCodeLine ("std $%02X,x", (unsigned char)Offs);
             break;
 
         case CF_LONG:
             if (Flags & CF_CONST) {
-                AddCodeLine ("ldd #$%04X", (unsigned short)(Val >> 16));
+                AssignD(Val >> 16, 0);
                 AddCodeLine ("std $%02X,x", (unsigned char)Offs);
-                AddCodeLine ("ldd #$%04X", (unsigned short)Val);
+                if ((Val >> 16) != (Val & 0xFFFF))
+                    AssignD(Val & 0xFFFF, 0);
                 AddCodeLine ("std $%02X,x", (unsigned char)(Offs + 2));
             } else {
                 NotViaX();	/* For now. May be worth it via X and @tmp */
@@ -1230,11 +1307,11 @@ void g_putind (unsigned Flags, unsigned Offs)
             AddCodeLine("addd #$%04X", Offs);
             AddCodeLine("xgdx");
         } else {
-            AddCodeLine("std @tmp2");
+            StoreD("@tmp2");
             AddCodeLine("pula");
             AddCodeLine("pulb");
             AddCodeLine("addd #$%04X", Offs);
-            AddCodeLine("std @tmp");
+            StoreD("@tmp");
             AddCodeLine("ldx @tmp");
             AddCodeLine("ldd @tmp2");
         }
@@ -1393,7 +1470,7 @@ void g_reglong (unsigned Flags)
             NotViaX();
             if (Flags & CF_FORCECHAR) {
                 /* Conversion is from char */
-                AddCodeLine("ldx #$0000");
+                AddCodeLine("ldx @zero");
                 AddCodeLine("clra");
                 if ((Flags & CF_UNSIGNED) == 0) {
                     L = GetLocalLabel();
@@ -1411,7 +1488,7 @@ void g_reglong (unsigned Flags)
 
         case CF_INT:
             NotViaX();
-            AddCodeLine ("ldx #$0000");
+            AddCodeLine ("ldx @zero");
             if ((Flags & CF_UNSIGNED)  == 0) {
                 L = GetLocalLabel();
                 AddCodeLine ("bita #$80");
@@ -1710,11 +1787,11 @@ void g_addstatic (unsigned flags, uintptr_t label, long offs)
 
         case CF_LONG:
             AddCodeLine("addd %s", lbuf+2);
-            AddCodeLine("std @tmp");
+            StoreD("@tmp");
             AddCodeLine("ldd %s", lbuf);
             AddCodeLine("adcb @sreg+1");
             AddCodeLine("adca @sreg");
-            AddCodeLine("std @sreg");
+            StoreD("@sreg");
             AddCodeLine("ldd @tmp");
             break;
 
@@ -1797,14 +1874,14 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                     AddCodeLine ("ldd %s", lbuf);
                 } else {
                     NotViaX();
-                    AddCodeLine ("ldd #$%04X", (unsigned short)val);
+                    AssignD(val, 0);
                     AddCodeLine ("addd %s", lbuf);
-                    AddCodeLine ("std %s", lbuf);
+                    StoreD(lbuf);
                 }
             } else {
                 NotViaX();
                 AddCodeLine ("addd %s", lbuf);
-                AddCodeLine ("std %s", lbuf);
+                StoreD(lbuf);
             }
             break;
 
@@ -1815,7 +1892,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                 if (val < 0x10000) {
                     InvalidateX();
                     AddCodeLine ("ldx #%s", lbuf);
-                    AddCodeLine ("ldd #$%04X", (int)(val & 0xFFFF));
+                    AssignD(val, 0);
                     AddCodeLine ("addd ,x");
                     AddCodeLine ("std ,x");
                 } else {
@@ -1868,7 +1945,7 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
         case CF_INT:
             Offs = GenOffset(flags, Offs, (flags & CF_CONST) ? 0 : 1, 0);
             if (flags & CF_CONST)
-                AddCodeLine("ldd #$%04X", (unsigned short) val);
+                AssignD(val, 0);
             AddCodeLine("addd $%02X,x", Offs);
             AddCodeLine("std $%02X,x", Offs);
             break;
@@ -1987,13 +2064,13 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
             if (flags & CF_CONST) {
                 AddCodeLine ("ldd %s", lbuf);
                 AddCodeLine ("subd #$%04X", (unsigned short)val);
-                AddCodeLine ("std %s", lbuf);
+                StoreD(lbuf);
             } else {
                 /* This seems to be simpler than playing with coma/b and subd */
-                AddCodeLine ("std @tmp");
+                StoreD("@tmp");
                 AddCodeLine ("ldd %s", lbuf);
                 AddCodeLine ("subd @tmp");
-                AddCodeLine ("std %s", lbuf);
+                StoreD(lbuf);
             }
             break;
 
@@ -2003,7 +2080,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
                 if (val < 0x10000) {
                     AddCodeLine ("ldd %s", lbuf);
                     AddCodeLine ("subd #$%04X", (unsigned short)val);
-                    AddCodeLine ("std %s", lbuf);
+                    StoreD(lbuf);
                 } else {
                     g_getstatic (flags, label, offs);
                     g_dec (flags, val);
@@ -2061,7 +2138,7 @@ void g_subeqlocal (unsigned flags, int Offs, unsigned long val)
                 AddCodeLine ("std $%02X,x", Offs);
                 break;
             }
-            AddCodeLine ("std @tmp");
+            StoreD("@tmp");
             AddCodeLine ("ldd $%02X,x", Offs);
             AddCodeLine ("subd @tmp");
             AddCodeLine ("std $%02X,x", Offs);
@@ -2182,7 +2259,7 @@ void g_save (unsigned flags)
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine ("std @tmp1");
+            StoreD("@tmp1");
             break;
 
         case CF_LONG:
@@ -2554,11 +2631,11 @@ void g_drop (unsigned Space, int save_d)
                 AddCodeLine("ldab @tmp");
         } else {           
             if (save_d)
-                AddCodeLine("std @tmp2");
+                StoreD("@tmp2");
             AddCodeLine("sts @tmp");
             AddCodeLine("ldd @tmp");
             AddCodeLine("addd #$%04X", Space);
-            AddCodeLine("std @tmp");
+            StoreD("@tmp");
             AddCodeLine("lds @tmp");
             if (save_d)
                 AddCodeLine("ldd @tmp2");
@@ -2584,11 +2661,11 @@ void g_space (int Space, int save_d)
         g_drop (-Space, save_d);
     } else if (Space > 16) {
         if (save_d)
-            AddCodeLine("std @tmp2");
+            StoreD("@tmp2");
         AddCodeLine("sts @tmp");
-        AddCodeLine("ldd #-$%04X", Space);
+        AssignD(-Space, 0);
         AddCodeLine("addd @tmp");
-        AddCodeLine("std @tmp");
+        StoreD("@tmp");
         AddCodeLine("lds @tmp");
         if (save_d)
             AddCodeLine("ldd @tmp2");
@@ -3271,9 +3348,9 @@ void g_asr (unsigned flags, unsigned long val)
                 }
                 if (val >= 3) {
                     if (flags & CF_UNSIGNED) {
-                        AddCodeLine ("jsr shrax%d", val);
+                        AddCodeLine ("jsr shrax%d", (unsigned int)val);
                     } else {
-                        AddCodeLine ("jsr asrax%d", val);
+                        AddCodeLine ("jsr asrax%d", (unsigned int)val);
                     }
                     return;
                 }
@@ -3291,7 +3368,7 @@ void g_asr (unsigned flags, unsigned long val)
                 /* FIXME: we could go with oversize shift = 0 better ? */
                 val &= 0x1F;
                 if (val >= 24) {
-                    AddCodeLine ("ldx #$0000");
+                    AddCodeLine ("ldx @zero");
                     AddCodeLine ("ldab @sreg+1");
                     if ((flags & CF_UNSIGNED) == 0) {
                         unsigned L = GetLocalLabel();
@@ -3306,7 +3383,7 @@ void g_asr (unsigned flags, unsigned long val)
                     val -= 24;
                 }
                 if (val >= 16) {
-                    AddCodeLine ("ldx #0");
+                    AddCodeLine ("ldx @zero");
                     AddCodeLine ("ldd @sreg");
                     if ((flags & CF_UNSIGNED) == 0) {
                         unsigned L = GetLocalLabel();
@@ -3398,7 +3475,7 @@ void g_asl (unsigned flags, unsigned long val)
                     val -= 24;
                 }
                 if (val >= 16) {
-                    AddCodeLine ("std @sreg");
+                    StoreD("@sreg");
                     AddCodeLine ("clra");
                     AddCodeLine ("clrb");
                     val -= 16;
@@ -3466,7 +3543,7 @@ void g_neg (unsigned Flags)
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine ("subd #$0001");
+            AddCodeLine ("subd @one");
             AddCodeLine ("coma");
             AddCodeLine ("comb");
             break;
@@ -3869,8 +3946,6 @@ void g_lt (unsigned flags, unsigned long val)
         "tosltax", "tosultax", "toslteax", "tosulteax"
     };
 
-    unsigned Label;
-
 //    AddCodeLine(";g_lt");
     NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
@@ -3933,7 +4008,7 @@ void g_lt (unsigned flags, unsigned long val)
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
                         AddCodeLine ("aslb");          /* Bit 7 -> carry */
-                        AddCodeLine ("ldd #$0000");
+                        AssignD(0, 1);
                         AddCodeLine ("rolb");
                         return;
                     }
@@ -3942,7 +4017,7 @@ void g_lt (unsigned flags, unsigned long val)
                 case CF_INT:
                     /* Just check the high byte */
                     AddCodeLine ("asla");           /* Bit 15 -> carry */
-                    AddCodeLine ("ldd #$0000");
+                    AssignD(0, 1);
                     AddCodeLine ("rolb");
                     return;
 
@@ -3950,7 +4025,7 @@ void g_lt (unsigned flags, unsigned long val)
                     /* Just check the high byte */
                     AddCodeLine ("ldab @sreg+1");
                     AddCodeLine ("aslb");              /* Bit 7 -> carry */
-                    AddCodeLine ("ldd #$0000");
+                    AssignD(0, 1);
                     AddCodeLine ("rolb");
                     return;
 
@@ -3965,8 +4040,7 @@ void g_lt (unsigned flags, unsigned long val)
 
                 case CF_CHAR:
                     if (flags & CF_FORCECHAR) {
-                        Label = GetLocalLabel ();
-                        AddCodeLine ("subb #$%02X", val);
+                        AddCodeLine ("subb #$%02X", (unsigned int)val);
                         AddCodeLine ("jsr boollt");
                         return;
                     }
@@ -3974,8 +4048,7 @@ void g_lt (unsigned flags, unsigned long val)
 
                 case CF_INT:
                     /* Do a subtraction */
-                    Label = GetLocalLabel ();
-                    AddCodeLine ("subd #$%04X", val);
+                    AddCodeLine ("subd #$%04X", (unsigned int)val);
                     AddCodeLine ("jsr boollt");
                     return;
 
@@ -4014,7 +4087,7 @@ void g_lt (unsigned flags, unsigned long val)
                 }
             case CF_INT:
                 offs = GenTSXByte(1);
-                AddCodeLine ("std @tmp");
+                StoreD("@tmp");
                 AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 InvalidateX();
@@ -4160,7 +4233,7 @@ void g_le (unsigned flags, unsigned long val)
                 }
             case CF_INT:
                 offs = GenTSXByte(1);
-                AddCodeLine ("std @tmp");
+                StoreD("@tmp");
                 AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 AddCodeLine ("subd @tmp");
@@ -4322,7 +4395,7 @@ void g_gt (unsigned flags, unsigned long val)
                 }
             case CF_INT:
                 offs = GenTSXByte(1);
-                AddCodeLine ("std @tmp");
+                StoreD("@tmp");
                 AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 InvalidateX();
@@ -4346,7 +4419,6 @@ void g_ge (unsigned flags, unsigned long val)
         "tosgeax", "tosugeax", "tosgeeax", "tosugeeax"
     };
 
-    unsigned Label;
 
     NotViaX();
 
@@ -4420,7 +4492,7 @@ void g_ge (unsigned flags, unsigned long val)
                     /* Just test the high byte */
                     AddCodeLine ("coma");
                     AddCodeLine ("rola");
-                    AddCodeLine ("ldd #$0000");
+                    AssignD(0, 1);
                     AddCodeLine ("rolb");
                     return;
 
@@ -4430,7 +4502,7 @@ void g_ge (unsigned flags, unsigned long val)
                     AddCodeLine ("ldab @sreg+1");
                     AddCodeLine ("comb");
                     AddCodeLine ("rolb");
-                    AddCodeLine ("ldd #0");
+                    AssignD(0, 1);
                     AddCodeLine ("rolb");
                     return;
 
@@ -4497,7 +4569,7 @@ void g_ge (unsigned flags, unsigned long val)
                 }
             case CF_INT:
                 offs = GenTSXByte(1);
-                AddCodeLine ("std @tmp");
+                StoreD("@tmp");
                 AddCodeLine ("ldd %d,x", offs + 1);
                 AddCodeLine ("pulx");
                 InvalidateX();
