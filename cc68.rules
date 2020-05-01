@@ -31,7 +31,35 @@ psha
 pshx
 xgdx; XtoD
 
+# Push of postinc/dec static/global
+
+stx _%1
+dex
+stx @tmp
+ldd @tmp
+ldd _%1
+pshb
+psha
+invalid X,D,P
+=
+stx _%1
+pshx
+
+stx _%1
+inx
+stx @tmp
+ldd @tmp
+ldd _%1
+pshb
+psha
+invalid X,D,P
+=
+stx _%1
+pshx
+
+
 # Store and reload
+
 std %1
 ldd %1
 =
@@ -129,28 +157,6 @@ addd #$0001
 =
 addd @one
 
-# We generate clra/clrb in some cases but we can't blindly do this
-# because clra/clrb affects flags differently
-ldd #$0000
-=
-ldd @zero
-
-ldd #$0001
-=
-ldd @one
-
-subd #$0001
-=
-subd @one
-
-ldx #$0000
-=
-ldx @zero
-
-ldx #$0001
-=
-ldx @one
-
 #	Branches
 #
 
@@ -239,7 +245,7 @@ ldd %3
 ldd %1
 ldd %2
 =
-ldd %1
+ldd %2
 
 # n++/n-- with unused result
 
@@ -330,16 +336,6 @@ tsx
 tsx
 =
 tsx
-
-# We generate this sequence to compare
-
-subd #$0000
-=
-subd @zero
-
-subd #$0001
-=
-subd @one
 
 # We have a more general issue of cases where we shouldn't go via the
 # stack at all to address - eg 16bit compare with static. Until we fix
@@ -547,4 +543,22 @@ jsr _%2
 ldx %1
 pshx
 jsr _%2
+
+# Post inc/dec cleanup for unused values
+
+dex
+stx @tmp
+ldd @tmp
+invalid X,D,P
+=
+;dropped postdec
+
+inx
+stx @tmp
+ldd @tmp
+invalid X,D,P
+=
+;dropped postinc
+
+# Ditto when stacking
 
