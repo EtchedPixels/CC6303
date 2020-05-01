@@ -952,9 +952,9 @@ void g_getlocal (unsigned Flags, int Offs)
             break;
 
         case CF_LONG:
-            AddCodeLine ("ldd $%02X,x", Offs + 2);
-            StoreD("@sreg");
             AddCodeLine ("ldd $%02X,x", Offs);
+            StoreD("@sreg");
+            AddCodeLine ("ldd $%02X,x", Offs + 2);
             if (Flags & CF_TEST)
                 g_test (Flags);
             break;
