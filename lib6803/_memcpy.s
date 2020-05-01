@@ -10,7 +10,7 @@
 _memcpy:
 	tsx
 	ldd	7,x
-	std	@temp		; destination
+	std	@tmp		; destination
 	ldd	3,x		; length
 	ldx	5,x		; src
 	bsr	nextblock
@@ -35,10 +35,10 @@ tailcopy:
 	ldaa	,x
 	inx
 	pshx
-	ldx	@temp
+	ldx	@tmp
 	staa	,x
 	inx
-	stx	@temp
+	stx	@tmp
 	pulx
 	decb
 	bne	tailcopy

@@ -7,7 +7,7 @@
 _memset:
 	tsx
 	ldd	5,x
-	stab	@temp		; destination
+	stab	@tmp		; destination
 	ldd	3,x		; length
 	ldx	7,x		; destination
 	bsr	nextblock
@@ -29,7 +29,7 @@ nextblock:
 	bra	nextblock
 
 tailset:
-	ldaa	@temp
+	ldaa	@tmp
 clearloop:
 	staa	,x
 	inx

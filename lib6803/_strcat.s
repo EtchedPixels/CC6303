@@ -10,7 +10,7 @@
 _strcat:
 	tsx
 	ldd	5,x
-	std	@temp		; destination
+	std	@tmp		; destination
 	ldx	3,x		; src
 endhunt:
 	tst	,x
@@ -21,10 +21,10 @@ copyloop:
 	ldaa	,x
 	inx
 	pshx
-	ldx	@temp
+	ldx	@tmp
 	staa	,x
 	inx
-	stx	@temp
+	stx	@tmp
 	pulx
 	tsta
 	bne copyloop
