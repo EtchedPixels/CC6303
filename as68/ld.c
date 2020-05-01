@@ -83,15 +83,19 @@ static uint8_t progress;		/* Did we make forward progress ?
  *	Report an error, and if possible give the object or library that
  *	we were processing.
  */
-static void error(const char *p)
+static void warning(const char *p)
 {
 	if (processing)
 		fprintf(stderr, "While processing: %s\n", processing->path);
 	fputs(p, stderr);
 	fputc('\n', stderr);
 	err |= 2;
+}
 
-	exit(err | 2);
+static void error(const char *p)
+{
+	warning(p);
+	exit(err);
 }
 
 /*
@@ -763,7 +767,8 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 			r += o->base[seg];
 			if (overflow && (r < o->base[seg] || (size == 1 && r > 255))) {
 				fprintf(stderr, "%d width relocation offset %d does not fit.\n", size, r);
-				error("relocation exceeded");
+				fprintf(stderr, "relocation failed at 0x%04X\n", dot);
+				warning("relocation exceeded");
 			}
 			if (high && rawstream) {
 				r >>= 8;
