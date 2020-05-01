@@ -19,7 +19,7 @@ typedef struct TextList {
     struct TextList *prev;
     struct TextList *next;
     struct TextList *stack;
-    char str[0];
+    char str[];
 } TextList;
 
 extern void TextListAppendAfter(TextList *head, const char *text);
