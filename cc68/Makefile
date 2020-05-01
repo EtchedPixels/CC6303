@@ -18,7 +18,7 @@ OBJS = anonname.o asmcode.o asmlabel.o asmstmt.o assignment.o casenode.o \
        
 LIB = ../common/libcommon.a
 
-CFLAGS += -I../common/
+CFLAGS += -I../common/ -Wall -pedantic
 
 all: cc68
 
