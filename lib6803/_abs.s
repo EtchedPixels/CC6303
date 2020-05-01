@@ -5,6 +5,7 @@
 		.code
 
 _abs:
+		tsx
 		ldd 3,x
 		bita #$80
 		beq absdone
