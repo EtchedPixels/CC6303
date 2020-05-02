@@ -376,6 +376,7 @@ static void print_symbol(struct symbol *s, FILE *fp)
 /*
  *	Walk the symbol table generating a map file as we go
  */
+
 static void write_map_file(FILE *fp)
 {
 	struct symbol *s;
@@ -571,9 +572,15 @@ static void set_segment_bases(void)
 		insert_internal_symbol("__data", DATA, 0);
 		insert_internal_symbol("__bss", BSS, 0);
 		insert_internal_symbol("__end", BSS, size[3]);
-		insert_internal_symbol("__code_size", ABSOLUTE, size[1]);
-		insert_internal_symbol("__data_size", ABSOLUTE, size[2]);
-		insert_internal_symbol("__bss_size", ABSOLUTE, size[3]);
+		insert_internal_symbol("__zp", ZP, 0);
+		insert_internal_symbol("__discard", DISCARD, 0);
+		insert_internal_symbol("__common", COMMON, 0);
+		insert_internal_symbol("__code_size", ABSOLUTE, size[CODE]);
+		insert_internal_symbol("__data_size", ABSOLUTE, size[DATA]);
+		insert_internal_symbol("__bss_size", ABSOLUTE, size[BSS]);
+		insert_internal_symbol("__zp_size", ABSOLUTE, size[ZP]);
+		insert_internal_symbol("__discard_size", ABSOLUTE, size[DISCARD]);
+		insert_internal_symbol("__common_size", ABSOLUTE, size[COMMON]);
 	}
 	/* Now set the base of each object appropriately */
 	memcpy(&pos, &base, sizeof(pos));
@@ -1161,10 +1168,9 @@ int main(int argc, char *argv[])
 		if (verbose)
 			printf("Writing map file.\n");
 		write_map_file(mp);
+		fclose(mp);
 	}
 	write_binary(bp,mp);
 	xfclose(bp);
-	if (mp)
-		fclose(mp);
 	exit(err);
 }
