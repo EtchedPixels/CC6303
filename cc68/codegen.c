@@ -272,6 +272,20 @@ static void AssignD(unsigned short value, int keepc)
         AddCodeLine("ldd #$%04X", value);
 }
 
+static void LoadDViaX(unsigned short offset)
+{
+    if (CPU == CPU_6800) {
+        if (offset > 254)
+            Internal("Bad offset $%02X in LoadDViaX.\n", offset);
+        AddCodeLine("ldab %d,x", offset + 1);
+        AddCodeLine("ldaa %d,x", offset);
+    } else {
+        if (offset > 255)
+            Internal("Bad offset $%02X in LoadDViaX.\n", offset);
+        AddCodeLine("ldd %d,x", offset);
+    }
+}
+
 /* Store D somewhere */
 static void StoreD(const char *where)
 {
@@ -948,13 +962,13 @@ void g_getlocal (unsigned Flags, int Offs)
             break;
 
         case CF_INT:
-            AddCodeLine ("ldd $%02X,x", Offs);
+            LoadDViaX(Offs);
             break;
 
         case CF_LONG:
-            AddCodeLine ("ldd $%02X,x", Offs);
+            LoadDViaX(Offs);
             StoreD("@sreg");
-            AddCodeLine ("ldd $%02X,x", Offs + 2);
+            LoadDViaX(Offs + 2);
             if (Flags & CF_TEST)
                 g_test (Flags);
             break;
@@ -984,7 +998,7 @@ void g_getlocal_x (unsigned Flags, int Offs)
             break;
 
         case CF_LONG:
-            AddCodeLine ("ldd $%02X,x", Offs + 2);
+            LoadDViaX(Offs + 2);
             StoreD ("@sreg");
             AddCodeLine ("ldx $%02X,x", Offs);
             break;
@@ -1059,14 +1073,14 @@ void g_getind (unsigned Flags, unsigned Offs)
 
         case CF_INT:
             DToX();
-            AddCodeLine ("ldd $%02X,x", Offs);
+            LoadDViaX(Offs);
             break;
 
         case CF_LONG:
             DToX();
-            AddCodeLine ("ldd $%02X,x", Offs);
+            LoadDViaX(Offs);
             StoreD("@sreg");
-            AddCodeLine ("ldd $%02X,x", Offs + 2);
+            LoadDViaX(Offs + 2);
             if (Flags & CF_TEST) {
                 g_test (Flags);
             }
@@ -1219,21 +1233,21 @@ void g_putlocal (unsigned Flags, int Offs, long Val)
         case CF_INT:
             if (Flags & CF_CONST)
                 AssignD(Val, 0);
-            AddCodeLine ("std $%02X,x", (unsigned char)Offs);
+            StoreDViaX(Offs);
             break;
 
         case CF_LONG:
             if (Flags & CF_CONST) {
                 AssignD(Val >> 16, 0);
-                AddCodeLine ("std $%02X,x", (unsigned char)Offs);
+                StoreDViaX(Offs);
                 if ((Val >> 16) != (Val & 0xFFFF))
                     AssignD(Val & 0xFFFF, 0);
-                AddCodeLine ("std $%02X,x", (unsigned char)(Offs + 2));
+                StoreDViaX(Offs + 2);
             } else {
                 NotViaX();	/* For now. May be worth it via X and @tmp */
-                AddCodeLine ("std $%02X,x", (unsigned char)Offs + 2);
+                StoreDViaX(Offs + 2);
                 AddCodeLine ("ldd @sreg");
-                AddCodeLine ("std $%02X,x", (unsigned char)(Offs));
+                StoreDViaX(Offs);
             }
             break;
 
@@ -1326,13 +1340,13 @@ void g_putind (unsigned Flags, unsigned Offs)
             break;
 
         case CF_INT:
-            AddCodeLine ("std $%02X,x", Offs);
+            StoreDViaX(Offs);
             break;
 
         case CF_LONG:
-            AddCodeLine ("std $%02X,x", Offs + 2);
+            StoreDViaX(Offs + 2);
             AddCodeLine ("ldd @sreg");
-            AddCodeLine ("std $%02X,x", Offs);
+            StoreDViaX(Offs);
             break;
 
         default:
@@ -1894,7 +1908,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                     AddCodeLine ("ldx #%s", lbuf);
                     AssignD(val, 0);
                     AddCodeLine ("addd ,x");
-                    AddCodeLine ("std ,x");
+                    StoreDViaX(0);
                 } else {
                     g_getstatic (flags, label, offs);
                     g_inc (flags, val);
@@ -1947,7 +1961,7 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
             if (flags & CF_CONST)
                 AssignD(val, 0);
             AddCodeLine("addd $%02X,x", Offs);
-            AddCodeLine("std $%02X,x", Offs);
+            StoreDViaX(Offs);
             break;
 
         case CF_LONG:
@@ -1989,9 +2003,9 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
 
         case CF_INT:
             DToX();
-            AddCodeLine("ldd %d,x", offs);
+            LoadDViaX(offs);
             AddCodeLine("addd #$%04X", (unsigned short)val);
-            AddCodeLine("std %d,x", offs);
+            StoreDViaX(offs);
             break;
             
             /* Fall through */
@@ -2133,15 +2147,15 @@ void g_subeqlocal (unsigned flags, int Offs, unsigned long val)
         case CF_INT:
             Offs = GenOffset(flags, Offs, (flags & CF_CONST) ? 0 : 1, 0);
             if (flags & CF_CONST) {
-                AddCodeLine ("ldd $%02X,x", Offs);
+                LoadDViaX (Offs);
                 AddCodeLine ("subd #$%04X", (unsigned short)val);
-                AddCodeLine ("std $%02X,x", Offs);
+                StoreDViaX(Offs);
                 break;
             }
             StoreD("@tmp");
-            AddCodeLine ("ldd $%02X,x", Offs);
+            LoadDViaX(Offs);
             AddCodeLine ("subd @tmp");
-            AddCodeLine ("std $%02X,x", Offs);
+            StoreDViaX(Offs);
             break;
 
         case CF_LONG:
@@ -2185,9 +2199,9 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
 
         case CF_INT:
             DToX();
-            AddCodeLine ("ldd $%02X,x", offs);
+            LoadDViaX(offs);
             AddCodeLine ("subd #$%04X", (unsigned short)val);
-            AddCodeLine ("std $%02X,x", offs);
+            StoreDViaX(offs);
             break;
         case CF_LONG:
             InvalidateX();
@@ -4091,7 +4105,7 @@ void g_lt (unsigned flags, unsigned long val)
             case CF_INT:
                 offs = GenTSXByte(1);
                 StoreD("@tmp");
-                AddCodeLine ("ldd %d,x", offs + 1);
+                LoadDViaX(offs + 1);
                 AddCodeLine ("pulx");
                 InvalidateX();
                 AddCodeLine ("subd @tmp");
@@ -4237,7 +4251,7 @@ void g_le (unsigned flags, unsigned long val)
             case CF_INT:
                 offs = GenTSXByte(1);
                 StoreD("@tmp");
-                AddCodeLine ("ldd %d,x", offs + 1);
+                LoadDViaX(offs + 1);
                 AddCodeLine ("pulx");
                 AddCodeLine ("subd @tmp");
                 if (flags & CF_UNSIGNED)
@@ -4289,7 +4303,7 @@ void g_gt (unsigned flags, unsigned long val)
                         } else {
                             /* Never true */
                             Warning ("Condition is never true");
-                            AddCodeLine ("ldd @zero");
+                            AssignD(0, 0);
                         }
                     } else {
                         if ((long) val < 0x7F) {
@@ -4300,7 +4314,7 @@ void g_gt (unsigned flags, unsigned long val)
                         } else {
                             /* Never true */
                             Warning ("Condition is never true");
-                            AddCodeLine ("ldd @zero");
+                            AssignD(0, 0);
                         }
                     }
                     return;
@@ -4324,7 +4338,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("ldd @zero");
+                        AssignD(0, 0);
                     }
                 } else {
                     /* Signed compare */
@@ -4333,7 +4347,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("ldd @zero");
+                        AssignD(0, 0);
                     }
                 }
                 return;
@@ -4355,7 +4369,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("ldd @zero");
+                        AssignD(0, 0);
                     }
                 } else {
                     /* Signed compare */
@@ -4364,7 +4378,7 @@ void g_gt (unsigned flags, unsigned long val)
                     } else {
                         /* Never true */
                         Warning ("Condition is never true");
-                        AddCodeLine ("ldd @zero");
+                        AssignD(0, 0);
                     }
                 }
                 return;
@@ -4399,7 +4413,7 @@ void g_gt (unsigned flags, unsigned long val)
             case CF_INT:
                 offs = GenTSXByte(1);
                 StoreD("@tmp");
-                AddCodeLine ("ldd %d,x", offs + 1);
+                LoadDViaX (offs + 1);
                 AddCodeLine ("pulx");
                 InvalidateX();
                 AddCodeLine ("subd @tmp");
@@ -4573,7 +4587,7 @@ void g_ge (unsigned flags, unsigned long val)
             case CF_INT:
                 offs = GenTSXByte(1);
                 StoreD("@tmp");
-                AddCodeLine ("ldd %d,x", offs + 1);
+                LoadDViaX (offs + 1);
                 AddCodeLine ("pulx");
                 InvalidateX();
                 AddCodeLine ("subd @tmp");
@@ -4699,6 +4713,7 @@ void g_initregister (unsigned Label, unsigned Reg, unsigned Size)
     while(Size > 1) {
         Size -= 2;
         AddCodeLine("ldd %s+%02X", GetLabelName(CF_STATIC, Label, 0), Size);
+        /* TODO */
         AddCodeLine("std %s+%02X", GetLabelName(CF_REGVAR, Reg, 0), Size);
     }
     if (Size) {
@@ -4743,6 +4758,7 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
         while(Size > 1) {
             Size -= 2;
             AddCodeLine("ldd %s+$%X", GetLabelName(CF_STATIC, InitLabel, 0), Size);
+            /* TODO */
             AddCodeLine("std %s+$%X", GetLabelName(CF_STATIC, VarLabel, 0), Size);
         }
         if (Size) {
