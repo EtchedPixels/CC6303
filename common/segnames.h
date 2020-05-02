@@ -55,11 +55,11 @@
 
 /* Default segment names */
 #define SEGNAME_NULL     "NULL"
-#define SEGNAME_ZEROPAGE "ZEROPAGE"
-#define SEGNAME_DATA     "DATA"
-#define SEGNAME_BSS      "BSS"
-#define SEGNAME_RODATA   "RODATA"
-#define SEGNAME_CODE     "CODE"
+#define SEGNAME_ZEROPAGE "zp"
+#define SEGNAME_DATA     "data"
+#define SEGNAME_BSS      "bss"
+#define SEGNAME_RODATA   "code"
+#define SEGNAME_CODE     "code"
 
 
 
