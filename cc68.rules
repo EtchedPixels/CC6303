@@ -251,6 +251,37 @@ invalid X,D,P
 ldx %1
 pshx
 
+# Stack via X when there is a further argument stacked via X which does
+# not use X (either constant or static (# or _)). We cannot do this for
+# locals as they will use ,x in the second load and a tsx is no cheaper
+
+ldd %1
+pshb
+psha
+invalid D,P
+ldd #%2
+pshb
+psha
+=
+ldx %1
+pshx
+ldx #%2
+pshx
+
+ldd %1
+pshb
+psha
+invalid D,P
+ldd _%2
+pshb
+psha
+=
+ldx %1
+pshx
+ldx _%2
+pshx
+
+
 # Stack via X when X is live but we are calling a user function so _xyz
 
 ldd %1
