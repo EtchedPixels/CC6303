@@ -256,7 +256,7 @@ void PrintROData(void)
 {
     TextList *t = RODataHead.next;
     printf("\t.%s\n",
-     GetSegName(SEG_CODE));	/* No separate rodata in our toolchain */
+     GetSegName(SEG_RODATA));	/* No separate rodata in our toolchain so we usually use code */
     while(t != &RODataHead) {
         printf("%s\n", t->str);
         t = t->next;
