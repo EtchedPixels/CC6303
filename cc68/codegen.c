@@ -422,6 +422,23 @@ static void AddD(const char *where, int offset)
     }
 }
 
+static void LsrD(void)
+{
+    if (CPU == CPU_6800) {
+        AddCodeLine("lsra");
+        AddCodeLine("rorb");
+    } else
+        AddCodeLine("lsrd");
+}
+
+static void AslD(void)
+{
+    if (CPU == CPU_6800) {
+        AddCodeLine("aslb");
+        AddCodeLine("rola");
+    } else
+        AddCodeLine("asld");
+}
 
 /* Get D into X, may mash D */
 static void DToX(void)
@@ -1788,7 +1805,7 @@ void g_scale (unsigned flags, long val)
 
                 case CF_INT:
                     while (p2--)
-                        AddCodeLine ("asld");
+                        AslD();
                     break;
 
                 case CF_LONG:
@@ -1837,7 +1854,7 @@ void g_scale (unsigned flags, long val)
                 case CF_INT:
                     if (flags & CF_UNSIGNED) {
                         while (p2--)
-                            AddCodeLine("lsrd");
+                            LsrD();
                     } else  {
                         InvalidateX();
                         if (p2 == 1) {
@@ -3583,7 +3600,7 @@ void g_asr (unsigned flags, unsigned long val)
                 }
                 while(val--) {
                     if (flags & CF_UNSIGNED)
-                        AddCodeLine("lsrd");
+                        LsrD();
                     else {
                         AddCodeLine("asra");
                         AddCodeLine("rorb");
@@ -3689,7 +3706,7 @@ void g_asl (unsigned flags, unsigned long val)
                 /* We don't have a 16bit rotate right so there isn't a
                    good way to use right v left optimizing */
                 while(val--)
-                    AddCodeLine("asld");
+                    AslD();
                 return;
 
             case CF_LONG:
