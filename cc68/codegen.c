@@ -318,15 +318,15 @@ static void StoreD(const char *where, int offset)
 {
     if (CPU == CPU_6800) {
         if (offset) {
-            AddCodeLine("staa %s+$%02X", where, offset);
-            AddCodeLine("stab %s+$%02X", where, offset + 1);
+            AddCodeLine("staa %s+$%04X", where, offset);
+            AddCodeLine("stab %s+$%04X", where, offset + 1);
         } else {
             AddCodeLine("staa %s", where);
             AddCodeLine("stab %s+1", where);
         }
     } else {
         if (offset)
-            AddCodeLine("std %s+$%02X", where, offset);
+            AddCodeLine("std %s+$%04X", where, offset);
         else
             AddCodeLine("std %s", where);
     }
@@ -370,7 +370,7 @@ static void SubDConst(int value)
 {
     if (CPU == CPU_6800) {
         AddCodeLine("subb #$%02X", value & 0xFF);
-        AddCodeLine("sbcb #$%02X", (value >> 8) & 0xFF);
+        AddCodeLine("sbca #$%02X", (value >> 8) & 0xFF);
     } else {
         if (value == 0)	/* Valid as we may be trying to set flags */
             AddCodeLine("subd @zero");
@@ -381,11 +381,24 @@ static void SubDConst(int value)
     }
 }
 
+static void SubD(const char *where, int offset)
+{
+    if (CPU == CPU_6800) {
+        AddCodeLine("subb %s+$%04X", where, offset);
+        AddCodeLine("sbca %s+$%04X", where, offset + 1);
+    } else {
+        if (offset == 0)
+            AddCodeLine("subd %s", where);
+        else
+            AddCodeLine("subd %s+$%04X", where, offset);
+    }
+}
+
 static void AddDConst(int value)
 {
     if (CPU == CPU_6800) {
         AddCodeLine("addb #$%02X", value & 0xFF);
-        AddCodeLine("adcb #$%02X", (value >> 8) & 0xFF);
+        AddCodeLine("adca #$%02X", (value >> 8) & 0xFF);
     } else {
         if (value == 0)
             AddCodeLine("addd @zero");
@@ -395,6 +408,20 @@ static void AddDConst(int value)
             AddCodeLine("addd #$%04X", value & 0xFFFF);
     }
 }
+
+static void AddD(const char *where, int offset)
+{
+    if (CPU == CPU_6800) {
+        AddCodeLine("addb %s+$%04X", where, offset);
+        AddCodeLine("abca %s+$%04X", where, offset + 1);
+    } else {
+        if (offset == 0)
+            AddCodeLine("addd %s", where);
+        else
+            AddCodeLine("addd %s+$%04X", where, offset);
+    }
+}
+
 
 /* Get D into X, may mash D */
 static void DToX(void)
@@ -1215,7 +1242,7 @@ void g_leasp (unsigned Flags, int Offs)
         AddCodeLine("sts @tmp1");
         if (Offs) {
             AssignD(-Offs, 0);
-            AddCodeLine("addd @tmp1");
+            AddD("@tmp1", 0);
         } else {
             LoadD("@tmp1", 0);
         }
@@ -1903,11 +1930,11 @@ void g_addstatic (unsigned flags, uintptr_t label, long offs)
             break;
 
         case CF_INT:
-            AddCodeLine("addd %s", lbuf);
+            AddD(lbuf, 0);
             break;
 
         case CF_LONG:
-            AddCodeLine("addd %s", lbuf+2);
+            AddD(lbuf, 2);
             StoreD("@tmp", 0);
             LoadD(lbuf, 0);
             AddCodeLine("adcb @sreg+1");
@@ -1996,12 +2023,12 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                 } else {
                     NotViaX();
                     AssignD(val, 0);
-                    AddCodeLine ("addd %s", lbuf);
+                    AddD(lbuf, 0);
                     StoreD(lbuf, 0);
                 }
             } else {
                 NotViaX();
-                AddCodeLine ("addd %s", lbuf);
+                AddD(lbuf, 0);
                 StoreD(lbuf, 0);
             }
             break;
@@ -2199,7 +2226,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
                 /* This seems to be simpler than playing with coma/b and subd */
                 StoreD("@tmp", 0);
                 LoadD(lbuf, 0);
-                AddCodeLine ("subd @tmp");
+                SubD("@tmp", 0);
                 StoreD(lbuf, 0);
             }
             break;
@@ -2273,7 +2300,7 @@ void g_subeqlocal (unsigned flags, int Offs, unsigned long val)
             }
             StoreD("@tmp", 0);
             LoadDViaX(Offs);
-            AddCodeLine ("subd @tmp");
+            SubD("@tmp", 0);
             StoreDViaX(Offs);
             break;
 
@@ -2354,7 +2381,7 @@ void g_addaddr_local (unsigned flags attribute ((unused)), int offs)
     if (offs != 0)
         AddDConst(offs);
     AddCodeLine("sts @tmp");
-    AddCodeLine("addd @tmp");
+    AddD("@tmp", 0);
 }
 
 
@@ -2366,7 +2393,11 @@ void g_addaddr_static (unsigned flags, uintptr_t label, long offs)
     const char* lbuf = GetLabelName (flags, label, offs);
 
     NotViaX();
-    AddCodeLine ("addd #%s", lbuf);
+    if (CPU == CPU_6800) {
+        AddCodeLine ("addb #<%s", lbuf);
+        AddCodeLine ("adca #>%s", lbuf);
+    } else
+        AddCodeLine ("addd #%s", lbuf);
 }
 
 
@@ -2791,7 +2822,7 @@ void g_lateadjustSP (unsigned label)
     NotViaX();
     AddCodeLine ("sts @tmp");
     LoadD("@tmp", 0);
-    AddCodeLine ("addd %s", LocalLabelName (label));
+    AddD(LocalLabelName (label), 0);
     AddCodeLine ("lds @tmp");
     InvalidateX();
 }
@@ -2850,7 +2881,7 @@ void g_space (int Space, int save_d)
             StoreD("@tmp2", 0);
         AddCodeLine("sts @tmp");
         AssignD(-Space, 0);
-        AddCodeLine("addd @tmp");
+        AddD("@tmp", 0);
         StoreD("@tmp", 0);
         AddCodeLine("lds @tmp");
         if (save_d)
@@ -2980,12 +3011,12 @@ void g_sub (unsigned flags, unsigned long val)
     switch(flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            if (IS_Get(&CodeSizeFactor) >= 50) {
+            if (CPU != CPU_6800 && IS_Get(&CodeSizeFactor) >= 50) {
                 /* 6 bytes direct versus 3 for call */
                 StoreD("@tmp", 0);
                 AddCodeLine("pula");
                 AddCodeLine("pulb");
-                AddCodeLine("subd @tmp");
+                SubD("@tmp", 0);
                 pop(flags);
                 return;
             }
@@ -4282,7 +4313,7 @@ void g_lt (unsigned flags, unsigned long val)
                 StoreD("@tmp", 0);
                 LoadDViaX(offs + 1);
                 PullX(0);
-                AddCodeLine ("subd @tmp");
+                SubD("@tmp", 0);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("jsr boolult");
                 else
@@ -4427,7 +4458,7 @@ void g_le (unsigned flags, unsigned long val)
                 StoreD("@tmp", 0);
                 LoadDViaX(offs + 1);
                 PullX(0);
-                AddCodeLine ("subd @tmp");
+                SubD("@tmp", 0);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("jsr boolule");
                 else
@@ -4589,7 +4620,7 @@ void g_gt (unsigned flags, unsigned long val)
                 StoreD("@tmp", 0);
                 LoadDViaX (offs + 1);
                 PullX(0);
-                AddCodeLine ("subd @tmp");
+                SubD("@tmp", 0);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("jsr boolugt");
                 else
@@ -4762,7 +4793,7 @@ void g_ge (unsigned flags, unsigned long val)
                 StoreD("@tmp", 0);
                 LoadDViaX (offs + 1);
                 PullX(0);
-                AddCodeLine ("subd @tmp");
+                SubD("@tmp", 0);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("jsr booluge");
                 else
