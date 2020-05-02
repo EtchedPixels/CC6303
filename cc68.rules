@@ -10,6 +10,16 @@ rts
 =
 jmp %1
 
+# Indirect function calls can go via x when we are loading the value
+# from a target just before the branch
+ldd %1
+xgdx
+jsr ,x
+=
+ldx %1
+jsr ,x
+
+
 # Double exchanges
 xgdx; XtoD
 xgdx; DtoX
@@ -36,6 +46,16 @@ pshx
 ldx @%1
 =
 ldx @%1
+pshx
+
+# int foo = something; func(foo, ....)
+pshx
+Invalid X,D,P
+tsx
+ldx $01,x
+pshx
+=
+pshx
 pshx
 
 # Silly logic removals
@@ -85,6 +105,145 @@ clrb
 clra
 clrb
 std %1
+
+# And with D,P
+clra
+clrb
+stab %1
+Invalid D,P
+clra
+clrb
+=
+clra
+clrb
+stab %1
+Invalid D,P
+
+ldd @one
+std %1
+Invalid D,P
+clra
+clrb
+=
+ldd @one
+std %1
+decb
+Invalid D,P
+
+clra
+clrb
+std %1
+Invalid D,P
+clra
+clrb
+=
+clra
+clrb
+std %1
+Invalid D,P
+
+# And with X,D,P
+clra
+clrb
+stab %1
+Invalid X,D,P
+clra
+clrb
+=
+clra
+clrb
+stab %1
+Invalid X,D,P
+
+ldd @one
+std %1
+Invalid X,D,P
+clra
+clrb
+=
+ldd @one
+std %1
+decb
+Invalid X,D,P
+
+clra
+clrb
+std %1
+Invalid X,D,P
+clra
+clrb
+=
+clra
+clrb
+std %1
+Invalid X,D,P
+
+clra
+clra
+=
+clra
+
+clrb
+pshb
+Invalid D,P
+clrb
+pshb
+=
+clrb
+pshb
+pshb
+Invalid D,P
+
+clra
+pshb
+Invalid D,P
+clra
+=
+clra
+pshb
+Invalid D,P
+
+clra
+clrb
+std %1
+Invalid D,P
+clra
+clrb
+=
+clra
+clrb
+std %1
+Invalid D,P
+
+clra
+clrb
+std %1
+Invalid X,D,P
+clra
+clrb
+=
+clra
+clrb
+std %1
+Invalid X,D,P
+
+# Similar idea for constants
+ldab #%1
+pshb
+Invalid D,P
+ldab #%1
+=
+ldab #%1
+pshb
+Invalid D,P
+
+# Where logic tells us clr is not needed
+subd %1
+jne %2
+clra
+=
+subd %1
+jne %2
 
 # Make exchange and push more efficient
 xgdx; XtoD
@@ -324,6 +483,9 @@ pshx
 # we can't easily do this for all combinations unfortunately because
 # we also need to check there are no ,x dependencies further down the chain
 # until we hit the jsr _func
+#
+# TODO: add @zero and @one match forms ditto clra/clrb ones ?
+#
 # func(arg,const)
 ldd %1
 pshb
@@ -467,6 +629,35 @@ ldx %1
 pshx
 ;invalid DP
 jsr _%2
+
+# Stack via X because we can see a non X dependent X load following
+ldd %1
+pshb
+psha
+ldx @%2
+=
+ldx %1
+pshx
+ldx @%2
+
+ldd %1
+pshb
+psha
+ldx _%2
+=
+ldx %1
+pshx
+ldx _%2
+
+ldd %1
+pshb
+psha
+ldx #%2
+=
+ldx %1
+pshx
+ldx #%2
+
 
 # Clean up trailing references from things like p++;
 ldd %1
