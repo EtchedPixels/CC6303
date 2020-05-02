@@ -1,13 +1,14 @@
-# This will go away when the compiler gets to it
-subd #$0000
-=
-subd @zero
-
 #	Trim jumps to next instruction
 jmp %1
 %1:
 =
 %1:
+
+#	And terminal jsr rts
+jsr %1
+rts
+=
+jmp %1
 
 # Double exchanges
 xgdx; XtoD
@@ -20,6 +21,70 @@ xgdx
 xgdx
 =
 ;
+
+# Double push of constant
+# We could also do static but we have no visibility into volatiles yet
+ldx #%1
+pshx
+ldx #%1
+=
+ldx #%1
+pshx
+
+ldx @%1
+pshx
+ldx @%1
+=
+ldx @%1
+pshx
+
+# Silly logic removals
+ldd @one
+staa @tmp1
+orab @tmp1
+jne %1
+=
+ldd @one
+jne %1
+
+# Some trivial optimizations for clra/clrb cases
+ldd @one
+stab %1
+clra
+clrb
+=
+ldd @one
+stab %1
+decb
+
+clra
+clrb
+stab %1
+clra
+clrb
+=
+clra
+clrb
+stab %1
+
+ldd @one
+std %1
+clra
+clrb
+=
+ldd @one
+std %1
+decb
+
+clra
+clrb
+std %1
+clra
+clrb
+=
+clra
+clrb
+std %1
 
 # Make exchange and push more efficient
 xgdx; XtoD
@@ -36,8 +101,16 @@ psha
 pshx
 xgdx; XtoD
 
-# Push of postinc/dec static/global
+# Useful overlaps to spot
+clrb
+pshb
+ldab #$FF
+=
+clrb
+pshb
+decb
 
+# Push of postinc/dec static/global
 stx _%1
 dex
 stx @tmp
@@ -62,9 +135,7 @@ invalid X,D,P
 stx _%1
 pshx
 
-
 # Store and reload
-
 std %1
 ldd %1
 =
@@ -86,7 +157,6 @@ invalid X,D,P
 ldd %1
 =
 std %1
-
 
 # Some classes of compare
 # Simple check on 8bit versus 0 (safe only due to compiler behaviour)
@@ -187,7 +257,6 @@ addd @one
 	jmp %2
 
 # Review more conditions
-
 jne %1
 jmp %2
 %1:
@@ -218,7 +287,6 @@ jcc %2
 
 
 # Fix up some of the X cases
-
 # Push and then invalidate D so can use X
 ldd %1
 pshb
@@ -242,7 +310,6 @@ pshx
 invalid X,D,P
 
 # Stack via X
-
 ldd %1
 pshb
 psha
@@ -254,7 +321,10 @@ pshx
 # Stack via X when there is a further argument stacked via X which does
 # not use X (either constant or static (# or _)). We cannot do this for
 # locals as they will use ,x in the second load and a tsx is no cheaper
-
+# we can't easily do this for all combinations unfortunately because
+# we also need to check there are no ,x dependencies further down the chain
+# until we hit the jsr _func
+# func(arg,const)
 ldd %1
 pshb
 psha
@@ -262,12 +332,17 @@ invalid D,P
 ldd #%2
 pshb
 psha
+invalid D,P
+jsr _%3
 =
 ldx %1
 pshx
 ldx #%2
 pshx
+invalid D,P
+jsr _%3
 
+# func(arg, static)
 ldd %1
 pshb
 psha
@@ -275,15 +350,113 @@ invalid D,P
 ldd _%2
 pshb
 psha
+invalid D,P
+jsr _%3
 =
 ldx %1
 pshx
 ldx _%2
 pshx
+invalid D,P
+jsr _%3
 
+# func(arg, const, const)
+ldd %1
+pshb
+psha
+invalid D,P
+ldd #%2
+pshb
+psha
+invalid D,P
+ldd #%3
+pshb
+psha
+invalid D,P
+jsr _%4
+=
+ldx %1
+pshx
+ldx #%2
+pshx
+ldx #%3
+pshx
+invalid D,P
+jsr _%4
+
+# func(arg, const, static)
+ldd %1
+pshb
+psha
+invalid D,P
+ldd #%2
+pshb
+psha
+invalid D,P
+ldd _%3
+pshb
+psha
+invalid D,P
+jsr _%4
+=
+ldx %1
+pshx
+ldx #%2
+pshx
+ldx _%3
+pshx
+invalid D,P
+jsr _%4
+
+# func(arg, static, const)
+ldd %1
+pshb
+psha
+invalid D,P
+ldd _%2
+pshb
+psha
+invalid D,P
+ldd #%3
+pshb
+psha
+invalid D,P
+jsr _%4
+=
+ldx %1
+pshx
+ldx _%2
+pshx
+ldx #%3
+pshx
+invalid D,P
+jsr _%4
+
+# func(arg, static, static)
+ldd %1
+pshb
+psha
+invalid D,P
+ldd _%2
+pshb
+psha
+invalid D,P
+ldd _%3
+pshb
+psha
+invalid D,P
+jsr _%4
+=
+ldx %1
+pshx
+ldx _%2
+pshx
+ldx _%3
+pshx
+invalid D,P
+jsr _%4
 
 # Stack via X when X is live but we are calling a user function so _xyz
-
 ldd %1
 pshb
 psha
@@ -309,7 +482,6 @@ ldd %2
 ldd %2
 
 # n++/n-- with unused result
-
 ldd %1
 pshb
 psha
@@ -325,7 +497,6 @@ std %1
 ldd %3
 
 # Optimize a few pull sequences where we can see X is not live
-
 pula
 pulb
 L%1:
@@ -380,7 +551,6 @@ invalid X,D,P
 # and the next thing we do is to do a conditional based on them we can
 # eliminate the test function. Look at the others as we clean them up
 # in the compiler
-
 jsr booleq
 jeq %1
 =
@@ -401,7 +571,6 @@ tsx
 # We have a more general issue of cases where we shouldn't go via the
 # stack at all to address - eg 16bit compare with static. Until we fix
 # the compiler address them here
-
 ldd %1
 pshb
 psha
@@ -444,10 +613,127 @@ pulx
 ldd %1
 addd %2
 
+# re-order constant subtract
+ldx %1
+pshx
+ldd #%2
+tsx
+std @tmp
+ldd 1,x
+pulx
+subd @tmp
+=
+ldd %1
+subd #%2
+
+ldx %1
+pshx
+ldd @one
+tsx
+std @tmp
+ldd 1,x
+pulx
+subd @tmp
+=
+ldd %1
+subd @one
+
+# re-order constant add
+ldx %1
+pshx
+ldd #%2
+tsx
+std @tmp
+ldd 1,x
+pulx
+subd @tmp
+=
+ldd %1
+subd #%2
+
+ldx %1
+pshx
+ldd @one
+tsx
+std @tmp
+ldd 1,x
+pulx
+subd @tmp
+=
+ldd %1
+subd @one
+
+# re-order some assignments of constant to computed address
+# Can't do this for locals (we need X then)
+# Int versions then char versions
+ldd %1
+pshb
+psha
+ldd #%2
+pulx
+std %3
+=
+ldx %1
+ldd #%2
+std %3
+
+ldd %1
+pshb
+psha
+ldd @%2
+pulx
+std %3
+=
+ldx %1
+ldd @%2
+std %3
+
+ldd %1
+pshb
+psha
+ldd _%2
+pulx
+std %3
+=
+ldx %1
+ldd _%2
+std %3
+
+ldd %1
+pshb
+psha
+ldd #%2
+pulx
+stab %3
+=
+ldx %1
+ldd #%2
+stab %3
+
+ldd %1
+pshb
+psha
+ldd @%2
+pulx
+stab %3
+=
+ldx %1
+ldd @%2
+stab %3
+
+ldd %1
+pshb
+psha
+ldd _%2
+pulx
+stab %3
+=
+ldx %1
+ldd _%2
+stab %3
 
 # Spot logic operations where we can use x to avoid going over the stack
 # We can't handle all cases because if the second op is ,x then we lose
-
 ldd %1
 pshb
 psha
@@ -469,10 +755,8 @@ ldx %1
 pshx
 ldd _%2
 tsx
-
 
 # Repeat clears for 8bit work
-
 clra
 ldab %1
 clra
@@ -510,7 +794,6 @@ stab %1
 ldd %2
 
 # Pointer chases that can use X directly
-
 ldd %1
 std @tmp
 ldx @tmp
@@ -595,7 +878,6 @@ ldab %1
 clra
 
 # Call cleanups(no internal X using helpers start with an underscore) 
-
 ldd %1
 pshb
 psha
@@ -606,7 +888,6 @@ pshx
 jsr _%2
 
 # Post inc/dec cleanup for unused values
-
 dex
 stx @tmp
 ldd @tmp
@@ -622,5 +903,3 @@ invalid X,D,P
 ;dropped postinc
 
 # Ditto when stacking
-
-
