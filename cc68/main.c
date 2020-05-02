@@ -114,7 +114,7 @@ static void Usage (void)
             "  --bss-name seg\t\tSet the name of the BSS segment\n"
             "  --check-stack\t\t\tGenerate stack overflow checks\n"
             "  --code-name seg\t\tSet the name of the CODE segment\n"
-            "  --codesize x\t\t\tAccept larger code by factor x\n"
+            "  --codesize x\t\t\tAccept larger code by factor x%\n"
             "  --cpu type\t\t\tSet cpu type (6800, 6803, 6303)\n"
             "  --create-dep name\t\tCreate a make dependency file\n"
             "  --create-full-dep name\tCreate a full make dependency file\n"
@@ -262,7 +262,7 @@ static void OptCodeSize (const char* Opt, const char* Arg)
 
     /* Numeric argument expected */
     if (sscanf (Arg, "%u%c", &Factor, &BoundsCheck) != 1 ||
-        Factor < 10 || Factor > 1000) {
+        Factor < 0 || Factor > 1000) {
         AbEnd ("Argument for %s is invalid", Opt);
     }
     IS_Set (&CodeSizeFactor, Factor);
