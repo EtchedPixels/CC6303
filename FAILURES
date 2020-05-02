@@ -3,14 +3,10 @@
 - overlong names clashing in assembler should be caught in the compiler name
   compare - and we probably want to change the format a bit to allow longer
   names 8(
+- taking the address of an argument in a varargs function needs more review
 
 Optimizing Rules
 ----------------
-
-Why is it not fixing up function entry ldd pshb psha pshx ?
-
-Lots of cases where we generate extra TSX calls - check our InvalidateX
-are not overdone somewhere silly
 
 Lots of easy wins on 8bit - eg spotting
 
@@ -25,14 +21,6 @@ in target)
 
 and tons more
 
-Endianness
-----------
-
-Fix cases the cc65 core seems to assume that types don't matter only width
-when loading via indirect, and check if storing has the same bug
-(Should all be done)
-
-
 Libc test compiling
 -------------------
 
@@ -43,53 +31,4 @@ Linker
 
 Sometimes a ZP asm reference to a non existing variable ends up as U 0 in
 the map and we didn't error
-What is causing @zero to end up 4 bytes into ZP not at start of ZP ?
 
-FIXED:
-
-Mishandling of  < const for char/int.
-
-asctime.c
-ltostr.c
-__getgrent.c
-__getpwent.c
-initgroups.c
-putenv.c
-qsort.c
-readdir.c
-strsignal.c
-vfscanf.c
-
-
-Mishandling of push of const long
-
-atol.c
-strtol.c
-sysconf.c
-
-Fixed mishandling of char as argument to function
-
-readline.c
-regexp.c (other bugs still)
-tzset.c
-vfprintf.c
-
-Fixed ?: with mix of void * and char *
-
-gets.c
-
-Pedantic But Correct (Fixed Library Code)
-
-Should cast const char * to char * on returns
-
-strchr
-strrchr
-
-Fixed (for now) by correcting register param disable
-
-curses/refresh.c
-regexp.c (but other bug)
-
-Fixed (incorrect Bcc out of range)
-
-regexp.s
