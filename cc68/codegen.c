@@ -582,6 +582,7 @@ void g_preamble (void)
 
     /* If we're producing code for some other CPU, switch the command set */
     switch (CPU) {
+        case CPU_6800:	    AddTextLine ("\t.setcpu\t\t6800");	    break;
         case CPU_6803:      AddTextLine ("\t.setcpu\t\t6803");      break;
         case CPU_6303:      AddTextLine ("\t.setcpu\t\t6303");      break;
         default:            Internal ("Unknown CPU: %d", CPU);
@@ -950,8 +951,8 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
             InvalidateX();
         } else {
             if (CPU == CPU_6800) {
-                AddCodeLine("ldaa >#%s", Label);
-                AddCodeLine("ldab <#%s", Label);
+                AddCodeLine("ldaa #>%s", Label);
+                AddCodeLine("ldab #<%s", Label);
             } else
                 AddCodeLine ("ldd #%s", Label);
         }
