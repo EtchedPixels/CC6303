@@ -1,3 +1,8 @@
+# This will go away when the compiler gets to it
+subd #$0000
+=
+subd @zero
+
 #	Trim jumps to next instruction
 jmp %1
 %1:
@@ -69,6 +74,18 @@ stx %1
 ldx %1
 =
 stx %1
+
+std %1
+invalid D,P
+ldd %1
+=
+std %1
+
+std %1
+invalid X,D,P
+ldd %1
+=
+std %1
 
 
 # Some classes of compare
@@ -233,6 +250,19 @@ invalid X,D,P
 =
 ldx %1
 pshx
+
+# Stack via X when X is live but we are calling a user function so _xyz
+
+ldd %1
+pshb
+psha
+invalid D,P
+jsr _%2
+=
+ldx %1
+pshx
+;invalid DP
+jsr _%2
 
 # Clean up trailing references from things like p++;
 ldd %1
@@ -561,4 +591,5 @@ invalid X,D,P
 ;dropped postinc
 
 # Ditto when stacking
+
 
