@@ -39,12 +39,9 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 
 - Remove remaining '6502' references.
 
-- Strip out lots of unused options like -o.
+- Strip out lots of unused options.
 
 - Make embedding C source into asm as comments work for debugging
-
-- Allow the code segment to be set so code can be compiled into other
-  segments like .discard
 
 - The assembler uses 15 char names internally. The compiler does not. This
   leads to asm errors when the symbols clash.
@@ -52,8 +49,6 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 - Maybe float: cc65 lacks float beyond the basic parsing support, so this
   means extending the back end to handle all the fp cases (probably via
   stack) and using the long handling paths for the non maths ops.
-
-- Fuzix integration for the front end
 
 ## BIG ISSUES
 
@@ -86,8 +81,12 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 The 6800 is not currently supported. It has a few gaps that are awkward to
 address, in particular the fact it lacks PSHX and ABX. The compiler uses the
 fact it can PSHX/PULX a lot to improve 16bit handling, for temporaries and
-for other stuff. Supporting that will not be trivial - and I don't have a
-6800 machine so it's not my problem!
+for other stuff.
+
+Some of the base pieces are there for 6800 at this point but most of the
+compiler does not know how to generate 6800 code. Some of the difficult
+stuff has been tackled. The compiler should never need to PSHX and it
+knows a dirty trick to emulate PULX.
 
 ## IDEAS
 
