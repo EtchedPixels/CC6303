@@ -114,7 +114,7 @@ static void Usage (void)
             "  --bss-name seg\t\tSet the name of the BSS segment\n"
             "  --check-stack\t\t\tGenerate stack overflow checks\n"
             "  --code-name seg\t\tSet the name of the CODE segment\n"
-            "  --codesize x\t\t\tAccept larger code by factor x%\n"
+            "  --codesize x\t\t\tAccept larger code by factor x%%\n"
             "  --cpu type\t\t\tSet cpu type (6800, 6803, 6303)\n"
             "  --create-dep name\t\tCreate a make dependency file\n"
             "  --create-full-dep name\tCreate a full make dependency file\n"
