@@ -14,7 +14,7 @@ loop:
 	tstb
 	beq retdone
 	lsr 3,x
-	lsr 4,x
+	ror 4,x
 	decb
 	bra loop
 ret0:

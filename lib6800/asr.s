@@ -4,22 +4,12 @@
 	.export tosasrax
 	.code
 tosasrax:
-	cmpb #$8
-	beq asrax8
-	bcc asraxsh
-	tab
-	clra
-	andb #7
-asraxsh:
 	tsx
+asraxsh:
 	asr 1,x
 	ror 2,x
 	decb
 	bne asraxsh
-	rts
-asrax8:
-	tab
-	clra
 	rts
 
 
