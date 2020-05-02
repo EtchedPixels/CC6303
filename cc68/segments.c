@@ -108,10 +108,13 @@ void InitSegNames (void)
 void SetSegName (segment_t Seg, const char* Name)
 /* Set a new name for a segment */
 {
-    SS_Set (&SegmentNames[Seg], Name);
+    if (strcmp(Name, "code") == 0 || strcmp(Name, "data") == 0 ||
+        strcmp(Name, "common") == 0 || strcmp(Name, "zp") == 0 ||
+        strcmp(Name, "discard") == 0 || strcmp(Name, "bss") == 0)
+        SS_Set (&SegmentNames[Seg], Name);
+    else
+        Error ("Unknown segment name %s\n", Name);
 }
-
-
 
 void PushSegName (segment_t Seg, const char* Name)
 /* Push the current segment name and set a new name for a segment */

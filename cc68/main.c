@@ -115,22 +115,18 @@ static void Usage (void)
             "  --check-stack\t\t\tGenerate stack overflow checks\n"
             "  --code-name seg\t\tSet the name of the CODE segment\n"
             "  --codesize x\t\t\tAccept larger code by factor x\n"
-            "  --cpu type\t\t\tSet cpu type (6502, 65c02)\n"
+            "  --cpu type\t\t\tSet cpu type (6800, 6803, 6303)\n"
             "  --create-dep name\t\tCreate a make dependency file\n"
             "  --create-full-dep name\tCreate a full make dependency file\n"
             "  --data-name seg\t\tSet the name of the DATA segment\n"
             "  --debug\t\t\tDebug mode\n"
-            "  --debug-info\t\t\tAdd debug info to object file\n"
-            "  --debug-opt name\t\tDebug optimization steps\n"
             "  --dep-target target\t\tUse this dependency target\n"
             "  --eagerly-inline-funcs\tEagerly inline some known functions\n"
             "  --help\t\t\tHelp (this text)\n"
             "  --include-dir dir\t\tSet an include directory search path\n"
             "  --inline-stdfuncs\t\tInline some standard functions\n"
-            "  --list-opt-steps\t\tList all optimizer steps and exit\n"
             "  --list-warnings\t\tList available warning types for -W\n"
             "  --local-strings\t\tEmit string literals immediately\n"
-            "  --memory-model model\t\tSet the memory model\n"
             "  --register-space b\t\tSet space available for register variables\n"
             "  --register-vars\t\tEnable register variables\n"
             "  --rodata-name seg\t\tSet the name of the RODATA segment\n"
@@ -320,86 +316,6 @@ static void OptDebug (const char* Opt attribute ((unused)),
 /* Compiler debug mode */
 {
     ++Debug;
-}
-
-
-
-static void OptDebugInfo (const char* Opt attribute ((unused)),
-                          const char* Arg attribute ((unused)))
-/* Add debug info to the object file */
-{
-    DebugInfo = 1;
-}
-
-
-
-static void OptDebugOpt (const char* Opt attribute ((unused)), const char* Arg)
-/* Debug optimization steps */
-{
-    char Buf [128];
-    char* Line;
-
-    /* Open the file */
-    FILE* F = fopen (Arg, "r");
-    if (F == 0) {
-        AbEnd ("Cannot open '%s': %s", Arg, strerror (errno));
-    }
-
-    /* Read line by line, ignore empty lines and switch optimization
-    ** steps on/off.
-    */
-    while (fgets (Buf, sizeof (Buf), F) != 0) {
-
-        /* Remove trailing control chars. This will also remove the
-        ** trailing newline.
-        */
-        unsigned Len = strlen (Buf);
-        while (Len > 0 && IsControl (Buf[Len-1])) {
-            --Len;
-        }
-        Buf[Len] = '\0';
-
-        /* Get a pointer to the buffer and remove leading white space */
-        Line = Buf;
-        while (IsBlank (*Line)) {
-            ++Line;
-        }
-
-        /* Check the first character and enable/disable the step or
-        ** ignore the line
-        */
-        switch (*Line) {
-
-            case '\0':
-            case '#':
-            case ';':
-                /* Empty or comment line */
-                continue;
-
-            case '+':
-                ++Line;
-                /* FALLTHROUGH */
-
-            default:
-                break;
-
-        }
-
-    }
-
-    /* Close the file, no error check here since we were just reading and
-    ** this is only a debug function.
-    */
-    (void) fclose (F);
-}
-
-
-
-static void OptDebugOptOutput (const char* Opt attribute ((unused)),
-                               const char* Arg attribute ((unused)))
-/* Output optimization steps */
-{
-    DebugOptOutput = 1;
 }
 
 
@@ -626,9 +542,6 @@ int main (int argc, char* argv[])
         { "--create-full-dep",      1,      OptCreateFullDep        },
         { "--data-name",            1,      OptDataName             },
         { "--debug",                0,      OptDebug                },
-        { "--debug-info",           0,      OptDebugInfo            },
-        { "--debug-opt",            1,      OptDebugOpt             },
-        { "--debug-opt-output",     0,      OptDebugOptOutput       },
         { "--dep-target",           1,      OptDepTarget            },
         { "--eagerly-inline-funcs", 0,      OptEagerlyInlineFuncs   },
         { "--help",                 0,      OptHelp                 },
@@ -686,10 +599,6 @@ int main (int argc, char* argv[])
                 case 'h':
                 case '?':
                     OptHelp (Arg, 0);
-                    break;
-
-                case 'g':
-                    OptDebugInfo (Arg, 0);
                     break;
 
                 case 'j':

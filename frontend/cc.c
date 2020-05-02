@@ -87,6 +87,7 @@ struct objhead liblist;
 struct objhead inclist;
 struct objhead deflist;
 struct objhead libpathlist;
+struct objhead ccargs;		/* Arguments to pass on to the compiler */
 
 int keep_temp;
 int last_phase = 4;
@@ -267,7 +268,7 @@ static void run_command(void)
 		}
 	}
 	if (WIFSIGNALED(status) || WEXITSTATUS(status)) {
-//		printf("cc: %s failed.\n", arglist[0]);
+		printf("cc: %s failed.\n", arglist[0]);
 		fatal();
 	}
 }
@@ -318,6 +319,19 @@ void convert_c_to_s(char *path)
 	add_argument_list("-D", &deflist);
 	add_argument("-r");
 	add_argument("--add-source");
+	add_argument("--cpu");
+	switch(cpu) {
+		case 6800:
+			add_argument("6800");
+			break;
+		case 6803:
+			add_argument("6803");
+			break;
+		case 6303:
+			add_argument("6303");
+			break;
+	}
+	add_argument_list(NULL, &ccargs);
 	add_argument(path);
 	t = strdup(path);
 	if (t == NULL)
@@ -545,6 +559,43 @@ void uniopt(char *p)
 		usage();
 }
 
+static char *passopts[] = {
+	"*bss-name",
+	" check-stack",
+	"*code-name",
+	"*data-name",
+	" debug",
+	" inline-stdfuncs",
+	"*register-space",
+	" register-vars",
+	"*rodata-name",
+	" signed-char",
+	"*standard",
+	" verbose",
+	" writable-strings",
+	NULL
+};
+	
+char **longopt(char **ap)
+{
+	char *p = *ap + 2;
+	char **x = passopts;
+	while(*x) {
+		char *t = *x++;
+		if (strcmp(t + 1, p) == 0) {
+			append_obj(&ccargs, p - 2, 0);
+			if (*t == '*') {
+				p = *++ap;
+				if (p == NULL)
+					usage();
+				append_obj(&ccargs, p, 0);
+			}
+			return ap;
+		}
+	}
+	usage();
+}
+	
 int main(int argc, char *argv[])
 {
 	char **p = argv;
@@ -557,6 +608,9 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		switch ((*p)[1]) {
+		case '-':
+			p = longopt(p);
+			break;
 			/* Don't link */
 		case 'c':
 			uniopt(*p);

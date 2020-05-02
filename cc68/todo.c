@@ -171,7 +171,7 @@ void PrintCode(void)
     TextList *t = CodeHead.next;
     if (CodeStack)
         Internal("Botched codestack");
-    printf("\t.code\n");
+    printf("\t.%s\n", GetSegName(SEG_CODE));
     while(t != &CodeHead) {
         if (strchr(t->str, ':') == NULL)
             printf("\t");
@@ -255,7 +255,8 @@ void AppendROData(const char *txt)
 void PrintROData(void)
 {
     TextList *t = RODataHead.next;
-    printf("\t.code\n");	/* No separate rodata in our toolchain */
+    printf("\t.%s\n",
+     GetSegName(SEG_CODE));	/* No separate rodata in our toolchain */
     while(t != &RODataHead) {
         printf("%s\n", t->str);
         t = t->next;
@@ -271,7 +272,8 @@ void AppendData(const char *txt)
 void PrintData(void)
 {
     TextList *t = DataHead.next;
-    printf("\t.data\n");
+    printf("\t.%s\n",
+     GetSegName(SEG_DATA));	/* No separate rodata in our toolchain */
     while(t != &DataHead) {
         printf("%s\n", t->str);
         t = t->next;
@@ -288,7 +290,8 @@ void AppendBSS(const char *txt)
 void PrintBSS(void)
 {
     TextList *t = BSSHead.next;
-    printf("\t.bss\n");
+    printf("\t.%s\n",
+     GetSegName(SEG_BSS));	/* No separate rodata in our toolchain */
     while(t != &BSSHead) {
         printf("%s\n", t->str);
         t = t->next;
