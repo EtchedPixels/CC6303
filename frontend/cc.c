@@ -310,10 +310,7 @@ void convert_s_to_o(char *path)
 void convert_c_to_s(char *path)
 {
 	char *tmp, *t;
-	if (cpu == 6800) {
-		fprintf(stderr, "cc: C compiler does not support 6800 CPU\n");
-		exit(1);
-	}
+
 	build_arglist(CMD_CC);
 	add_argument_list("-I", &inclist);
 	add_argument_list("-D", &deflist);
