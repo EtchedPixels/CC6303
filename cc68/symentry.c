@@ -260,9 +260,12 @@ void CvtRegVarToAuto (SymEntry* Sym)
 {
     /* Change the storage class */
     Sym->Flags = (Sym->Flags & ~(SC_REGISTER | SC_STATIC | SC_EXTERN)) | SC_AUTO;
-
+#if 0
+    /* We never assigned and saved one at the point we realize this is a
+       problem */
     /* Transfer the stack offset from register save area to actual offset */
     Sym->V.Offs = Sym->V.R.SaveOffs;
+#endif
 }
 
 

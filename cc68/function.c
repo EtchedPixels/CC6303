@@ -428,6 +428,14 @@ void NewFunc (SymEntry* Func)
     Param = D->SymTab->SymHead;
     while (Param && (Param->Flags & SC_PARAM) != 0) {
 
+        /* FIXME: Underlying bug here. CvRegVarToAuto wants to convert the
+           vartiable back to auto type. However it is inconsistent about
+           whether it saved the old state or not when returning -1
+           When we turn this support on we need to update F_AllocRegVar
+           to always save the value, and remove the ifdefs on CvRegVarToAuto
+           so it gets put back */
+        /* TODO: check if this is a CC65 bug and if so report it there */
+
         /* Check for a register variable */
         if (SymIsRegVar (Param)) {
 
