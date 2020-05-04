@@ -1759,9 +1759,9 @@ static void PostDec (ExprDesc* Expr)
            it up */
         if (CanLoadViaX(Flags, Expr) && CanStoreViaX(Flags, Expr) && size <= 2) {
             LoadExprX(CF_NONE, Expr);
-            g_inc(Flags | CF_CONST | CF_FORCECHAR | CF_USINGX, size);
-            StoreX(Expr, 0);
             g_dec(Flags | CF_CONST | CF_FORCECHAR | CF_USINGX, size);
+            StoreX(Expr, 0);
+            g_inc(Flags | CF_CONST | CF_FORCECHAR | CF_USINGX, size);
             g_x_to_primary();
         } else {
             /* Fetch the value and save it (since it's the result of the expression) */
