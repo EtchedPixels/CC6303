@@ -427,7 +427,7 @@ static void AddD(const char *where, int offset)
 {
     if (CPU == CPU_6800) {
         AddCodeLine("addb %s+$%04X", where, offset);
-        AddCodeLine("abca %s+$%04X", where, offset + 1);
+        AddCodeLine("adca %s+$%04X", where, offset + 1);
     } else {
         if (offset == 0)
             AddCodeLine("addd %s", where);
