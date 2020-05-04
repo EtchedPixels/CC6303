@@ -514,6 +514,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
                 return Offs;
             }
             if (exact && Offs < (save_d ? 5 : 7)) {
+                AddCodeLine("ldx @fp");
                 while(Offs--)
                     AddCodeLine("inx");
                 return 0;
