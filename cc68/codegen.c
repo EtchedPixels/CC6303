@@ -406,7 +406,7 @@ static void AddDConst(int value)
     if (CPU == CPU_6800) {
         if ((value & 0xFF) == 1) {
             AddCodeLine("incb");
-            AddCodeLine("adca #%$02X", (value >> 8) & 0xFF);
+            AddCodeLine("adca #$%02X", (value >> 8) & 0xFF);
         } else if ((value & 0xFF) == 0)
             AddCodeLine("addb #$%02X", (value >> 8) & 0xFF);
         else {
@@ -1245,8 +1245,8 @@ void g_leasp (unsigned Flags, int Offs)
     /* FramePtr indicates a Varargs function where arguments are relative
        to fp */
     AddCodeLine(";leasp %d %d\n", FramePtr, Offs);
-    if (FramePtr && Offs < 0) {
-        Offs = -Offs;
+    if (FramePtr && Offs > 0) {
+//        Offs = -Offs;
         Offs += 3;
         if (!(Flags & CF_USINGX) || Offs > 255) {
             LoadD("@fp", 0);
@@ -1266,7 +1266,7 @@ void g_leasp (unsigned Flags, int Offs)
     Offs += StackPtr;
     Offs --;		/* Because 1,sp is the top of stack vars */
 
-    AddCodeLine(";leasp %d %d\n", FramePtr, Offs);
+    AddCodeLine(";+leasp %d %d\n", FramePtr, Offs);
 
     if (!(Flags & CF_USINGX)) {
         /* No smarter way when going via D */
@@ -3396,7 +3396,7 @@ void g_xor (unsigned flags, unsigned long val)
                     if ((val & 0xFF) != 0)
                         AddCodeLine ("eorb #$%02X", (unsigned char)val);
                     if ((val & 0xFF00) != 0)
-                        AddCodeLine ("eoraa #$%02X", (unsigned char)(val >> 8));
+                        AddCodeLine ("eora #$%02X", (unsigned char)(val >> 8));
                     return;
                 }
                 break;
@@ -3451,7 +3451,7 @@ static void generate_and16(unsigned short val)
         case 0xFF:
             break;
         default:
-            AddCodeLine("anda #$%02X", val);
+            AddCodeLine("anda #$%02X", hi);
     }
     switch(lo) {
         case 0:
@@ -3460,7 +3460,7 @@ static void generate_and16(unsigned short val)
         case 0xFF:
             break;
         default:
-            AddCodeLine("andb #$%02X", val);
+            AddCodeLine("andb #$%02X", lo);
     }
 }
 
