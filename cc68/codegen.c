@@ -369,8 +369,15 @@ static void PullX(int nv)
 static void SubDConst(int value)
 {
     if (CPU == CPU_6800) {
-        AddCodeLine("subb #$%02X", value & 0xFF);
-        AddCodeLine("sbca #$%02X", (value >> 8) & 0xFF);
+        if ((value & 0xFF) == 1) {
+            AddCodeLine("decb");
+            AddCodeLine("sbca #$%02X", (value >> 8) & 0xFF);
+        } else if ((value & 0xFF) == 0)
+            AddCodeLine("subb #$%02X", (value >> 8) & 0xFF);
+        else {
+            AddCodeLine("subb #$%02X", value & 0xFF);
+            AddCodeLine("sbca #$%02X", (value >> 8) & 0xFF);
+        }
     } else {
         if (value == 0)	/* Valid as we may be trying to set flags */
             AddCodeLine("subd @zero");
@@ -397,8 +404,15 @@ static void SubD(const char *where, int offset)
 static void AddDConst(int value)
 {
     if (CPU == CPU_6800) {
-        AddCodeLine("addb #$%02X", value & 0xFF);
-        AddCodeLine("adca #$%02X", (value >> 8) & 0xFF);
+        if ((value & 0xFF) == 1) {
+            AddCodeLine("incb");
+            AddCodeLine("adca #%$02X", (value >> 8) & 0xFF);
+        } else if ((value & 0xFF) == 0)
+            AddCodeLine("addb #$%02X", (value >> 8) & 0xFF);
+        else {
+            AddCodeLine("addb #$%02X", value & 0xFF);
+            AddCodeLine("adca #$%02X", (value >> 8) & 0xFF);
+        }
     } else {
         if (value == 0)
             AddCodeLine("addd @zero");
@@ -3298,26 +3312,13 @@ void g_or (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
 
             case CF_INT:
-                if (val <= 0xFF) {
-                    if ((val & 0xFF) != 0) {
-                        AddCodeLine ("orab #$%02X", (unsigned char)val);
-                    }
-                } else if ((val & 0xFF00) == 0xFF00) {
-                    if ((val & 0xFF) != 0) {
-                        AddCodeLine ("orab #$%02X", (unsigned char)val);
-                    }
-                    AddCodeLine ("ldab #$FF");
-                } else if (val != 0) {
-                    AddCodeLine ("orab #$%02X", (unsigned char)val);
-                    AddCodeLine ("oraa #$%02X", (unsigned char)(val >> 8));
-                }
-                return;
-
+                val &= 0xFFFF;
             case CF_LONG:
-                if (val <= 0xFF) {
-                    if ((val & 0xFF) != 0) {
+                if (val <= 0xFFFF) {
+                    if ((val & 0xFF) != 0)
                         AddCodeLine ("orab #$%02X", (unsigned char)val);
-                    }
+                    if ((val & 0xFF00) != 0)
+                        AddCodeLine ("oraa #$%02X", (unsigned char)(val >> 8));
                     return;
                 }
                 break;
@@ -3389,23 +3390,13 @@ void g_xor (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
 
             case CF_INT:
-                if (val <= 0xFF) {
-                    if (val != 0) {
-                        AddCodeLine ("eorb #$%02X", (unsigned char)val);
-                    }
-                } else if (val != 0) {
-                    if ((val & 0xFF) != 0) {
-                        AddCodeLine ("eorb #$%02X", (unsigned char)val);
-                    }
-                    AddCodeLine ("eora #$%02X", (unsigned char)(val >> 8));
-                }
-                return;
-
+                val &= 0xFFFF;
             case CF_LONG:
-                if (val <= 0xFF) {
-                    if (val != 0) {
+                if (val <= 0xFFFF) {
+                    if ((val & 0xFF) != 0)
                         AddCodeLine ("eorb #$%02X", (unsigned char)val);
-                    }
+                    if ((val & 0xFF00) != 0)
+                        AddCodeLine ("eoraa #$%02X", (unsigned char)(val >> 8));
                     return;
                 }
                 break;
@@ -3447,6 +3438,32 @@ void g_xor (unsigned flags, unsigned long val)
     oper (flags, val, ops);
 }
 
+/* Compute the constand and shortest forms */
+static void generate_and16(unsigned short val)
+{
+    unsigned char hi = val >> 8;
+    unsigned char lo = val;
+
+    switch(hi) {
+        case 0:
+            AddCodeLine("clra");
+            break;
+        case 0xFF:
+            break;
+        default:
+            AddCodeLine("anda #$%02X", val);
+    }
+    switch(lo) {
+        case 0:
+            AddCodeLine("clrb");
+            break;
+        case 0xFF:
+            break;
+        default:
+            AddCodeLine("andb #$%02X", val);
+    }
+}
+
 void g_and (unsigned Flags, unsigned long Val)
 /* Primary = TOS & Primary */
 {
@@ -3473,46 +3490,26 @@ void g_and (unsigned Flags, unsigned long Val)
                     return;
                 }
                 /* FALLTHROUGH */
+
             case CF_INT:
-                if ((Val & 0xFFFF) != 0xFFFF) {
-                    if (Val <= 0xFF) {
-                        AddCodeLine ("clra");
-                        if (Val == 0) {
-                            AddCodeLine ("clrb");
-                        } else if (Val != 0xFF) {
-                            AddCodeLine ("andb #$%02X", (unsigned char)Val);
-                        }
-                    } else if ((Val & 0xFFFF) == 0xFF00) {
-                        AddCodeLine ("clrb");
-                    } else if ((Val & 0xFF00) == 0xFF00) {
-                        AddCodeLine ("andb #$%02X", (unsigned char)Val);
-                    } else if ((Val & 0x00FF) == 0x0000) {
-                        AddCodeLine ("anda #$%02X", (unsigned char)(Val >> 8));
-                        AddCodeLine ("clrb");
-                    } else {
-                        AddCodeLine ("anda #$%02X", (unsigned char)(Val >> 8));
-                        if ((Val & 0x00FF) == 0x0000) {
-                            AddCodeLine ("clrb");
-                        } else if ((Val & 0x00FF) != 0x00FF) {
-                            AddCodeLine ("andb #$%02X", (unsigned char)Val);
-                        }
-                    }
-                }
+                generate_and16(Val);
                 return;
 
             case CF_LONG:
-                if (Val <= 0xFF) {
-                    AddCodeLine ("clra");
-                    AddCodeLine ("staa @sreg+1");
-                    AddCodeLine ("staa @sreg");
-                    if ((Val & 0xFF) != 0xFF) {
-                         AddCodeLine ("andb #$%02X", (unsigned char)Val);
-                    }
+                /* Trap the many common easy 32bit cases we can do inline */
+                if (Val <= 0xFFFF) {
+                    AddCodeLine("clr @sreg+1");
+                    AddCodeLine("clr @sreg");
+                    generate_and16(Val);
                     return;
-                } else if (Val == 0xFF00) {
-                    AddCodeLine ("clrb");
-                    AddCodeLine ("stab @sreg+1");
-                    AddCodeLine ("stab @sreg");
+                } else if (Val >= 0xFFFF0000UL) {
+                    generate_and16(Val);
+                    return;
+                } else if (!(Val & 0xFFFF)) {
+                    LoadD("@sreg", 0);
+                    generate_and16(Val >> 16);
+                    StoreD("@sreg", 0);
+                    AssignD(0, 0);
                     return;
                 }
                 break;
