@@ -436,6 +436,204 @@ static void AddD(const char *where, int offset)
     }
 }
 
+/*
+ *	No 6800 series processor has a nice simple 16bit add to X. The
+ *	6800 only has inx/dex, the others have ABX for an 8bit add. The
+ *	6303 has xgdx which does make life a bit easier
+ *
+ *	There is a corner case where values close to $FFFF are best done
+ *	by DEX but we simply don't generate those use cases.
+ */
+
+static void AddByINX(int value)
+{
+    while(value--)
+        AddCodeLine("inx");
+}
+
+static int AddByABX255(int value)
+{
+    if (value < 255)
+        return value;
+    AddCodeLine("ldab #$FF");
+    while(value >= 255) {
+        AddCodeLine("abx");
+        value -= 255;
+    }
+    return value;
+}
+
+static void AddConstViaABX(int value)
+{
+    int off;
+
+    /* Add 255 until we are within 255 */
+    off = AddByABX255(value);
+
+    if (off < 3)
+        AddByINX(value);
+    else {
+        AddCodeLine("ldab #$%02X", value);
+        AddCodeLine("abx");
+    }
+}
+
+/* The main entry point: Add a constant to X by whatever means the processor
+   requires. Can be told to preserve D and if so will pick the right approach
+   for efficiency allowing for stacking cost. We optimize only for size. */
+static void AddXConst(int value, int save_d)
+{
+    int cost;
+    int costval = value;
+
+    switch(CPU) {
+    case CPU_6803:
+        if (value >= 255) {
+            /* Cost of ldab #$FF, and repeated abx */
+            cost = 2 + costval / 255;
+            costval %= 255;	/* What is left ? */
+        }
+        if (costval < 3)
+            cost += costval;	/* Cost of INX INX .. */
+        else
+            cost += 3;		/* Cost of LDAB #n, ABX */
+
+        if (save_d)
+            cost += 2;		/* PSHB PULB */
+
+        /* For small values it's cheaper to use INX */
+        if (value <= cost) {
+            AddByINX(value);
+            return;
+        }
+        if (cost < 9 + 2 * save_d) {
+            /* Worth doing via ABX */
+            if (save_d)
+                AddCodeLine("pshb");
+            AddConstViaABX(value);
+            if (save_d)
+                AddCodeLine("pulb");
+            return;
+        }
+        /* Fall through: very big values are cheaper to do using D */
+    case CPU_6800:
+        /* The 6800 case is a bit long winded */
+        if (value < 12 + 4 * save_d) {
+            AddByINX(value);
+            return;
+        }
+        if (save_d) {
+            AddCodeLine("pshb");
+            AddCodeLine("psha");
+        }
+        AddCodeLine("stx @tmp");
+        AssignD(value, 0);
+        AddD("@tmp", 0);
+        AddCodeLine("ldx @tmp");
+        if (save_d) {
+            AddCodeLine("pula");
+            AddCodeLine("pulb");
+        }
+        return;
+    case CPU_6303:
+    default:
+        if (value < 5) {
+            AddByINX(value);
+            return;
+        }
+        AddCodeLine("xgdx");
+        AddCodeLine("addd #$%04X", value);
+        AddCodeLine("xgdx");
+        return;
+    }
+}
+
+/*
+ *	Adjust the X register so it plus an offset are within the range
+ *	of value. We don't need to be exact. This is used in the cases where
+ *	we generate an X index and then use off,X forms.
+ */
+
+static int AddXRange(int value, int maxoff, int save_d)
+{
+    int cost;
+    int costval = value;
+    int minval = value - maxoff;	/* Smallest modify of X we can do
+                                           to get into range */
+
+    /* In all cases if we are within range already we do nothing */
+    if (value <= maxoff)
+        return value;
+
+    switch(CPU) {
+    case CPU_6803:
+        if (minval >= 255) {
+            /* Cost of ldab #$FF, and repeated abx */
+            cost = 2 + costval / 255;
+            costval %= 255;	/* What is left ? */
+        }
+        /* We don't need to cost any final adjustments as we won't bother
+           generating any fix up but just leave the trailing offset */
+        if (save_d)
+            cost += 2;		/* PSHB PULB */
+
+        /* For small values it's cheaper to use INX */
+        if (minval <= cost) {
+            AddByINX(minval);
+            return maxoff;
+        }
+        /* See if using ABX of 255 repeatedly is a win */
+        if (cost < 9 + 2 * save_d) {
+            /* Worth doing via ABX */
+            if (save_d)
+                AddCodeLine("pshb");
+            AddCodeLine("ldab #$FF");
+            /* Keep adding 255 until X is within range. */
+            while(value > maxoff) {
+                AddCodeLine("abx");
+                value -= 255;
+            }
+            if (save_d)
+                AddCodeLine("pulb");
+            /* The remainder becomes the offset */
+            return value;
+        }
+        /* Fall through: very big values are cheaper to do using D */
+    case CPU_6800:
+        /* The 6800 case is a bit long winded */
+        if (minval < 12 + 4 * save_d) {
+            AddByINX(minval);
+            return maxoff;
+        }
+        /* If we can't do it via INX we have to do the long approach */
+        if (save_d) {
+            AddCodeLine("pshb");
+            AddCodeLine("psha");
+        }
+        AddCodeLine("stx @tmp");
+        AssignD(value, 0);
+        AddD("@tmp", 0);
+        AddCodeLine("ldx @tmp");
+        if (save_d) {
+            AddCodeLine("pula");
+            AddCodeLine("pulb");
+        }
+        return 0;
+    case CPU_6303:
+    default:
+        /* See if it is cheapest to INX into range */
+        if (minval < 5) {
+            AddByINX(minval);
+            return maxoff;
+        }
+        /* If not on the 6303 the cheapest is just do the maths */
+        AddCodeLine("xgdx");
+        AddCodeLine("addd #$%04X", value);
+        AddCodeLine("xgdx");
+        return 0;
+    }
+}
+
 static void LsrD(void)
 {
     if (CPU == CPU_6800) {
