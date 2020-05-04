@@ -2,13 +2,22 @@
 ;	Multiply 3,x by sreg:d
 ;
 ;
-		.export umul32x32
+;	Stack on entry
+;
+;	3-7,x	Argument
+;
+;
+
+		.export tosmuleax
+		.export tosumuleax
 		.setcpu 6803
 
 		.code
-umul32x32:
+tosmuleax:
+tosumuleax:
 		pshx		; working space 1,x->4,x
 		pshx		; moves argument to 7-10,x
+		tsx
 		std @tmp
 ;
 ;	Do 32bit x low 8bits
@@ -90,4 +99,4 @@ is_done:
 		stx @sreg
 		pulb
 		pula
-		rts
+		jmp pop4
