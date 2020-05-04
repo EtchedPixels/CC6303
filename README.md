@@ -16,20 +16,25 @@ The basic structure is now reasonably functional. You can "make" and "make
 install" to get a complete compiler/assembler/linker/tools that appear
 to generate actual binaries.
 
-Simple code appears to be producing valid looking if not very good code.
-Lots of more complicated things will blow up. In general integer code is
-likely to be ok. Longs need a lot more debugging and 32bit support code
-writing and debugging.
+The assembler and linker should be reasonably reliable and complete. The
+compiler at this point should be reasonably solid on 6803 and 6303 except for
+32bit types. The core compiler support for 32bit types is there and mostly
+tested but the library helpers for shifts, multiply and particularly division
+are not yet fully debugged.
 
-The front end appears to be working. It can take all of the Fuzix tree and
-build it into final binaries. The output isn't yet too good, and also
-has lots of bugs.
+On the 6800 processor the library routines are far from complete, and the
+code generator may still generate non 6800 code on a few paths.
+
+The bundled C library routines are initial code and not yet tested or reviewed.
+They are intended to provide native versions of key and time critical functions
+not a full C library.
 
 ## How to use
 
 For a simple test environment the easiest approach at this point is to
 compile the code with cc68 and then link with a suitable crt.o (entry code)
 
+cc68 -m6803 -c foo.c
 ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 
 ## TODO
@@ -38,8 +43,6 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
   and a load of dangling header references and so on left to resolve.
 
 - Remove remaining '6502' references.
-
-- Strip out lots of unused options.
 
 - Make embedding C source into asm as comments work for debugging
 
@@ -78,17 +81,8 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 
 ## 6800
 
-The 6800 is not currently supported. It has a few gaps that are awkward to
-address, in particular the fact it lacks PSHX and ABX. The compiler uses the
-fact it can PSHX/PULX a lot to improve 16bit handling, for temporaries and
-for other stuff.
-
-Some of the base pieces are there for 6800 at this point but most of the
+Most of the base pieces are there for 6800 at this point but some of the
 compiler does not know how to generate 6800 code. Some of the difficult
 stuff has been tackled. The compiler should never need to PSHX and it
 knows a dirty trick to emulate PULX.
 
-## IDEAS
-
-Stub code that is a chain of ins/des instructions with labels for each so
-you can jsr to shift the stack by 4-n bytes in the ugly cases.
