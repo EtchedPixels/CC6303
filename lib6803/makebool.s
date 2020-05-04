@@ -50,9 +50,9 @@ boolgt:	bgt	ret1
 	clrb
 	rts
 
-booluge:
-	beq	ret1
 boolugt:
+	beq	ret0
+booluge:
 	bcc	ret1
 	clra
 	clrb
