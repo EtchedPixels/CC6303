@@ -12,7 +12,7 @@ OBJ += __cpu_to_le16.o __cpu_to_le32.o
 OBJ += _memccpy.o _memchr.o _memrchr.o _memcpy.o _memset.o
 OBJ += _strcat.o _strcpy.o _strlen.o _strnlen.o _strchr.o _strrchr.o
 OBJ += _strcmp.o _strncmp.o
-OBJ += _abs.o _labs.o
+OBJ += _abs.o _labs.o _atoi.o
 
 all: $(OBJ)
 
