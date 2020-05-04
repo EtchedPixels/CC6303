@@ -500,6 +500,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
 {
     unsigned s = sizeofarg(Flags) - 1;
     int curoffs;
+    int far;
 
     /* Frame pointer using function, use the frame pointer only for
        arguments not locals */
@@ -508,40 +509,53 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
         AddCodeLine(";Genoffset %u %d %d %d\n",
             Flags, Offs, save_d, exact);
         Offs += 3;	/* FP is from SP so one below but also have stacked fp */
-        if (Offs < 256) {
+        if (Offs < 256 - s) {
+
+            /* Usual simple case. X holds fp, caller is using n,X format
+               so we just load x with @fp on any CPU type */
             if (!exact) {
                 AddCodeLine("ldx @fp");
                 return Offs;
             }
+            /* The caller needs the actual exact value in X and the adjustment
+               is small. Use inx if cheaper */
             if (exact && Offs < (save_d ? 5 : 7)) {
                 AddCodeLine("ldx @fp");
                 while(Offs--)
                     AddCodeLine("inx");
                 return 0;
             }
-            if (save_d)
-                AddCodeLine("pshb");
-            AddCodeLine("ldx @fp");
-            AddCodeLine("ldab #$%02X", Offs);
-            AddCodeLine("abx");
-            if (save_d)
-                AddCodeLine("pulb");
-        } else {
-            /* TODO optimize - but > 250 bytes of args ?? really ?? */
-            if (save_d) {
-                AddCodeLine("pshb");
-                AddCodeLine("psha");
+            /* On a non 6800 processor we can add 0-255 with ABX. This costs
+               us a bit more but is still OK */
+            if (CPU != CPU_6800) {
+                if (save_d)
+                    AddCodeLine("pshb");
+                AddCodeLine("ldx @fp");
+                AddCodeLine("ldab #$%02X", Offs);
+                AddCodeLine("abx");
+                if (save_d)
+                    AddCodeLine("pulb");
+                return 0;
             }
-            LoadD("@fp", 0);
-            AddDConst(Offs);
-            DToX();
-            if (save_d) {
-                AddCodeLine("pula");
-                AddCodeLine("pulb");
-            }
+            /* For the 6800 fall through to the hard case */
+        }
+        /* This is not terribly efficient but it almost never happens */
+        if (save_d) {
+            AddCodeLine("pshb");
+            AddCodeLine("psha");
+        }
+        LoadD("@fp", 0);
+        AddDConst(Offs);
+        DToX();
+        if (save_d) {
+            AddCodeLine("pula");
+            AddCodeLine("pulb");
         }
         return 0;
     }
+
+    /* The non vararg argument case. Everything is relative to S, X may hold
+       something related to S already */
 
     /* Adjust for current stack pointer */
     Offs -= StackPtr;
@@ -549,8 +563,18 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
     /* S points below the data so we need to look further up */
     Offs += 1;
 
+    /* How many bytes offset before we give up and go via D */
+    if (CPU != CPU_6800)
+        far = 2040;
+    else {
+        /* We have no ABX on 6800 so our range is more limited */
+        if (exact)
+            far = 3 - s;
+        else
+            far = 258 - s;
+    }
     /* Big offsets are ugly and we have to go via D */
-    if (Offs + s > 2040) {
+    if (Offs + s >= far) {
         if (save_d) {
             AddCodeLine("pshb");
             AddCodeLine("psha");
@@ -584,9 +608,15 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
     /* Calculate the actual target */    
     Offs += curoffs;
 
+    /* Range we must be within in order to finish the job with inx or
+       just return */
+    far = 258;
+    if (exact)
+        far = 3;
+
     /* Repeatedly add 255 until we are in range or it is cheaper to use
        inx for the rest */
-    if (Offs + s >= 258) {
+    if (Offs + s >= far) {
         if (save_d)
             AddCodeLine("pshb");
         AddCodeLine("ldab #$FF");
@@ -603,19 +633,24 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
             AddCodeLine("pulb");
         InvalidateX();
     }
-    /* Make sure we are fully reachable */
+    /* Make sure we are fully reachable. That means being within 254/255
+       for a non exact request, or within 3 for an exact one. We do the final
+       tidy up with inx */
     switch(Offs + s) {
     case 258:
+    case 3:
         AddCodeLine("inx");
         ModifyX(1);
         Offs--;
         /* Falls through */
     case 257:
+    case 2:
         AddCodeLine("inx");
         ModifyX(1);
         Offs--;
         /* Falls through */
     case 256:
+    case 1:
         AddCodeLine("inx");
         ModifyX(1);
         Offs--;
@@ -896,9 +931,11 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
     /* Uglies from the L->R stack handling for varargs */
     if ((flags & CF_FIXARGC) == 0) {
         /* Frame pointer is required for varargs mode */
-        if (CPU == CPU_6800)
+        if (CPU == CPU_6800) {
+            AddCodeLine("des");
+            AddCodeLine("des");
             AddCodeLine("jsr fixfp");
-        else {
+        } else {
             AddCodeLine("ldx @fp");
             AddCodeLine("pshx");
             AddCodeLine("tsx");
@@ -916,20 +953,23 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
 void g_leave(void)
 /* Function epilogue */
 {
+    /* Should always be zero : however ignore this being wrong if we took
+       a C level error as that may be the real cause. Only valid code failing
+       this check is a problem */
+
+    if (StackPtr && !ErrorCount)
+        Internal("g_leave: stack unbalanced by %d", StackPtr);
+
     /* Recover the previous frame pointer if we were vararg */
     if (FramePtr) {
-        if (CPU == CPU_6800)
-            AddCodeLine("jsr restorefp");
-        else {
+        if (CPU == CPU_6800) {
+            AddCodeLine("jmp restorefp");
+            return;
+        } else {
             PullX(1);
             AddCodeLine("stx @fp");
         }
     }
-    /* Should always be zero : however ignore this being wrong if we took
-       a C level error as that may be the real cause. Only valid code failing
-       this check is a problem */
-    if (StackPtr && !ErrorCount)
-        Internal("g_leave: stack unbalanced by %d", StackPtr);
     AddCodeLine("rts");
 }
 
@@ -1249,7 +1289,7 @@ void g_leasp (unsigned Flags, int Offs)
     if (FramePtr && Offs > 0) {
 //        Offs = -Offs;
         Offs += 3;
-        if (!(Flags & CF_USINGX) || Offs > 255) {
+        if (!(Flags & CF_USINGX) || Offs > 255 || CPU == CPU_6800) {
             LoadD("@fp", 0);
             AddDConst(Offs);
             if (Flags & CF_USINGX)
@@ -1287,7 +1327,7 @@ void g_leasp (unsigned Flags, int Offs)
     InvalidateX();		/* FIXME: can we use GenOffset type logic */
     AddCodeLine("tsx");
     /* FIXME: probably > 1018 - work this out properly */
-    if (Offs < 1018) {
+    if (Offs < 1018 && CPU != CPU_6800) {
         InvalidateX();	/* FIXME: rework off existing X if we can */
         AddCodeLine("tsx");
         if (Offs >= 255) {
@@ -1421,6 +1461,8 @@ void g_putind (unsigned Flags, unsigned Offs)
     
     if (CPU == CPU_6303)
         viaabx = 1024;
+    if (CPU == CPU_6800)
+        viaabx = 0;	/* No ABX instruction */
 
     if ((Flags & CF_TYPEMASK) == CF_LONG)
         size -= 2;
