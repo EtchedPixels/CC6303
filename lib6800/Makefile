@@ -8,7 +8,7 @@ OBJ += negeax.o sub.o
 OBJ += shleax.o shr.o shrax.o shreax.o shreax8.o swap.o
 OBJ += tosasleax.o
 OBJ += tosasreax.o tosdivax.o tosshlax.o tossubeax.o tosudivax.o tosumodax.o
-OBJ += tosumuleax.o tosudiveax.o tosmodeax.o tosdiveax.o
+OBJ += tosudiveax.o tosmodeax.o tosdiveax.o
 OBJ += divide.o divide32x32.o
 
 OBJ += __cpu_to_le16.o __cpu_to_le32.o
