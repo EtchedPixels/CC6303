@@ -25,6 +25,7 @@ tosumulax:
 	mul			; D is now low x high
 	addd @tmp1		; High bytes
 	tba			; Shift left 8, discarding
+	clra
 	addd @tmp		; Add the low x low
 	jmp pop2
 
