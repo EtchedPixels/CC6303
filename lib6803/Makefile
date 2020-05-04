@@ -13,6 +13,7 @@ OBJ += _memccpy.o _memchr.o _memrchr.o _memcpy.o _memset.o
 OBJ += _strcat.o _strcpy.o _strlen.o _strnlen.o _strchr.o _strrchr.o
 OBJ += _strcmp.o _strncmp.o
 OBJ += _abs.o _labs.o _atoi.o
+OBJ += _longjmp.o _setjmp.o
 
 all: $(OBJ)
 

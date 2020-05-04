@@ -16,7 +16,7 @@ _atoil:		ldab ,x
 		blt done
 		cmpb #'9'
 		bgt done
-		sub #'0'		; make digit
+		subb #'0'		; make digit
 		stab @tmp2+1		; tmp2 is now the 16bit value
 		ldd @tmp		; existing value
 		std @tmp3		; save d
