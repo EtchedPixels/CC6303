@@ -470,7 +470,7 @@ static void AddConstViaABX(int value)
     /* Add 255 until we are within 255 */
     off = AddByABX255(value);
 
-    if (off < 3)
+    if (off <= 3)
         AddByINX(value);
     else {
         AddCodeLine("ldab #$%02X", value);
@@ -537,7 +537,7 @@ static void AddXConst(int value, int save_d)
         return;
     case CPU_6303:
     default:
-        if (value < 5) {
+        if (value <= 5) {
             AddByINX(value);
             return;
         }
@@ -622,16 +622,23 @@ static int AddXRange(int value, int maxoff, int save_d)
     case CPU_6303:
     default:
         /* See if it is cheapest to INX into range */
-        if (minval < 5) {
+        if (minval <= 5) {
             AddByINX(minval);
             return maxoff;
         }
-        /* If not on the 6303 the cheapest is just do the maths */
+        /* If not, then on the 6303 the cheapest is just do the maths */
         AddCodeLine("xgdx");
         AddCodeLine("addd #$%04X", value);
         AddCodeLine("xgdx");
         return 0;
     }
+}
+
+/* ASR is much harder to shortcut */
+static void AsrD(void)
+{
+    AddCodeLine("asra");
+    AddCodeLine("rorb");
 }
 
 static void LsrD(void)
@@ -643,6 +650,49 @@ static void LsrD(void)
         AddCodeLine("lsrd");
 }
 
+static int lsrcost6800[16] = {
+    0, 2, 4, 6, 8, 10, 12, 14, 2, 3, 4, 5, 6, 7, 8, 5
+};
+
+static int lsrcost6803[16] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 6, 7, 8, 4
+};
+
+static void LsrDBy(int n)
+{
+    int cost;
+    if (n > 15) {
+        AssignD(0, 0);
+        return;
+    }
+    if (CPU == CPU_6800)
+        cost = lsrcost6800[n];
+    else
+        cost = lsrcost6803[n];
+
+    if (IS_Get(&CodeSizeFactor) < ((100 * cost) / 3) - 100) {
+        AddCodeLine("jsr shrax%d", n);
+        return;
+    }
+
+    if (n == 15) {
+        AddCodeLine("rola");	/* top bit into carry */
+        AssignD(0, 1);
+        AddCodeLine("rorb");	/* carry into bottom bit */
+        return;
+    }
+
+    if (n >= 8) {
+        AddCodeLine("tab");
+        AddCodeLine("clra");
+        while(n-- > 8)
+            AddCodeLine("lsrb");	/* Upper bits already done */
+        return;
+    }
+    while(n--)
+        LsrD();
+}
+
 static void AslD(void)
 {
     if (CPU == CPU_6800) {
@@ -650,6 +700,48 @@ static void AslD(void)
         AddCodeLine("rola");
     } else
         AddCodeLine("asld");
+}
+
+static int aslcost6800[16] = {
+    0, 2, 4, 6, 8, 10, 12, 14, 2, 3, 4, 5, 6, 7, 8, 4
+};
+
+static int aslcost6803[16] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 6, 7, 8, 5
+};
+
+static void AslDBy(int n)
+{
+    int cost;
+    if (n > 15) {
+        AssignD(0, 0);
+        return;
+    }
+    if (CPU == CPU_6800)
+        cost = aslcost6800[n];
+    else
+        cost = aslcost6803[n];
+
+    if (IS_Get(&CodeSizeFactor) < ((100 * cost) / 3) - 100) {
+        AddCodeLine("jsr aslax%d", n);
+        return;
+    }
+
+    if (n == 15) {
+        AddCodeLine("rolb");		/* Low bit into carry */
+        AssignD(0, 1);			/* Clear */
+        AddCodeLine("rora");		/* Carry into top bit */
+        return;
+    }
+    if (n >= 8) {
+        AddCodeLine("tba");
+        AddCodeLine("clrb");
+        while(n-- > 8)
+            AddCodeLine("asla");	/* Low bits already done */
+        return;
+    }
+    while(n--)
+        AslD();
 }
 
 /* Get D into X, may mash D */
@@ -2108,14 +2200,12 @@ void g_scale (unsigned flags, long val)
 
                 case CF_INT:
                     if (flags & CF_UNSIGNED) {
-                        while (p2--)
-                            LsrD();
+                        LsrDBy(p2);
                     } else  {
                         InvalidateX();
-                        if (p2 == 1) {
-                            AddCodeLine("asra");
-                            AddCodeLine("rorb");
-                        } else
+                        if (p2 == 1)
+                            AsrD();
+                        else
                             /* There is no asrd */
                             AddCodeLine ("jsr asrax%d", p2);
                     }
@@ -3812,38 +3902,32 @@ void g_asr (unsigned flags, unsigned long val)
 
             case CF_CHAR:
             case CF_INT:
-                val &= 0x0F;
-                if (val >= 8) {
-                    if (flags & CF_UNSIGNED) {
-                        AddCodeLine ("tab");
-                        AddCodeLine ("clra");
-                    } else {
-                        unsigned L = GetLocalLabel();
-                        AddCodeLine ("tab");
-                        AddCodeLine ("clra");
-                        AddCodeLine ("cmpb #$80");   /* Sign bit into carry */
-                        AddCodeLine ("bcc %s", LocalLabelName (L));
-                        AddCodeLine ("coma");        /* Make $FF */
-                        g_defcodelabel (L);
-                    }
-                    val -= 8;
-                }
-                if (val >= 3) {
-                    if (flags & CF_UNSIGNED) {
-                        AddCodeLine ("jsr shrax%d", (unsigned int)val);
-                    } else {
-                        AddCodeLine ("jsr asrax%d", (unsigned int)val);
-                    }
+                if (flags & CF_UNSIGNED) {
+                    LsrDBy(val);
                     return;
                 }
-                while(val--) {
-                    if (flags & CF_UNSIGNED)
-                        LsrD();
-                    else {
-                        AddCodeLine("asra");
-                        AddCodeLine("rorb");
-                    }
+                /* Approximate: varies by shift */
+                if (val > 2 && IS_Get(&CodeSizeFactor) < 50) {
+                    AddCodeLine ("jsr asrax%d", (unsigned int)val);
+                    return;
                 }
+                val &= 0x0F;
+                if (val >= 8) {
+                    unsigned L = GetLocalLabel();
+                    AddCodeLine ("tab");
+                    AddCodeLine ("clra");
+                    AddCodeLine ("cmpb #$80");   /* Sign bit into carry */
+                    AddCodeLine ("bcc %s", LocalLabelName (L));
+                    AddCodeLine ("coma");        /* Make $FF */
+                    g_defcodelabel (L);
+                    val -= 8;
+                }
+                if (val > 2) {
+                    AddCodeLine ("jsr asrax%d", (unsigned int)val);
+                    return;
+                }
+                while(val--)
+                    AsrD();
                 return;
 
             case CF_LONG:
@@ -3935,16 +4019,7 @@ void g_asl (unsigned flags, unsigned long val)
 
             case CF_CHAR:
             case CF_INT:
-                val &= 0x0F;
-                if (val >= 8) {
-                    AddCodeLine ("tba");
-                    AddCodeLine ("clrb");
-                    val -= 8;
-                }
-                /* We don't have a 16bit rotate right so there isn't a
-                   good way to use right v left optimizing */
-                while(val--)
-                    AslD();
+                AslDBy(val);
                 return;
 
             case CF_LONG:
