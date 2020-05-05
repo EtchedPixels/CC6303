@@ -15,6 +15,8 @@ libc:
 	+(cd lib6800; make)
 	+(cd lib6803; make)
 	+(cd lib6303; make)
+	+(cd libio; make)
+	+(cd target-mc10; make)
 	mkdir -p tmp
 	rm -f tmp/*
 	cp lib6800/*.o tmp
@@ -38,6 +40,8 @@ clean:
 	(cd lib6800; make clean)
 	(cd lib6803; make clean)
 	(cd lib6303; make clean)
+	(cd libio; make clean)
+	(cd target-mc10; make clean)
 	rm copt lib6800.a lib6803.a lib6303.a
 
 #
@@ -60,3 +64,5 @@ install:
 	cp lib6800.a /opt/cc68/lib
 	cp lib6803.a /opt/cc68/lib
 	cp lib6303.a /opt/cc68/lib
+	cp libio/6800/libio6800.a /opt/cc68/lib
+	cp target-mc10/lib/libmc10.a /opt/cc68/lib
