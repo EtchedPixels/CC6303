@@ -723,7 +723,7 @@ static void AslDBy(int n)
         cost = aslcost6803[n];
 
     if (IS_Get(&CodeSizeFactor) < ((100 * cost) / 3) - 100) {
-        AddCodeLine("jsr aslax%d", n);
+        AddCodeLine("jsr shlax%d", n);
         return;
     }
 
