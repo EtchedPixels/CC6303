@@ -11,10 +11,6 @@
 tosdiveax:
 		; make work room
 		psha
-		; Arrange stack for the divide helper. TOS is already right
-		; so push the other 4 bytes we need. The divide helper knows
-		; about the fact there is junk (return address) between the
-		; two
 		clr @tmp4		; sign tracking
 		ldaa @sreg
 		bpl nosignfix
@@ -23,9 +19,13 @@ tosdiveax:
 		inc @tmp4		; remember how many negations
 		bra signfixed
 nosignfix:
-		;	Stack the 32bit working register
 		pula
 signfixed:
+		; Stack the 32bit working register
+		; Arrange stack for the divide helper. TOS is already right
+		; so push the other 4 bytes we need. The divide helper knows
+		; about the fact there is junk (return address) between the
+		; two
 		pshb
 		psha
 		ldx @sreg

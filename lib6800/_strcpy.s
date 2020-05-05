@@ -26,6 +26,7 @@ copyloop:
 	ldx	@tmp2
 	tsta
 	bne copyloop
+	tsx
 	ldaa	7,x
 	ldab	8,x
 	rts

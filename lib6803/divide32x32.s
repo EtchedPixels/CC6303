@@ -56,12 +56,12 @@ loop:		; Shift the dividend left and set bit 0
 		andb #0xFE
 		std @tmp3
 done:
-		dec tmp
+		dec @tmp
 		bne loop
 		rts
 		; We do want to subtract - write back the other bits
 skip:
 		std @tmp2
-		dec tmp
+		dec @tmp
 		bne loop
 		rts
