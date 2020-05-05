@@ -63,6 +63,8 @@
 #define LIB6800	LIBPATH"lib6800.a"
 #define LIB6803	LIBPATH"lib6803.a"
 #define LIB6303	LIBPATH"lib6303.a"
+#define LIBIO	LIBPATH"libio6800.a"
+#define LIBMC10 LIBPATH"libmc10.a"
 
 struct obj {
 	struct obj *next;
@@ -372,12 +374,19 @@ void preprocess_c(char *path)
 void link_phase(void)
 {
 	build_arglist(CMD_LD);
-	if (targetos == 1) {
-		;
-	} else {
-		add_argument("-b");
-		add_argument("-C");
-		add_argument("256");
+	switch (targetos) {
+		case 1:
+			break;
+		case 2:
+			add_argument("-b");
+			add_argument("-C");
+			add_argument("17500");
+			break;
+		default:
+			add_argument("-b");
+			add_argument("-C");
+			add_argument("256");
+			break;
 	}
 	if (strip)
 		add_argument("-s");
@@ -396,6 +405,10 @@ void link_phase(void)
 		add_argument(CRT0);
 		append_obj(&libpathlist, LIBPATH, 0);
 		append_obj(&liblist, LIBC, TYPE_A);
+		if (targetos == 2) {
+			append_obj(&liblist, LIBIO, TYPE_A);
+			append_obj(&liblist, LIBMC10, TYPE_A);
+		}
 	}
 	if (cpu == 6303)
 		append_obj(&liblist, LIB6303, TYPE_A);
@@ -677,8 +690,10 @@ int main(int argc, char *argv[])
 		case 't':
 			if (strcmp(*p + 2, "fuzix") == 0)
 				targetos = 1;
+			else if (strcmp(*p + 2, "mc10") == 0)
+				targetos = 2;
 			else {
-				fprintf(stderr, "cc: only fuzix target type is known.\n");
+				fprintf(stderr, "cc: only fuzix and mc10 target types are known.\n");
 				fatal();
 			}
 			break;
