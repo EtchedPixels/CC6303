@@ -1,5 +1,5 @@
 # CC6303
-A C compiler for the 6803/6303 processors (but probably never the 6800)
+A C compiler for the 6800/6803/6303 processors
 
 This is based upon cc65 [https://github.com/cc65/cc65] but involves doing
 some fairly brutal things to the original compiler. As such I currently have
@@ -22,10 +22,10 @@ compiler at this point should be reasonably solid on 6803 and 6303 except for
 tested but the library helpers for shifts, multiply and particularly division
 are not yet fully debugged.
 
-On the 6800 processor the library routines are far from complete, and the
-code generator may still generate non 6800 code on a few paths.
+On the 6800 processor the library routines are far from complete and the
+code generator needs some optimizing and a lot of un-inlining of code.
 
-The bundled C library routines are initial code and not yet tested or reviewed.
+The bundled C library routines are initial code and not fully tested or reviewed.
 They are intended to provide native versions of key and time critical functions
 not a full C library.
 
@@ -53,6 +53,8 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
   means extending the back end to handle all the fp cases (probably via
   stack) and using the long handling paths for the non maths ops.
 
+- A proper optimizer
+
 ## BIG ISSUES
 
 - We can make much better use of X in some situations than the cc65 code
@@ -78,11 +80,4 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
 - copt has no idea about register usage analysis, dead code elimination etc.
   We could do far better with a proper processor that understood 680x not
   just a pattern handler. We fudge it a bit with hints but it's not ideal.
-
-## 6800
-
-Most of the base pieces are there for 6800 at this point but some of the
-compiler does not know how to generate 6800 code. Some of the difficult
-stuff has been tackled. The compiler should never need to PSHX and it
-knows a dirty trick to emulate PULX.
 
