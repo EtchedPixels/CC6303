@@ -1,0 +1,552 @@
+#
+#	This is fairly ineffective, we need a proper optimizer that can do
+#	things like live value and constant tracking to make a real dent
+#	in the 6800 output
+#
+
+#	Trim jumps to next instruction
+jmp %1
+%1:
+=
+%1:
+
+#	And terminal jsr rts
+jsr %1
+rts
+=
+jmp %1
+
+# Silly logic removals
+clra
+ldab #1
+staa @tmp1
+orab @tmp1
+jne %1
+=
+clra
+ldab #1
+jne %1
+
+# Some trivial optimizations for clra/clrb cases
+clra
+ldab #1
+stab %1
+clra
+clrb
+=
+clra
+ldab #1
+stab %1
+decb
+
+clra
+clrb
+stab %1
+clra
+clrb
+=
+clra
+clrb
+stab %1
+
+clra
+ldab #1
+sta %1
+stab %1+1
+clra
+clrb
+=
+clra
+ldab #1
+staa %1
+stab %1+1
+decb
+
+clra
+clrb
+staa %1
+stab %2
+clra
+clrb
+=
+clra
+clrb
+staa %1
+stab %2
+
+# And with D,P
+clra
+clrb
+stab %1
+Invalid D,P
+clra
+clrb
+=
+clra
+clrb
+stab %1
+Invalid D,P
+
+clra
+ldab #1
+staa %1
+stab %2
+Invalid D,P
+clra
+clrb
+=
+clra
+ldab #1
+staa %1
+stab %2
+Invalid D,P
+decb
+
+clra
+clrb
+staa %1
+stab %2
+Invalid D,P
+clra
+clrb
+=
+clra
+clrb
+staa %1
+stab %2
+Invalid D,P
+
+# And with X,D,P
+clra
+clrb
+stab %1
+Invalid X,D,P
+clra
+clrb
+=
+clra
+clrb
+stab %1
+Invalid X,D,P
+
+clra
+ldab #1
+staa %1
+stab %2
+Invalid X,D,P
+clra
+clrb
+=
+clra
+ldab #1
+staa %1
+stab %2
+Invalid X,D,P
+decb
+
+clra
+clrb
+staa %1
+stab %1
+Invalid X,D,P
+clra
+clrb
+=
+clra
+clrb
+sta %1
+stb %1
+Invalid X,D,P
+
+clra
+clra
+=
+clra
+
+clrb
+pshb
+Invalid D,P
+clrb
+pshb
+=
+clrb
+pshb
+pshb
+Invalid D,P
+
+clra
+pshb
+Invalid D,P
+clra
+=
+clra
+pshb
+Invalid D,P
+
+clra
+clrb
+staa %1
+stab %2
+Invalid D,P
+clra
+clrb
+=
+clra
+clrb
+staa %1
+stab %2
+Invalid D,P
+
+clra
+clrb
+staa %1
+stab %2
+Invalid X,D,P
+clra
+clrb
+=
+clra
+clrb
+staa %1
+stab %2
+Invalid X,D,P
+
+# Similar idea for constants
+ldab #%1
+pshb
+Invalid D,P
+ldab #%1
+=
+ldab #%1
+pshb
+Invalid D,P
+
+# Where logic tells us clr is not needed
+subd %1
+sbcb %2
+jne %2
+clra
+=
+subb %1
+sbcb %2
+jne %2
+
+# Useful overlaps to spot
+clrb
+pshb
+ldab #$FF
+=
+clrb
+pshb
+decb
+
+# Store and reload
+staa %1
+stab %2
+ldaa %1
+ldab %2
+=
+staa %1
+stab %2
+
+stx %1
+ldx %1
+=
+stx %1
+
+staa %1
+stab %2
+invalid D,P
+ldaa %1
+ldab %2
+=
+staa %1
+stab %2
+
+staa %1
+stab %2
+invalid X,D,P
+ldaa %1
+ldab %2
+=
+staa %1
+stab %2
+
+# Pointless stack
+pshb
+pulb
+=
+;
+
+
+pshb
+psha
+pula
+pulb
+=
+;
+
+pula
+pulb
+pshb
+psha
+ldaa %1
+ldab %2
+=
+ldaa %1
+ldab %2
+
+pula
+pulb
+pshb
+psha
+clra
+ldab %1
+=
+clra
+ldab %1
+
+pula
+pulb
+pshb
+psha
+clra
+clrb
+=
+clra
+clrb
+
+#	Branches
+#
+
+%1:
+	jmp %2
+%3:
+	jmp %1
+=
+%1:
+%3:
+	jmp %2
+
+# Review more conditions
+jne %1
+jmp %2
+%1:
+=
+jeq %2
+%1:
+
+jeq %1
+jmp %2
+%1:
+=
+jne %2
+%1:
+
+jcc %1
+jmp %2
+%1:
+=
+jcs %2
+%1:
+
+jcs %1
+jmp %2
+%1:
+=
+jcc %2
+%1:
+
+
+# Clean up trailing references from things like p++;
+ldaa %1
+ldab %2
+L%3
+ldaa %4
+ldab %5
+=
+L%3
+ldaa %4
+ldab %5
+
+ldaa %1
+ldab %2
+ldaa %3
+ldab %4
+=
+ldaa %3
+ldab %4
+
+# n++/n-- with unused result
+ldaa %1
+ldab %1+1
+pshb
+psha
+addb #%2
+adca #%3
+staa %1
+stab %1+1
+pula
+pulb
+ldaa %4
+ldab %5
+=
+ldaa %1
+ldab %1+1
+addb #%2
+adca #%3
+staa %1
+stab %1+1
+ldaa %4
+ldab %5
+
+# Clean up invalid markers
+invalid D,P
+=
+;invalid DP
+
+invalid X,D,P
+=
+;invalid XDP
+
+# Some useful tricks with comparisons. Where the comparison sets the flags
+# and the next thing we do is to do a conditional based on them we can
+# eliminate the test function. Look at the others as we clean them up
+# in the compiler
+jsr booleq
+jeq %1
+=
+jne %1
+
+jsr boolne
+jne %1
+=
+jne %1
+
+# Clean up tsx tsx
+
+tsx
+tsx
+=
+tsx
+
+# We have a more general issue of cases where we shouldn't go via the
+# stack at all to address - eg 16bit compare with static. Until we fix
+# the compiler address them here
+ldaa %1
+ldab %2
+pshb
+psha
+ldaa %3
+ldab %4
+tsx
+subd 1,x
+pulx
+=
+ldaa %3
+ldab %4
+subb %4
+sbca %3
+
+ldaa %1
+ldab %2
+pshb
+psha
+ldaa %3
+ldab %4
+tsx
+adcb 2,x
+adda 1,x
+inx
+inx
+=
+ldaa %1
+ldab %2
+adcb %4
+adda %3
+
+ldaa %1
+ldab %2
+pshb
+psha
+ldaa %3
+ldab %4
+subb 2,x
+sbca 1,x
+inx
+inx
+=
+ldaa %1
+ldab %2
+subb %4
+sbca %3
+
+ldaa %1
+ldab %1+1
+pshb
+psha
+ldaa %3
+ldab %4
+addb 2,x
+adca 1,x
+inx
+inx
+=
+ldaa %1
+ldab %2
+addb %4
+adca %3
+
+# Repeat clears for 8bit work
+clra
+ldab %1
+clra
+=
+clra
+ldab %1
+
+clra
+clrb
+stab %1
+tsx
+ldaa %2
+ldab %3
+=
+clrb
+stab %1
+tsx
+ldaa %2
+ldab %3
+
+clra
+clrb
+stab %1
+ldaa %2
+ldab %3
+=
+clrb
+stab %1
+ldaa %2
+ldab %3
+
+clra
+clrb
+stab %1
+ldaa %2
+ldab %3
+=
+clrb
+stab %1
+ldaa %2
+ldab %3
+
+# Byte increments
+clra
+ldab #1
+addb %1
+stab %1
+=
+inc %1
+ldab %1
+clra
+

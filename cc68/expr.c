@@ -846,7 +846,7 @@ static void ArrayRef (ExprDesc* Expr)
     TypeCode    Qualifiers;
     Type*       ElementType;
     Type*       tptr1;
-    int		use_x;
+    int		use_x = 0;
 
 
     /* Skip the bracket */

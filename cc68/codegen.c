@@ -401,6 +401,20 @@ static void SubD(const char *where, int offset)
     }
 }
 
+static void SubDViaX(int offset)
+{
+    if (CPU == CPU_6800) {
+        if (offset > 254)
+            Internal("Bad offset $%02X in LoadDViaX.\n", offset);
+        AddCodeLine("subb $%02X,x", offset + 1);
+        AddCodeLine("sbca $%02X,x", offset);
+    } else {
+        if (offset > 255)
+            Internal("Bad offset $%02X in LoadDViaX.\n", offset);
+        AddCodeLine("subd $%02X,x", offset);
+    }
+}
+
 static void AddDConst(int value)
 {
     if (CPU == CPU_6800) {
@@ -435,6 +449,21 @@ static void AddD(const char *where, int offset)
             AddCodeLine("addd %s+$%04X", where, offset);
     }
 }
+
+static void AddDViaX(int offset)
+{
+    if (CPU == CPU_6800) {
+        if (offset > 254)
+            Internal("Bad offset $%02X in LoadDViaX.\n", offset);
+        AddCodeLine("addb $%02X,x", offset + 1);
+        AddCodeLine("adca $%02X,x", offset);
+    } else {
+        if (offset > 255)
+            Internal("Bad offset $%02X in LoadDViaX.\n", offset);
+        AddCodeLine("subd $%02X,x", offset);
+    }
+}
+
 
 /*
  *	No 6800 series processor has a nice simple 16bit add to X. The
@@ -2403,7 +2432,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                     InvalidateX();
                     AddCodeLine ("ldx #%s", lbuf);
                     AssignD(val, 0);
-                    AddCodeLine ("addd ,x");
+                    AddDViaX(0);
                     StoreDViaX(0);
                 } else {
                     g_getstatic (flags, label, offs);
@@ -2462,7 +2491,7 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
             Offs = GenOffset(flags, Offs, (flags & CF_CONST) ? 0 : 1, 0);
             if (flags & CF_CONST)
                 AssignD(val, 0);
-            AddCodeLine("addd $%02X,x", Offs);
+            AddDViaX(Offs);
             StoreDViaX(Offs);
             break;
 
@@ -2997,20 +3026,36 @@ void g_push (unsigned flags, unsigned long val)
                 } else {
                     /* Force immediates via X */
                     /* FIXME: 6800 support needs adding here */
-                    g_getimmed (flags | CF_USINGX, val, 0);
-                    InvalidateX();
-                    switch(flags & CF_TYPEMASK) {
-                    case CF_INT:
-                        AddCodeLine("pshx");
-                        break;
-                    case CF_LONG:
-                        /* X is the low bits in this case */
-                        AddCodeLine("pshx");
+                    if (CPU == CPU_6800) {
+                        /* No pshx so do it the hard way */
+                        g_getimmed (flags, val, 0);
                         AddCodeLine("pshb");
                         AddCodeLine("psha");
-                        break;
-                    default:
-                        typeerror (flags);
+                        switch (flags & CF_TYPEMASK) {
+                        case CF_INT:
+                            break;
+                        case CF_LONG:
+                            LoadD("@sreg", 0);
+                            AddCodeLine("pshb");
+                            AddCodeLine("psha");
+                            break;
+                        }
+                    } else {
+                        g_getimmed (flags | CF_USINGX, val, 0);
+                        InvalidateX();
+                        switch(flags & CF_TYPEMASK) {
+                        case CF_INT:
+                            AddCodeLine("pshx");
+                            break;
+                        case CF_LONG:
+                            /* X is the low bits in this case */
+                            AddCodeLine("pshx");
+                            AddCodeLine("pshb");
+                            AddCodeLine("psha");
+                            break;
+                        default:
+                            typeerror (flags);
+                        }
                     }
                     push (flags);
                     return;
@@ -3342,7 +3387,7 @@ void g_add (unsigned flags, unsigned long val)
             /* Fall through */
             case CF_INT:
                 offs = GenTSXByte(1);
-                AddCodeLine ("addd %d,x", offs + 1);
+                AddDViaX(offs + 1);
                 PullX(0);
                 pop(flags);
                 return;
@@ -4404,7 +4449,7 @@ void g_eq (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXByte(1);
-            AddCodeLine ("subd %d,x", offs + 1);
+            SubDViaX(offs + 1);
             PullX(0);
             AddCodeLine ("jsr booleq");
             pop(flags);
@@ -4480,7 +4525,7 @@ void g_ne (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXByte(1);
-            AddCodeLine ("subd %d,x", offs + 1);
+            SubDViaX(offs + 1);
             PullX(0);
             AddCodeLine ("jsr boolne");
             pop(flags);

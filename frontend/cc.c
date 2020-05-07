@@ -57,6 +57,7 @@
 #define CMD_CC	LIBPATH"cc68"
 #define CMD_COPT LIBPATH"copt"
 #define COPT_FILE LIBPATH"cc68.rules"
+#define COPT00_FILE LIBPATH"cc68-00.rules"
 #define CMD_LD	BINPATH"ld68"
 #define CRT0	LIBPATH"crt0.o"
 #define LIBC	LIBPATH"libc.a"
@@ -341,7 +342,10 @@ void convert_c_to_s(char *path)
 	redirect_out(tmp);
 	run_command();
 	build_arglist(CMD_COPT);
-	add_argument(COPT_FILE);
+	if (cpu == 6800)
+		add_argument(COPT00_FILE);
+	else
+		add_argument(COPT_FILE);
 	redirect_in(tmp);
 	redirect_out(pathmod(path, ".@", ".s", 2));
 	run_command();

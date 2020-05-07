@@ -59,6 +59,7 @@ install:
 	cp copt /opt/cc68/lib
 	cp frontend/cc68 /opt/cc68/bin/
 	cp cc68.rules /opt/cc68/lib
+	cp cc68-00.rules /opt/cc68/lib
 	cp libc/crt0.o /opt/cc68/lib
 	cp libc/libc.a /opt/cc68/lib
 	cp lib6800.a /opt/cc68/lib
