@@ -460,7 +460,7 @@ static void AddDViaX(int offset)
     } else {
         if (offset > 255)
             Internal("Bad offset $%02X in LoadDViaX.\n", offset);
-        AddCodeLine("subd $%02X,x", offset);
+        AddCodeLine("addd $%02X,x", offset);
     }
 }
 
@@ -2360,33 +2360,62 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            NotViaX();
-            if (flags & CF_FORCECHAR) {
-                AddCodeLine ("clra");
-                if (flags & CF_CONST) {
-                    if (val == 1) {
-                        AddCodeLine ("inc %s", lbuf);
-                        AddCodeLine ("ldab %s", lbuf);
+            if (CPU == CPU_6800) {
+                AddCodeLine("ldx #%s", lbuf);
+                if (flags & CF_FORCECHAR) {
+                    if (flags & CF_CONST) {
+                        if (val <= 4) {
+                            AddCodeLine("jsr addeqstaticb%d", (int)val);
+                            return;
+                        } else {
+                            AddCodeLine("ldab #%d", (int)val);
+                        }
+                        AddCodeLine("jsr addeqstaticb");
+                        return;
+                    }
+                }
+            } else {
+                NotViaX();
+                if (flags & CF_FORCECHAR) {
+                    AddCodeLine ("clra");
+                    if (flags & CF_CONST) {
+                        if (val == 1) {
+                            AddCodeLine ("inc %s", lbuf);
+                            AddCodeLine ("ldab %s", lbuf);
+                        } else {
+                            AddCodeLine ("ldab %s", lbuf);
+                            AddCodeLine ("addb #$%02X", (unsigned char)val);
+                            AddCodeLine ("stab %s", lbuf);
+                        }
                     } else {
-                        AddCodeLine ("ldab %s", lbuf);
-                        AddCodeLine ("addb #$%02X", (unsigned char)val);
+                        AddCodeLine ("addb %s", lbuf);
                         AddCodeLine ("stab %s", lbuf);
                     }
-                } else {
-                    AddCodeLine ("addb %s", lbuf);
-                    AddCodeLine ("stab %s", lbuf);
+                    if ((flags & CF_UNSIGNED) == 0) {
+                        unsigned L = GetLocalLabel();
+                        AddCodeLine ("bpl %s", LocalLabelName (L));
+                        AddCodeLine ("coma");
+                        g_defcodelabel (L);
+                    }
+                    break;
                 }
-                if ((flags & CF_UNSIGNED) == 0) {
-                    unsigned L = GetLocalLabel();
-                    AddCodeLine ("bpl %s", LocalLabelName (L));
-                    AddCodeLine ("coma");
-                    g_defcodelabel (L);
-                }
-                break;
             }
             /* FALLTHROUGH */
 
         case CF_INT:
+            if (CPU == CPU_6800) {
+                AddCodeLine("ldx #%s", lbuf);
+                if (flags & CF_CONST) {
+                    if (val <= 4) {
+                        AddCodeLine("jsr addeqstatic%d", (int)val);
+                        return;
+                    } else {
+                        AssignD(val, 0);
+                    }
+                }
+                AddCodeLine("jsr addeqstatic");
+                return;
+            }
             if (flags & CF_CONST) {
                 if ((flags & CF_USINGX) && val <= 2) {
                     InvalidateX();
@@ -2425,9 +2454,13 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
             break;
 
         case CF_LONG:
-            /* TODO */
             NotViaX();
             if (flags & CF_CONST) {
+                if (val < 0x100 && CPU == CPU_6800) {
+                    AddCodeLine("ldab #%d", (int)val);
+                    AddCodeLine("jsr laddeqstatic8");
+                    return;
+                }
                 if (val < 0x10000) {
                     InvalidateX();
                     AddCodeLine ("ldx #%s", lbuf);
