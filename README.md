@@ -22,8 +22,10 @@ compiler at this point should be reasonably solid on 6803 and 6303 except for
 tested but the library helpers for shifts, multiply and particularly division
 are not yet fully debugged.
 
-On the 6800 processor the library routines are far from complete and the
-code generator needs some optimizing and a lot of un-inlining of code.
+On the 6800 processor the library routines are far from complete. Note that
+the 6800 target will generate much slower and larger code because the 6800
+lacks 16bit operations and some other important features. 6800 code is about
+a third larger.
 
 The bundled C library routines are initial code and not fully tested or reviewed.
 They are intended to provide native versions of key and time critical functions
@@ -81,3 +83,11 @@ ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
   We could do far better with a proper processor that understood 680x not
   just a pattern handler. We fudge it a bit with hints but it's not ideal.
 
+- Floating point
+  The cc65 front end has some float support although it is not supported by
+  the back end, and I don't know how tested the frontend code is therefore.
+  Adding float should not be hard, it's basically a long with no inlineable
+  operators as far as the compiler code generator is concerned. It would
+  however need someone to volunteer to write the basic IEEE floating point
+  operations (add, negate, multiply, divide, maybe compare, plus conversion
+  to and from float) for a 680x processor.
