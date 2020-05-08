@@ -87,75 +87,60 @@
 	ins
 	ins
 	ins
-	ins
-	ins
+L%1
 	rts
+=
+	jmp ret6
+L%1:	rts
+
+	ins
+	jmp ret6
+=
+	jmp ret7
+
+
+	ins
+	jmp ret7
 =
 	jmp ret8
 
 	ins
+	jmp ret8
+=
+	jmp ret9
+
 	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	rts
+	jmp ret9
 =
 	jmp ret10
 
 	ins
+	jmp ret10
+=
+	jmp ret11
+
 	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	rts
+	jmp ret11
 =
 	jmp ret12
 
 	ins
+	jmp ret12
+=
+	jmp ret13
+
 	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	rts
+	jmp ret13
 =
 	jmp ret14
 
 	ins
+	jmp ret14
+=
+	jmp ret15
+
 	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	rts
+	jmp ret15
 =
 	jmp ret16
 
@@ -164,91 +149,44 @@
 	des
 	des
 	des
-	des
 	;invalid XDP
+=
+	jsr des5
+
+	des
+	jsr des5
 =
 	jsr des6
 
 	des
+	jsr des6
+=
+	jsr des7
+
 	des
-	des
-	des
-	des
-	des
-	des
-	des
-	invalidate X,D,P
+	jsr des7
 =
 	jsr des8
 
 	des
+	jsr des8
+=
+	jsr des9
+
 	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	;invalid XDP
+	jsr des9
 =
 	jsr des10
 
 	des
+	jsr des10
+=
+	jsr des11
+
 	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	;invalid XDP
+	jsr des11
 =
 	jsr des12
-
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	;invalid XDP
-=
-	jsr des14
-
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	des
-	;invalid XDP
-=
-	jsr des16
-
 
 # Some trivial optimizations for clra/clrb cases
 	clra
@@ -860,6 +798,17 @@
 =
 	jsr dopulx
 
+	jsr dopulx
+	stab $00,x
+=
+	jsr dopulxstb
+
+	jsr dopulx
+	stab $01,x
+	staa $00,x
+=
+	jsr dopulxstd
+
 #
 #	We often push top, clear tmp2 and pop it. We can do better
 #
@@ -943,3 +892,36 @@
 =
 	tsx
 	jsr pshtop
+
+# Subtract cleanup
+
+	ldaa _%1
+	ldab _%2
+	tsx
+	staa @tmp
+	stab @tmp+1
+	ldab $02,x
+	ldaa $01,x
+	ins
+	ins
+	subb @tmp
+	sbca @tmp+1
+=
+	subb _%2
+	sbca _%1
+
+	ldaa #%1
+	ldab #%2
+	tsx
+	staa @tmp
+	stab @tmp+1
+	ldab $02,x
+	ldaa $01,x
+	ins
+	ins
+	subb @tmp
+	sbca @tmp+1
+=
+	subb #%2
+	sbca #%1
+
