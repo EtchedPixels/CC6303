@@ -12,7 +12,7 @@ OBJ += tosudiveax.o tosmodeax.o tosdiveax.o
 OBJ += divide.o divide32x32.o
 OBJ += fixfp.o dtox.o lateadjustsp.o dopulx.o pop.o addeqstatic.o des.o
 OBJ += laddeqstatic8.o laddeqstatic16.o baddeqstatic.o
-OBJ += storedpush.o
+OBJ += storedpush.o dopulxstb.o dopulxstd.o
 
 OBJ += __cpu_to_le16.o __cpu_to_le32.o
 OBJ += _memcpy.o _memset.o _strlen.o _strcpy.o

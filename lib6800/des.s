@@ -1,63 +1,73 @@
 ;
 ;	6800 stack manipulation can get ugly
 ;
-
-		.export des16
-		.export des14
 		.export des12
+		.export des11
 		.export des10
+		.export des9
 		.export des8
+		.export des7
 		.export des6
+		.export des5
 
 		.code
-des16:
+des12:
 		tsx
 		ldx 1,x
 		stx @tmp
 		des
-		des
-do14:
-		des
-		des
-do12:
-		des
+do11:
 		des
 do10:
 		des
+do9:
 		des
 do8:
 		des
+do7:
 		des
 do6:
 		des
+do5:
 		des
 		des
 		des
 		des
 		des
 		jmp jmptmp
-des14:
+
+des11:
 		tsx
 		ldx 1,x
 		stx @tmp
-		bra do14
-des12:
-		tsx
-		ldx 1,x
-		stx @tmp
-		bra do12
+		bra do11
 des10:
 		tsx
 		ldx 1,x
 		stx @tmp
 		bra do10
+des9:
+		tsx
+		ldx 1,x
+		stx @tmp
+		bra do9
 des8:
 		tsx
 		ldx 1,x
 		stx @tmp
 		bra do8
+des7:
+		tsx
+		ldx 1,x
+		stx @tmp
+		bra do7
 des6:
 		tsx
 		ldx 1,x
 		stx @tmp
 		bra do6
+des5:
+		tsx
+		ldx 1,x
+		stx @tmp
+		bra do5
