@@ -153,11 +153,11 @@ void getlst_1(FILE* fp, char* quit, struct lnode* p1, struct lnode* p2)
     while (fgets(lin, MAXLINE, fp) != NULL && strcmp(lin, quit)) {
         if (firstline) {
             char* p = lin;
+            if (lin[0] == '#')
+                continue;
             while (isspace(*p))
                 ++p;
             if (!*p)
-                continue;
-            if (lin[0] == '#' && lin[1] == '#')
                 continue;
             firstline = 0;
         }
@@ -188,7 +188,6 @@ void init(FILE* fp)
             free(p);
             continue;
         }
-
         getlst(fp, "\n", &head, &tail);
         tail.l_prev->l_next = 0;
         if (head.l_next)
@@ -497,6 +496,10 @@ struct lnode* opt(struct lnode* r)
             continue;
         c = r;
         p = o->o_old;
+        if (debug) {
+            fprintf(stderr, "Trying rule: ");
+            printrule(o, stderr);
+        }
         if (p == 0)
             continue; /* skip empty rules */
         for (i = 0; i < 10; i++)
@@ -520,6 +523,8 @@ struct lnode* opt(struct lnode* r)
                 if (!check_eval(p->l_text + 5, vars))
                     break;
             } else {
+//                fprintf(stderr, "Matching '%s', '%s'.\n",
+//                    c->l_text, p->l_text);
                 if (!match(c->l_text, p->l_text, vars))
                     break;
                 c = c->l_prev;
