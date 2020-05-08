@@ -388,6 +388,26 @@ static void SubDConst(int value)
     }
 }
 
+/* Like a constant subtract but we don't shortcut anything so that we get
+   the carry flag - but not zero flag -correct */
+static void SubDConstCompare(int value)
+{
+    if (CPU == CPU_6800) {
+        unsigned L = GetLocalLabel();
+        AddCodeLine("cmpa #$%02X", value >> 8);
+        AddCodeLine("bne %s", LocalLabelName(L));
+        AddCodeLine("cmpb #%02x", value & 0xFF);
+        g_defcodelabel(L);
+    } else {
+        if (value == 0)	/* Valid as we may be trying to set flags */
+            AddCodeLine("subd @zero");
+        else if (value == 1)
+            AddCodeLine("subd @one");
+        else
+            AddCodeLine("subd #$%04X", value & 0xFFFF);
+    }
+}
+
 static void SubD(const char *where, int offset)
 {
     if (CPU == CPU_6800) {
@@ -4477,7 +4497,7 @@ void g_eq (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
 
             case CF_INT:
-                SubDConst(val);
+                SubDConstCompare(val);
                 AddCodeLine ("jsr booleq");
                 return;
 
@@ -4508,12 +4528,15 @@ void g_eq (unsigned flags, unsigned long val)
             }
             /* Fall through */
         case CF_INT:
-            offs = GenTSXByte(1);
-            SubDViaX(offs + 1);
-            PullX(0);
-            AddCodeLine ("jsr booleq");
-            pop(flags);
-            return;
+            if (CPU != CPU_6800) {
+                offs = GenTSXByte(1);
+                SubDViaX(offs + 1);
+                PullX(0);
+                AddCodeLine ("jsr booleq");
+                pop(flags);
+                return;
+            }
+            break;
     }
 
     /* Use long way over the stack */
@@ -4552,7 +4575,7 @@ void g_ne (unsigned flags, unsigned long val)
                 /* FALLTHROUGH */
 
             case CF_INT:
-                SubDConst(val);
+                SubDConstCompare(val);
                 AddCodeLine ("jsr boolne");
                 return;
 
@@ -4584,12 +4607,15 @@ void g_ne (unsigned flags, unsigned long val)
             }
             /* Fall through */
         case CF_INT:
-            offs = GenTSXByte(1);
-            SubDViaX(offs + 1);
-            PullX(0);
-            AddCodeLine ("jsr boolne");
-            pop(flags);
-            return;
+            if (CPU != CPU_6800) {
+                offs = GenTSXByte(1);
+                SubDViaX(offs + 1);
+                PullX(0);
+                AddCodeLine ("jsr boolne");
+                pop(flags);
+                return;
+            }
+            break;
     }
 
     /* Use long way over the stack */
@@ -4637,8 +4663,7 @@ void g_lt (unsigned flags, unsigned long val)
                     /* FALLTHROUGH */
 
                 case CF_INT:
-                    /* If the low byte is zero, we must only test the high byte */
-                    SubDConst(val);
+                    SubDConstCompare(val);
                     AddCodeLine ("jsr boolult");
                     return;
 
@@ -4705,10 +4730,12 @@ void g_lt (unsigned flags, unsigned long val)
                     /* FALLTHROUGH */
 
                 case CF_INT:
-                    /* Do a subtraction */
-                    SubDConst(val);
-                    AddCodeLine ("jsr boollt");
-                    return;
+                    if (CPU != CPU_6800) {
+                        /* Do a subtraction */
+                        SubDConst(val);
+                        AddCodeLine ("jsr boollt");
+                        return;
+                    }
 
                 case CF_LONG:
                     /* This one is too costly */
@@ -4744,17 +4771,19 @@ void g_lt (unsigned flags, unsigned long val)
                     return;
                 }
             case CF_INT:
-                offs = GenTSXByte(1);
-                StoreD("@tmp", 0);
-                LoadDViaX(offs + 1);
-                PullX(0);
-                SubD("@tmp", 0);
-                if (flags & CF_UNSIGNED)
-                    AddCodeLine ("jsr boolult");
-                else
-                    AddCodeLine ("jsr boollt");
-                pop (flags);
-                return;
+                if (CPU != CPU_6800) {
+                    offs = GenTSXByte(1);
+                    StoreD("@tmp", 0);
+                    LoadDViaX(offs + 1);
+                    PullX(0);
+                    SubD("@tmp", 0);
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr boolult");
+                    else
+                        AddCodeLine ("jsr boollt");
+                    pop (flags);
+                    return;
+                }
         }
     }
     /* Use long way over the stack */
@@ -4889,18 +4918,20 @@ void g_le (unsigned flags, unsigned long val)
                     return;
                 }
             case CF_INT:
-                offs = GenTSXByte(1);
-                StoreD("@tmp", 0);
-                LoadDViaX(offs + 1);
-                PullX(0);
-                SubD("@tmp", 0);
-                if (flags & CF_UNSIGNED)
-                    AddCodeLine ("jsr boolule");
-                else
-                    AddCodeLine ("jsr boolle");
-                InvalidateX();
-                pop (flags);
-                return;
+                if (CPU != CPU_6800) {
+                    offs = GenTSXByte(1);
+                    StoreD("@tmp", 0);
+                    LoadDViaX(offs + 1);
+                    PullX(0);
+                    SubD("@tmp", 0);
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr boolule");
+                    else
+                        AddCodeLine ("jsr boolle");
+                    InvalidateX();
+                    pop (flags);
+                    return;
+                }
         }
     }
     /* Use long way over the stack */
@@ -5051,17 +5082,19 @@ void g_gt (unsigned flags, unsigned long val)
                     return;
                 }
             case CF_INT:
-                offs = GenTSXByte(1);
-                StoreD("@tmp", 0);
-                LoadDViaX (offs + 1);
-                PullX(0);
-                SubD("@tmp", 0);
-                if (flags & CF_UNSIGNED)
-                    AddCodeLine ("jsr boolugt");
-                else
-                    AddCodeLine ("jsr boolgt");
-                pop (flags);
-                return;
+                if (CPU != CPU_6800) {
+                    offs = GenTSXByte(1);
+                    StoreD("@tmp", 0);
+                    LoadDViaX (offs + 1);
+                    PullX(0);
+                    SubD("@tmp", 0);
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr boolugt");
+                    else
+                        AddCodeLine ("jsr boolgt");
+                    pop (flags);
+                    return;
+                }
         }
     }
     /* Use long way over the stack */
@@ -5184,7 +5217,7 @@ void g_ge (unsigned flags, unsigned long val)
 
                 case CF_INT:
                     /* Do a subtraction */
-                    SubDConst(val);
+                    SubDConstCompare(val);
                     if (flags & CF_UNSIGNED)
                         AddCodeLine ("jsr booluge");
                     else
@@ -5224,17 +5257,19 @@ void g_ge (unsigned flags, unsigned long val)
                     return;
                 }
             case CF_INT:
-                offs = GenTSXByte(1);
-                StoreD("@tmp", 0);
-                LoadDViaX (offs + 1);
-                PullX(0);
-                SubD("@tmp", 0);
-                if (flags & CF_UNSIGNED)
-                    AddCodeLine ("jsr booluge");
-                else
-                    AddCodeLine ("jsr boolge");
-                pop (flags);
-                return;
+                if (CPU != CPU_6800) {
+                    offs = GenTSXByte(1);
+                    StoreD("@tmp", 0);
+                    LoadDViaX (offs + 1);
+                    PullX(0);
+                    SubD("@tmp", 0);
+                    if (flags & CF_UNSIGNED)
+                        AddCodeLine ("jsr booluge");
+                    else
+                        AddCodeLine ("jsr boolge");
+                    pop (flags);
+                    return;
+                }
         }
     }
     /* Use long way over the stack */
