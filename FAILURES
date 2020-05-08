@@ -3,7 +3,6 @@
 - overlong names clashing in assembler should be caught in the compiler name
   compare - and we probably want to change the format a bit to allow longer
   names 8(
-- taking the address of an argument in a varargs function needs more review
 - linker does not always spot segments overlapping one another or wrapping
   (eg try 32 bytes in a segment at $FFF8)
 
