@@ -13,6 +13,7 @@
 	.export sreg
 	.export fp
 	.export reg
+	.export jmptmp
 
 ;
 ;	This occupies 23 bytes. On the 6303Y we have only 0x28 to 0x3F of
@@ -31,6 +32,8 @@ sreg:			; Upper 16bits of working long
 	; Our runtime will scribble into the first byte of tmp in a couple
 	; of cases for speed. It knows a tmp variable lives next to it so
 	; don't fix anything
+jmptmp:
+	.byte 0x7E	; jmp extended
 tmp:
 	.word 0		; Temporaries used by compiler must be in order
 tmp1:			; as sometimes used as a group
