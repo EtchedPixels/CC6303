@@ -3,318 +3,550 @@
 #	things like live value and constant tracking to make a real dent
 #	in the 6800 output
 #
+#
+#	Patterns are applied in *reverse* order
+#
 
+#
+#	Final patterns for tidying up branching and the like
+#
 #	Trim jumps to next instruction
-jmp %1
+	jmp %1
 %1:
-=
+	=
 %1:
 
 #	And terminal jsr rts
-jsr %1
-rts
+	jsr %1
+	rts
 =
-jmp %1
+	jmp %1
+
+
+# Shorten some other calls with helper variants
+# bnega only inspects b and changes a and b
+	clra
+	ldab %1
+	jsr bnega
+=
+	ldab %1
+	jsr bnega
+
+
+# Unneeded reloads (NOTWORKING)
+
+	stab %1
+	staa %2
+	;invalid DP
+	ldab %1
+	ldaa %2
+=
+	stab %1
+	staa %2
+	;invalid DP
+
+	stab %1
+	staa %2
+	;invalid XDP
+	ldab %1
+	ldaa %2
+=
+	stab %1
+	staa %2
+	;invalid XDP
+
 
 # Silly logic removals
-clra
-ldab #1
-staa @tmp1
-orab @tmp1
-jne %1
+	clra
+	ldab #1
+	staa @tmp1
+	orab @tmp1
+	jne %1
 =
-clra
-ldab #1
-jne %1
+	clra
+	ldab #1
+	jne %1
+
+#
+#	Stack - these need work to be useful
+#
+#	Stack helpers
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	rts
+=
+	jmp ret6
+
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	rts
+=
+	jmp ret8
+
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	rts
+=
+	jmp ret10
+
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	rts
+=
+	jmp ret12
+
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	rts
+=
+	jmp ret14
+
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	ins
+	rts
+=
+	jmp ret16
+
+	des
+	des
+	des
+	des
+	des
+	des
+	;invalid XDP
+=
+	jsr des6
+
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	invalidate X,D,P
+=
+	jsr des8
+
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	;invalid XDP
+=
+	jsr des10
+
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	;invalid XDP
+=
+	jsr des12
+
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	;invalid XDP
+=
+	jsr des14
+
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	des
+	;invalid XDP
+=
+	jsr des16
+
 
 # Some trivial optimizations for clra/clrb cases
-clra
-ldab #1
-stab %1
-clra
-clrb
+	clra
+	ldab #$01
+	stab %1
+	clra
+	clrb
 =
-clra
-ldab #1
-stab %1
-decb
+	clra
+	ldab #1
+	stab %1
+	decb
 
-clra
-clrb
-stab %1
-clra
-clrb
+	clra
+	clrb
+	stab %1
+	clra
+	clrb
 =
-clra
-clrb
-stab %1
+	clra
+	clrb
+	stab %1
 
-clra
-ldab #1
-sta %1
-stab %1+1
-clra
-clrb
+	clra
+	ldab #$01
+	staa %1
+	stab %1+1
+	clra
+	clrb
 =
-clra
-ldab #1
-staa %1
-stab %1+1
-decb
+	clra
+	ldab #$01
+	staa %1
+	stab %1+1
+	decb
 
-clra
-clrb
-staa %1
-stab %2
-clra
-clrb
+	clra
+	clrb
+	staa %1
+	stab %2
+	clra
+	clrb
 =
-clra
-clrb
-staa %1
-stab %2
+	clra
+	clrb
+	staa %1
+	stab %2
 
 # And with D,P
-clra
-clrb
-stab %1
-Invalid D,P
-clra
-clrb
+	clra
+	clrb
+	stab %1
+	;invalid DP
+	clra
+	clrb
 =
-clra
-clrb
-stab %1
-Invalid D,P
+	clra
+	clrb
+	stab %1
+	;invalid DP
 
-clra
-ldab #1
-staa %1
-stab %2
-Invalid D,P
-clra
-clrb
+	clra
+	ldab #$01
+	staa %1
+	stab %2
+	;invalid DP
+	clra
+	clrb
 =
-clra
-ldab #1
-staa %1
-stab %2
-Invalid D,P
-decb
+	clra
+	ldab #$01
+	staa %1
+	stab %2
+	;invalid DP
+	decb
 
-clra
-clrb
-staa %1
-stab %2
-Invalid D,P
-clra
-clrb
+	clra
+	clrb
+	staa %1
+	stab %2
+	;invalid DP
+	clra
+	clrb
 =
-clra
-clrb
-staa %1
-stab %2
-Invalid D,P
+	clra
+	clrb
+	staa %1
+	stab %2
+	;invalid DP
 
 # And with X,D,P
-clra
-clrb
-stab %1
-Invalid X,D,P
-clra
-clrb
+	clra
+	clrb
+	stab %1
+	;invalid XDP
+	clra
+	clrb
 =
-clra
-clrb
-stab %1
-Invalid X,D,P
+	clra
+	clrb
+	stab %1
+	;invalid XDP
 
-clra
-ldab #1
-staa %1
-stab %2
-Invalid X,D,P
-clra
-clrb
+	clra
+	ldab #$01
+	staa %1
+	stab %2
+	;invalid XDP
+	clra
+	clrb
 =
-clra
-ldab #1
-staa %1
-stab %2
-Invalid X,D,P
-decb
+	clra
+	ldab #$01
+	staa %1
+	stab %2
+	;invalid XDP
+	decb
 
-clra
-clrb
-staa %1
-stab %1
-Invalid X,D,P
-clra
-clrb
+	clra
+	clrb
+	staa %1
+	stab %1
+	;invalid XDP
+	clra
+	clrb
 =
-clra
-clrb
-sta %1
-stb %1
-Invalid X,D,P
+	clra
+	clrb
+	sta %1
+	stb %1
+	;invalid XDP
 
-clra
-clra
+	clra
+	clra
 =
-clra
+	clra
 
-clrb
-pshb
-Invalid D,P
-clrb
-pshb
+	clrb
+	pshb
+	;invalid DP
+	clrb
+	pshb
 =
-clrb
-pshb
-pshb
-Invalid D,P
+	clrb
+	pshb
+	pshb
+	;invalid DP
 
-clra
-pshb
-Invalid D,P
-clra
+	clra
+	pshb
+	;invalid DP
+	clra
 =
-clra
-pshb
-Invalid D,P
+	clra
+	pshb
+	;invalid DP
 
-clra
-clrb
-staa %1
-stab %2
-Invalid D,P
-clra
-clrb
+	clra
+	clrb
+	staa %1
+	stab %2
+	;invalid DP
+	clra
+	clrb
 =
-clra
-clrb
-staa %1
-stab %2
-Invalid D,P
+	clra
+	clrb
+	staa %1
+	stab %2
+	;invalid DP
 
-clra
-clrb
-staa %1
-stab %2
-Invalid X,D,P
-clra
-clrb
+	clra
+	clrb
+	staa %1
+	stab %2
+	;invalid XDP
+	clra
+	clrb
 =
-clra
-clrb
-staa %1
-stab %2
-Invalid X,D,P
+	clra
+	clrb
+	staa %1
+	stab %2
+	;invalid XDP
 
 # Similar idea for constants
-ldab #%1
-pshb
-Invalid D,P
-ldab #%1
+	ldab #%1
+	pshb
+	;invalid DP
+	ldab #%1
 =
-ldab #%1
-pshb
-Invalid D,P
+	ldab #%1
+	pshb
+	;invalid DP
 
 # Where logic tells us clr is not needed
-subd %1
-sbcb %2
-jne %2
-clra
+	suba %1
+	sbcb %2
+	jne %2
+	clra
 =
-subb %1
-sbcb %2
-jne %2
+	suba %1
+	sbcb %2
+	jne %2
 
 # Useful overlaps to spot
-clrb
-pshb
-ldab #$FF
+	clrb
+	pshb
+	ldab #$FF
 =
-clrb
-pshb
-decb
+	clrb
+	pshb
+	decb
 
 # Store and reload
-staa %1
-stab %2
-ldaa %1
-ldab %2
+	staa %1
+	stab %2
+	ldaa %1
+	ldab %2
 =
-staa %1
-stab %2
+	staa %1
+	stab %2
 
-stx %1
-ldx %1
+	stx %1
+	ldx %1
 =
-stx %1
+	stx %1
 
-staa %1
-stab %2
-invalid D,P
-ldaa %1
-ldab %2
+	staa %1
+	stab %2
+	;invalid DP
+	ldaa %1
+	ldab %2
 =
-staa %1
-stab %2
+	staa %1
+	stab %2
 
-staa %1
-stab %2
-invalid X,D,P
-ldaa %1
-ldab %2
+	staa %1
+	stab %2
+	;invalid XDP
+	ldaa %1
+	ldab %2
 =
-staa %1
-stab %2
+	staa %1
+	stab %2
 
 # Pointless stack
-pshb
-pulb
+	pshb
+	pulb
 =
-;
+	;
 
 
-pshb
-psha
-pula
-pulb
+	pshb
+	psha
+	pula
+	pulb
 =
-;
+	;
 
-pula
-pulb
-pshb
-psha
-ldaa %1
-ldab %2
+	pula
+	pulb
+	pshb
+	psha
+	ldaa %1
+	ldab %2
 =
-ldaa %1
-ldab %2
+	ldaa %1
+	ldab %2
 
-pula
-pulb
-pshb
-psha
-clra
-ldab %1
+	pula
+	pulb
+	pshb
+	psha
+	clra
+	ldab %1
 =
-clra
-ldab %1
+	clra
+	ldab %1
 
-pula
-pulb
-pshb
-psha
-clra
-clrb
+	pula
+	pulb
+	pshb
+	psha
+	clra
+	clrb
 =
-clra
-clrb
+	clra
+	clrb
+
+# Silly reloads (safe as we don't load X)
+	stab %1
+	staa %2
+	ldab %1
+	ldaa %2
+=
+	stab %1
+	staa %2
 
 #	Branches
 #
@@ -329,224 +561,385 @@ clrb
 	jmp %2
 
 # Review more conditions
-jne %1
-jmp %2
+	jne %1
+	jmp %2
 %1:
 =
-jeq %2
+	jeq %2
 %1:
 
-jeq %1
-jmp %2
+	jeq %1
+	jmp %2
 %1:
 =
-jne %2
+	jne %2
 %1:
 
-jcc %1
-jmp %2
+	jcc %1
+	jmp %2
 %1:
 =
-jcs %2
+	jcs %2
 %1:
 
-jcs %1
-jmp %2
+	jcs %1
+	jmp %2
 %1:
 =
-jcc %2
+	jcc %2
 %1:
 
 
 # Clean up trailing references from things like p++;
-ldaa %1
-ldab %2
-L%3
-ldaa %4
-ldab %5
+	ldaa %1
+	ldab %2
+	L%3
+	ldaa %4
+	ldab %5
 =
-L%3
-ldaa %4
-ldab %5
+	L%3
+	ldaa %4
+	ldab %5
 
-ldaa %1
-ldab %2
-ldaa %3
-ldab %4
+	ldaa %1
+	ldab %2
+	ldaa %3
+	ldab %4
 =
-ldaa %3
-ldab %4
+	ldaa %3
+	ldab %4
 
 # n++/n-- with unused result
-ldaa %1
-ldab %1+1
-pshb
-psha
-addb #%2
-adca #%3
-staa %1
-stab %1+1
-pula
-pulb
-ldaa %4
-ldab %5
+	ldaa %1
+	ldab %1+1
+	pshb
+	psha
+	addb #%2
+	adca #%3
+	staa %1
+	stab %1+1
+	pula
+	pulb
+	ldaa %4
+	ldab %5
 =
-ldaa %1
-ldab %1+1
-addb #%2
-adca #%3
-staa %1
-stab %1+1
-ldaa %4
-ldab %5
-
-# Clean up invalid markers
-invalid D,P
-=
-;invalid DP
-
-invalid X,D,P
-=
-;invalid XDP
-
-# Some useful tricks with comparisons. Where the comparison sets the flags
-# and the next thing we do is to do a conditional based on them we can
-# eliminate the test function. Look at the others as we clean them up
-# in the compiler
-jsr booleq
-jeq %1
-=
-jne %1
-
-jsr boolne
-jne %1
-=
-jne %1
+	ldaa %1
+	ldab %1+1
+	addb #%2
+	adca #%3
+	staa %1
+	stab %1+1
+	ldaa %4
+	ldab %5
 
 # Clean up tsx tsx
 
-tsx
-tsx
+	tsx
+	tsx
 =
-tsx
+	tsx
 
 # We have a more general issue of cases where we shouldn't go via the
 # stack at all to address - eg 16bit compare with static. Until we fix
 # the compiler address them here
-ldaa %1
-ldab %2
-pshb
-psha
-ldaa %3
-ldab %4
-tsx
-subd 1,x
-pulx
+	ldaa %1
+	ldab %2
+	pshb
+	psha
+	ldaa %3
+	ldab %4
+	tsx
+	subb $02,x
+	sbca $01,x
+	pulx
 =
-ldaa %3
-ldab %4
-subb %4
-sbca %3
+	ldaa %3
+	ldab %4
+	subb %4
+	sbca %3
 
-ldaa %1
-ldab %2
-pshb
-psha
-ldaa %3
-ldab %4
-tsx
-adcb 2,x
-adda 1,x
-inx
-inx
+	ldaa %1
+	ldab %2
+	pshb
+	psha
+	ldaa %3
+	ldab %4
+	tsx
+	adcb $02,x
+	adda $01,x
+	inx
+	inx
 =
-ldaa %1
-ldab %2
-adcb %4
-adda %3
+	ldaa %1
+	ldab %2
+	adcb %4
+	adda %3
 
-ldaa %1
-ldab %2
-pshb
-psha
-ldaa %3
-ldab %4
-subb 2,x
-sbca 1,x
-inx
-inx
+	ldaa %1
+	ldab %2
+	pshb
+	psha
+	ldaa %3
+	ldab %4
+	subb $02,x
+	sbca $01,x
+	inx
+	inx
 =
-ldaa %1
-ldab %2
-subb %4
-sbca %3
+	ldaa %1
+	ldab %2
+	subb %4
+	sbca %3
 
-ldaa %1
-ldab %1+1
-pshb
-psha
-ldaa %3
-ldab %4
-addb 2,x
-adca 1,x
-inx
-inx
+	ldaa %1
+	ldab %1+1
+	pshb
+	psha
+	ldaa %3
+	ldab %4
+	addb $02,x
+	adca $01,x
+	inx
+	inx
 =
-ldaa %1
-ldab %2
-addb %4
-adca %3
+	ldaa %1
+	ldab %2
+	addb %4
+	adca %3
 
 # Repeat clears for 8bit work
-clra
-ldab %1
-clra
+	clra
+	ldab %1
+	clra
 =
-clra
-ldab %1
+	clra
+	ldab %1
 
-clra
-clrb
-stab %1
-tsx
-ldaa %2
-ldab %3
+	clra
+	clrb
+	stab %1
+	tsx
+	ldaa %2
+	ldab %3
 =
-clrb
-stab %1
-tsx
-ldaa %2
-ldab %3
+	clrb
+	stab %1
+	tsx
+	ldaa %2
+	ldab %3
 
-clra
-clrb
-stab %1
-ldaa %2
-ldab %3
+	clra
+	clrb
+	stab %1
+	ldaa %2
+	ldab %3
 =
-clrb
-stab %1
-ldaa %2
-ldab %3
+	clrb
+	stab %1
+	ldaa %2
+	ldab %3
 
-clra
-clrb
-stab %1
-ldaa %2
-ldab %3
+	clra
+	clrb
+	stab %1
+	ldaa %2
+	ldab %3
 =
-clrb
-stab %1
-ldaa %2
-ldab %3
+	clrb
+	stab %1
+	ldaa %2
+	ldab %3
 
 # Byte increments
-clra
-ldab #1
-addb %1
-stab %1
+	clra
+	ldab #$01
+	addb %1
+	stab %1
 =
-inc %1
-ldab %1
-clra
+	inc %1
+	ldab %1
+	clra
 
+# Subtract clean up
+
+	ldaa %1
+	ldab %2
+	pshb
+	psha
+	ldaa %3
+	ldab %4
+	tsx
+	subb $02,x
+	sbca $01,x
+	ins
+	ins
+=
+	ldaa %3
+	ldab %4
+	suba %2
+	sbca %1
+
+	clra
+	ldab %2
+	pshb
+	psha
+	ldaa %3
+	ldab %4
+	tsx
+	subb $02,x
+	sbca $01,x
+	ins
+	ins
+=
+	ldaa %3
+	ldab %4
+	suba %2
+	sbca #0
+
+	ldaa %1
+	ldab %2
+	pshb
+	psha
+	clra
+	ldab %4
+	tsx
+	subb $02,x
+	sbca $01,x
+	ins
+	ins
+=
+	clra
+	ldab %4
+	suba %2
+	sbca #0
+
+
+# Optimize common dtox patterns
+	jsr dtox
+	ldaa @tmp2
+	ldab @tmp2+1
+	stab $01,x
+	staa $00,x
+=
+	jsr dtoxstoretmp2
+
+	jsr dtox
+	ldaa @tmp2
+	ldab @tmp2+1
+	stab $00,x
+=
+	jsr dtoxstoretmp2b
+
+	jsr dtox
+	clra
+	ldab $00,x
+=
+	jsr dtoxldb
+
+	jsr dtox
+	ldab $01,x
+	ldaa $00,x
+=
+	jsr dtoxldw
+
+	jsr dtox
+	clra
+=
+	jsr dtoxclra
+
+	staa @tmp
+	stab @tmp+1
+	ldx @tmp
+=
+	jsr dtox
+
+	tsx
+	ldx $01,x
+	ins
+	ins
+=
+	jsr dopulx
+
+#
+#	We often push top, clear tmp2 and pop it. We can do better
+#
+	jsr pshtop
+	clra
+	clrb
+	staa @tmp2
+	stab @tmp2+1
+	pula
+	pulb
+=
+	clr @tmp2
+	clr @tmp2+1
+
+#
+#	We also sometimes push d, clear tmp2 and pop
+#
+	pshb
+	psha
+	clra
+	clrb
+	staa @tmp2
+	stab @tmp2+1
+	pula
+	pulb
+=
+	clr @tmp2
+	clr @tmp2+1
+
+
+#
+#	Clean up store via tmp2 when we have smaller values
+#
+	pshb
+	psha
+	clra
+	clrb 
+	staa @tmp2
+	stab @tmp2+1
+	pula
+	pulb
+=
+	clr @tmp2
+	clr @tmp2+1
+
+	pshb
+	psha
+	clra
+	ldab %1
+	staa @tmp2
+	stab @tmp2+1
+	pula
+	pulb
+=
+	pshb
+	ldab %1
+	clr @tmp2
+	stab @tmp2+1
+	pulb
+
+# take the return value store it and push it foo(bar(...
+	tsx
+	stab $02,x
+	staa $01,x
+	;invalid DP
+	ldab $02,x
+	ldaa $01,x
+	pshb
+	psha
+=
+	tsx
+	jsr storedpush
+
+# The very common 'push top of stack' forms (being careful that X may not be
+# S)
+	tsx
+	ldab $02,x
+	ldaa $01,x
+	pshb
+	psha
+=
+	tsx
+	jsr pshtop
