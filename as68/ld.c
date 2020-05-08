@@ -517,13 +517,22 @@ static void set_segment_bases(void)
 		size[i] = 0;
 	/* Now run through once computing the basic size of each segment */
 	for (o = objects; o != NULL; o = o->next) {
+		if (verbose)
+			printf("%s:\n", o->path);
 		for (i = 1; i < OSEG; i++) {
+			if (verbose)
+				printf("\t%c : %04X\n",
+					"ACDBZXc?"[i], o->oh.o_size[i]);
 			size[i] += o->oh.o_size[i];
 			if (size[i] < o->oh.o_size[i])
 				error("segment too large");
 		}
 	}
 
+	if (verbose) {
+		for (i = 1; i < 7; i++)
+			printf("Segment %c Size %04X\n", "ACDBZXc"[i], size[i]);
+	}
 	/* We now know where to put the binary */
 	if (ldmode == LD_RELOC) {
 		/* Creating a binary - put the segments together */
