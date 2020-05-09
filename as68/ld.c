@@ -1079,7 +1079,7 @@ int main(int argc, char *argv[])
 			strip = 1;
 			break;
 		case 'v':
-			printf("FuzixLD 0.1.2\n");
+			printf("FuzixLD 0.2.0\n");
 			break;
 		case 't':
 			verbose = 1;
