@@ -582,7 +582,9 @@ int main(int argc, char *argv[])
         if (optind + 1 != argc)
             usage();
     } else {
-        if (optind + 2 != argc)
+        if (cmd == DELETE && optind + 2 != argc)
+            usage();
+        else if (optind + 3 != argc)
             usage();
         name = argv[optind + 1];
         ext = strchr(name, '.');
@@ -609,28 +611,28 @@ int main(int argc, char *argv[])
             if (all)
                 flex_get_all();
             else {
-                FILE *fp = fopen(argv[optind + 1], "w");
+                FILE *fp = fopen(argv[optind + 2], "w");
                 if (fp == NULL) {
-                    perror(argv[optind + 1]);
+                    perror(argv[optind + 2]);
                     exit(1);
                 }
                 flex_get(name, ext, fp, ascii);
                 if (fclose(fp) < 0) {
-                    perror(argv[optind + 1]);
+                    perror(argv[optind + 2]);
                     exit(1);
                 }
             }
             break;
         case PUT:
             {
-                FILE *fp = fopen(argv[optind + 1], "r");
+                FILE *fp = fopen(argv[optind + 2], "r");
                 if (fp == NULL) {
-                    perror(argv[optind + 1]);
+                    perror(argv[optind + 2]);
                     exit(1);
                 }
                 flex_addfile(name, ext, fp);
                 if (fclose(fp) < 0) {
-                    perror(argv[optind + 1]);
+                    perror(argv[optind + 2]);
                     exit(1);
                 }
             }
