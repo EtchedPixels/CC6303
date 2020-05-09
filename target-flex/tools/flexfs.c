@@ -432,8 +432,8 @@ static int flex_dump(struct dir *d, FILE *outf, int ascii)
             fprintf(stderr, "%s.%s: sector %d has a sector count of %d.\n",
                 d->name, d->ext, count, (workbuf[2] << 8) | workbuf[3]);
         if (ascii)
-            decompress(workbuf, 252, outf);
-        else if (fwrite(workbuf, 252, 1, outf) != 1) {
+            decompress(workbuf + 4, 252, outf);
+        else if (fwrite(workbuf + 4, 252, 1, outf) != 1) {
             fprintf(stderr, "%s.%s: write error.\n", d->name, d->ext);
             exit(1);
         }
