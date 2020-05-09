@@ -1,3 +1,4 @@
+#define DEBUG
 /*
  *	It's easiest to think of what cc does as a sequence of four
  *	conversions. Each conversion produces the inputs to the next step
@@ -51,6 +52,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #define CMD_AS	BINPATH"as68"
@@ -66,6 +68,9 @@
 #define LIB6303	LIBPATH"lib6303.a"
 #define LIBIO	LIBPATH"libio6800.a"
 #define LIBMC10 LIBPATH"libmc10.a"
+#define LIBFLEX LIBPATH"libflex.a"
+#define CMD_TAPEIFY LIBPATH"mc10-tapeify"
+#define CMD_BINIFY LIBPATH"flex-binify"
 
 struct obj {
 	struct obj *next;
@@ -102,6 +107,10 @@ int standalone;
 int cpu = 6303;
 int mapfile;
 int targetos;
+#define OS_NONE		0
+#define OS_FUZIX	1
+#define OS_MC10		2
+#define OS_FLEX		3
 
 #define MAXARG	64
 
@@ -134,6 +143,30 @@ static void memory(void)
 	fatal();
 }
 
+static char *xstrdup(char *p, int extra)
+{
+	char *n = malloc(strlen(p) + extra + 1);
+	if (n == NULL)
+		memory();
+	strcpy(n, p);
+	return n;
+}
+
+static char *extend(char *p, char *e)
+{
+	char *n = xstrdup(p, strlen(e));
+	strcat(n, e);
+	return n;
+}
+
+static off_t filesize(char *path)
+{
+	struct stat st;
+	if (stat(path, &st) < 0)
+		return -1;
+	return st.st_size;
+}
+
 static void append_obj(struct objhead *h, char *p, uint8_t type)
 {
 	struct obj *o = malloc(sizeof(struct obj));
@@ -164,9 +197,7 @@ static char *pathmod(char *p, char *f, char *t, int rmif)
 //	}
 	strcpy(x, t);
 	if (last_phase > rmif) {
-		*rmptr = strdup(p);
-		if (*rmptr++ == NULL)
-			memory();
+		*rmptr++ = xstrdup(p, 0);
 	}
 	return p;
 }
@@ -178,6 +209,13 @@ static void add_argument(char *p)
 		fatal();
 	}
 	*argptr++ = p;
+}
+
+static void add_int_argument(int n)
+{
+	char buf[16];
+	snprintf(buf, 16, "%d", n);
+	return add_argument(xstrdup(buf, 0));
 }
 
 static void add_argument_list(char *header, struct objhead *h)
@@ -316,6 +354,8 @@ void convert_c_to_s(char *path)
 
 	build_arglist(CMD_CC);
 	add_argument_list("-I", &inclist);
+	if (!standalone)
+		add_argument("-I "INCPATH);
 	add_argument_list("-D", &deflist);
 	add_argument("-r");
 	add_argument("--add-source");
@@ -323,19 +363,31 @@ void convert_c_to_s(char *path)
 	switch(cpu) {
 		case 6800:
 			add_argument("6800");
+			add_argument("-D__6800__");
 			break;
 		case 6803:
 			add_argument("6803");
+			add_argument("-D__6803__");
 			break;
 		case 6303:
 			add_argument("6303");
+			add_argument("-D__6303__");
 			break;
+	}
+	switch(targetos) {
+	case OS_FUZIX:	/* Fuzix */
+		add_argument("-D__FUZIX__");
+		break;
+	case OS_MC10:	/* MC-10 */
+		add_argument("-D__TANDY_MC10__");
+		break;
+	case OS_FLEX: /* FLEX */
+		add_argument("-D__FLEX__");
+		break;
 	}
 	add_argument_list(NULL, &ccargs);
 	add_argument(path);
-	t = strdup(path);
-	if (t == NULL)
-		memory();
+	t = xstrdup(path, 0);
 	tmp = pathmod(t, ".c", ".@", 0);
 	if (tmp == NULL)
 		memory();
@@ -379,13 +431,25 @@ void link_phase(void)
 {
 	build_arglist(CMD_LD);
 	switch (targetos) {
-		case 1:
+		case OS_FUZIX:
 			break;
-		case 2:
+		case OS_MC10:
 			add_argument("-b");
 			add_argument("-C");
 			add_argument("17500");
+			/* I/O at 0-31 */
+			add_argument("-Z");
+			add_argument("32");
 			break;
+		case OS_FLEX:
+			add_argument("-b");
+			add_argument("-C");
+			add_argument("256");
+			/* So we will work on 6303X etc */
+			add_argument("-Z");
+			add_argument("40");
+			break;
+		case OS_NONE:
 		default:
 			add_argument("-b");
 			add_argument("-C");
@@ -409,9 +473,13 @@ void link_phase(void)
 		add_argument(CRT0);
 		append_obj(&libpathlist, LIBPATH, 0);
 		append_obj(&liblist, LIBC, TYPE_A);
-		if (targetos == 2) {
+		if (targetos == OS_MC10) {
 			append_obj(&liblist, LIBIO, TYPE_A);
 			append_obj(&liblist, LIBMC10, TYPE_A);
+		}
+		if (targetos == OS_FLEX) {
+			append_obj(&liblist, LIBIO, TYPE_A);
+			append_obj(&liblist, LIBFLEX, TYPE_A);
 		}
 	}
 	if (cpu == 6303)
@@ -423,6 +491,31 @@ void link_phase(void)
 	add_argument_list(NULL, &objlist);
 	resolve_libraries();
 	run_command();
+	switch(targetos) {
+	case OS_MC10:
+		/* Tandy MC-10 */
+		build_arglist(CMD_TAPEIFY);
+		add_argument(target);
+		add_argument(extend(target, ".tap"));
+		add_int_argument(17500);
+		add_int_argument(filesize(target) - 17500);
+		add_int_argument(17500);
+		run_command();
+		break;
+	case OS_FLEX:
+		/* FLEX */
+		build_arglist(CMD_BINIFY);
+		add_argument("-s");
+		add_int_argument(0x0100);
+		add_argument("-l");
+		add_int_argument(filesize(target) - 0x0100);
+		add_argument("-x");
+		add_int_argument(0x0100);
+		add_argument(target);
+		add_argument(extend(target, ".cmd"));
+		run_command();
+		break;
+	}
 }
 
 void sequence(struct obj *i)
@@ -693,10 +786,13 @@ int main(int argc, char *argv[])
 			break;
 		case 't':
 			if (strcmp(*p + 2, "fuzix") == 0)
-				targetos = 1;
+				targetos = OS_FUZIX;
 			else if (strcmp(*p + 2, "mc10") == 0)
-				targetos = 2;
-			else {
+				targetos = OS_MC10;
+			else if (strcmp (*p + 2, "flex") == 0) {
+				targetos = OS_FLEX;
+				cpu = 6800;
+			} else {
 				fprintf(stderr, "cc: only fuzix and mc10 target types are known.\n");
 				fatal();
 			}
