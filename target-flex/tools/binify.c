@@ -66,8 +66,10 @@ int main(int argc, char *argv[]) {
     }
 
     /* Read through all the bytes before the block we want */
-    while(pos < start - offset)
+    while(pos < start - offset) {
         fgetc(in);
+        pos++;
+    }
     while(len >= 255) {
         fputc(0x02, out);		/* Block marker */
         fputc(start >> 8, out);		/* 255 byte block at working address */
