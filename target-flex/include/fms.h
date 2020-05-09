@@ -113,5 +113,6 @@ extern int flex_setext(struct fms_fcb *fcb, uint8_t extension);
 #define FLEX_EXT_PRT	10
 #define FLEX_EXT_OUT	11
 
+#define sys_fcb ((struct fms_fcb *)0xA840)
 
 #endif
