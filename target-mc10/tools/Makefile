@@ -1,4 +1,4 @@
 all: tapeify
 
 clean:
-	rm -f *.o *~
+	rm -f *.o *~ tapeify
