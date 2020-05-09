@@ -130,9 +130,9 @@ static uint16_t *flex_map;
 
 static void dir_begin(void)
 {
-    disk_read(0,5, dirbuf);
+    disk_read(0, 5, dirbuf);
     dirtrk = 0;
-    dirsec = 0;
+    dirsec = 5;
     dirpt = 1;
 }
 
@@ -324,10 +324,11 @@ static int flex_unlink(const char *name, const char *ext)
         sir_setsecfree(freesec);
         disk_write(d->etrack, d->esec, workbuf);
         /* Now add it to the SIR */
-        sir.ffreetrack = d->etrack;
-        sir.ffreesec = d->esec;
+        sir.ffreetrack = d->strack;
+        sir.ffreesec = d->ssec;
         write_sir();
     }
+    d->etrack = d->esec = d->ssec = d->strack = 0;
     dir_write();
     return 0;
 }
@@ -607,11 +608,32 @@ int main(int argc, char *argv[])
         case GET:
             if (all)
                 flex_get_all();
-            else
-                flex_get(name, ext, stdout, ascii);
+            else {
+                FILE *fp = fopen(argv[optind + 1], "w");
+                if (fp == NULL) {
+                    perror(argv[optind + 1]);
+                    exit(1);
+                }
+                flex_get(name, ext, fp, ascii);
+                if (fclose(fp) < 0) {
+                    perror(argv[optind + 1]);
+                    exit(1);
+                }
+            }
             break;
         case PUT:
-            flex_addfile(name, ext, stdin);
+            {
+                FILE *fp = fopen(argv[optind + 1], "r");
+                if (fp == NULL) {
+                    perror(argv[optind + 1]);
+                    exit(1);
+                }
+                flex_addfile(name, ext, fp);
+                if (fclose(fp) < 0) {
+                    perror(argv[optind + 1]);
+                    exit(1);
+                }
+            }
             break;
         case DELETE:
             flex_unlink(name, ext);
