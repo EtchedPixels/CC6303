@@ -371,6 +371,13 @@ static int flex_append(struct dir *d, const char *buf)
     disk_read(trk, sec, workbuf);
     sir.ffreetrack = *workbuf;
     sir.ffreesec = workbuf[1];
+    /* First block - update the header */
+    if (d->etrack == 0 && d->esec == 0) {
+        d->strack = trk;
+        d->ssec = sec;
+    }
+    d->etrack = trk;
+    d->esec = sec;
     /* Adjust sec count in directory */
     d->secl++;
     if (d->secl == 0)
@@ -378,8 +385,8 @@ static int flex_append(struct dir *d, const char *buf)
     *workbuf = 0;
     workbuf[1] = 0;
     /* Sectors have logical record numbers 1+ */
-    workbuf[2] = d->secl;
-    workbuf[3] = d->sech;
+    workbuf[2] = d->sech;
+    workbuf[3] = d->secl;
     /* Add the data */
     memcpy(workbuf + 4, buf, 252);
     disk_write(trk, sec, workbuf);
