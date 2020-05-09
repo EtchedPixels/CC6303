@@ -1,4 +1,0 @@
-all: binify
-
-clean:
-	rm -f *.o *~
