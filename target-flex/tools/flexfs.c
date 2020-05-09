@@ -370,11 +370,15 @@ static int flex_append(struct dir *d, const char *buf)
     disk_read(trk, sec, workbuf);
     sir.ffreetrack = *workbuf;
     sir.ffreesec = workbuf[1];
+    /* Adjust sec count in directory */
+    d->secl++;
+    if (d->secl == 0)
+        d->sech++;
     *workbuf = 0;
     workbuf[1] = 0;
+    /* Sectors have logical record numbers 1+ */
     workbuf[2] = d->secl;
     workbuf[3] = d->sech;
-    /* Adjust sec in dir how ? */
     /* Add the data */
     memcpy(workbuf + 4, buf, 252);
     disk_write(trk, sec, workbuf);
