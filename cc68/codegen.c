@@ -234,6 +234,8 @@ static void InvalidateX(void)
 
 static void AssignD(unsigned short value, int keepc)
 {
+    uint8_t hi = value >> 8;
+    uint8_t lo = value;
     /* Optimizations using clr. clr clears the C flag so we can't always
        use it */
     if (!keepc) {
@@ -241,11 +243,11 @@ static void AssignD(unsigned short value, int keepc)
             AddCodeLine("clra");
             AddCodeLine("clrb");
             return;
-        } else if (CPU == CPU_6800 && !(value & 0xFF00)) {
+        } else if (CPU == CPU_6800 && !hi) {
             AddCodeLine("clra");
-            AddCodeLine("ldab #$%02X", value);
+            AddCodeLine("ldab #$%02X", lo);
             return;
-        } else if (CPU == CPU_6800 && !(value & 0x00FF)) {
+        } else if (CPU == CPU_6800 && !lo) {
             AddCodeLine("ldaa #$%02X", value >> 8);
             AddCodeLine("clrb");
             return;
@@ -253,14 +255,14 @@ static void AssignD(unsigned short value, int keepc)
     }
     if (CPU == CPU_6800) {
         /* For things like 0xFF this is a shade shorter */
-        if ((value & 0xFF) == (value >> 8)) {
-            AddCodeLine("ldaa #$%02X", value & 0xFF);
+        if (hi == lo) {
+            AddCodeLine("ldaa #$%02X", lo);
             AddCodeLine("tab");
             return;
         }
         /* No 16bit ops on a 6800 */
-        AddCodeLine("ldaa #$%02X", value >> 8);
-        AddCodeLine("ldab #$%02X", value & 0xFF);
+        AddCodeLine("ldaa #$%02X", hi);
+        AddCodeLine("ldab #$%02X", lo);
         return;
     }
     /* We have LDD */
@@ -396,7 +398,7 @@ static void SubDConstCompare(int value)
         unsigned L = GetLocalLabel();
         AddCodeLine("cmpa #$%02X", (value >> 8) & 0xFF);
         AddCodeLine("bne %s", LocalLabelName(L));
-        AddCodeLine("cmpb #$%02x", value & 0xFF);
+        AddCodeLine("cmpb #$%02X", value & 0xFF);
         g_defcodelabel(L);
     } else {
         if (value == 0)	/* Valid as we may be trying to set flags */
@@ -1650,14 +1652,27 @@ void g_leasp (unsigned Flags, int Offs)
     AddCodeLine(";+leasp %d %d\n", FramePtr, Offs);
 
     if (!(Flags & CF_USINGX)) {
-        /* No smarter way when going via D */
-        AddCodeLine("sts @tmp1");
-        Offs --;		/* Because 1,sp is the top of stack vars */
-        if (Offs) {
-            AssignD(-Offs, 0);
-            AddD("@tmp1", 0);
+        if (CPU == CPU_6800) {
+            if (Offs < 256 && Offs >= 0) {
+                if (Offs)
+                    AddCodeLine("ldab #$%02X", Offs);
+                else
+                    AddCodeLine("clrb");
+                AddCodeLine("jsr leasp8");
+            } else {
+                AssignD(Offs, 0);
+                AddCodeLine("jsr leasp");
+            }
         } else {
-            LoadD("@tmp1", 0);
+            /* No smarter way when going via D */
+            AddCodeLine("sts @tmp1");
+            Offs --;		/* Because 1,sp is the top of stack vars */
+            if (Offs) {
+                AssignD(-Offs, 0);
+                AddD("@tmp1", 0);
+            } else {
+                LoadD("@tmp1", 0);
+            }
         }
         return;
     }
