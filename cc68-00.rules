@@ -7,21 +7,6 @@
 #	Patterns are applied in *reverse* order
 #
 
-#
-#	Final patterns for tidying up branching and the like
-#
-#	Trim jumps to next instruction
-	jmp %1
-%1:
-	=
-%1:
-
-#	And terminal jsr rts
-	jsr %1
-	rts
-=
-	jmp %1
-
 
 # Shorten some other calls with helper variants
 # bnega only inspects b and changes a and b
@@ -753,6 +738,13 @@ L%1:	rts
 
 
 # Optimize common dtox patterns
+
+	ldab $01,x
+	ldaa $00,x
+	jsr dtox
+=
+	jsr toptox
+
 	jsr dtox
 	ldaa @tmp2
 	ldab @tmp2+1
@@ -924,4 +916,540 @@ L%1:	rts
 =
 	subb #%2
 	sbca #%1
+
+#
+#	Add to TOS
+#
+	addb $01,x
+	adca $00,x
+	stab $01,x
+	staa $00,x
+=
+	jsr addtotos
+
+#
+#	Constant stores to static
+#	The rare case we can go via X usefully
+#
+	clra
+	clrb
+	staa _%1
+	stab _%1+1
+	;invalid XDP
+=
+	clr %1
+	clr %1+1
+
+	clra
+	clrb
+	staa _%1
+	stab _%1+1
+	;invalid DP
+=
+	clr %1
+	clr %1+1
+
+#
+#	See if we can load via X. There are very few cases we can do this
+#	on the 6800 but they are worth looking for
+#
+	clra
+	ldab #$%1
+	staa _%2
+	stab _%2+1
+	;invalid XDP
+=
+	ldx #$%1
+	stx _%2
+	;invalid XDP
+
+	clra
+	ldab #%1
+	staa @%2
+	stab @%2+1
+	;invalid XDP
+=
+	ldx #%1
+	stx @%2
+	;invalid XDP
+
+	ldaa #$%1
+	ldab #$%2
+	staa _%3
+	stab _%3+1
+	;invalid XDP
+=
+	ldx #$%1%2
+	stx _%3
+	;invalid XDP
+
+	ldaa #$%1
+	ldab #$%2
+	staa @%3
+	stab @%3+1
+	;invalid XDP
+=
+	ldx #$%1%2
+	stx @%3
+	;invalid XDP
+
+	
+	
+
+############################################################################
+#
+#	Below this point are rules that want to deal with discovered
+#	as well as actual generated invalid DP markers
+#
+############################################################################
+
+#
+#	Add deducable invalidity markers. Whenever we load A and B we know
+#	that we can add an invalid DP marker just before
+#
+	ldaa %1
+	ldab %2
+	=
+	;invalid DP
+	ldaa %1
+	ldab %2
+
+	clra
+	ldab %1
+	=
+	;invalid DP
+	clra
+	ldab %1
+
+	ldaa %1
+	clrb
+	=
+	;invalid DP
+	ldaa %1
+	clrb
+
+	clra
+	clrb
+	=
+	;invalid DP
+	clra
+	clrb
+
+	ldaa %1
+	tab
+	=
+	;invalid DP
+	ldaa %1
+	tab
+
+############################################################################
+#
+#	Below this point are rules that want to deal with DP only so we
+#	strip the X out of remaining markers. This is a good rule to comment
+#	out when debugging rulesets!
+#
+############################################################################
+
+	;invalid XDP
+=
+	;invalid DP
+
+#
+#	Various common pushes because pushing this is expensive (6 bytes
+#	for a 16bit constant or a stack ref - 5 for small values, 4 for
+#	zero
+#
+#	Constant 0
+#
+	clrb
+	clra
+	pshb
+	psha
+	;invalid DP
+=
+	clra
+	psha
+	psha
+	;invalid DP
+
+#
+#	Constant FF00, not that common but it's free
+#
+	ldaa #$FF
+	clrb
+	pshb
+	psha
+	;invalid DP
+=
+	clra
+	psha
+	deca
+	psha
+	;invalid DP
+
+#
+#	Constant 0100, not that common but it's free
+#
+	ldaa #$01
+	clrb
+	pshb
+	psha
+	;invalid DP
+=
+	clra
+	psha
+	inca
+	psha
+	;invalid DP
+
+#
+#	Constant two bytes the same (usually -1)
+#
+
+	ldab #$%1
+	tba
+	pshb
+	psha
+	;invalid DP
+=
+	ldab #$%1
+	pshb
+	pshb
+	;invalid DP
+
+#
+#	The next batch need expanding to cover cases where they are followed
+#	by ld/clr a/b pairs.
+#
+
+#
+#	,x
+#
+	ldab $01,x
+	ldaa $00,x
+	pshb
+	psha
+=
+	jsr pshindvx
+
+#
+#	1,x
+#
+	ldab $02,x
+	ldaa $01,x
+	pshb
+	psha
+=
+	jsr pshindvx1
+
+#
+#	2,x
+#
+	ldab $03,x
+	ldaa $02,x
+	pshb
+	psha
+=
+	jsr pshindvx2
+
+#
+#	3,x
+#
+	ldab $04,x
+	ldaa $03,x
+	pshb
+	psha
+=
+	jsr pshindvx3
+
+#
+#	5,x
+#
+	ldab $06,x
+	ldaa $05,x
+	pshb
+	psha
+=
+	jsr pshindvx5
+
+#
+#	4,x
+#
+	ldab $05,x
+	ldaa $04,x
+	pshb
+	psha
+=
+	jsr pshindvx4
+
+#
+#
+#	Shrink some load forms
+#
+
+	clra
+	clrb
+	tsx
+	stab %1,x
+	staa %2,x
+	;invalid DP
+=
+	clr %1,x
+	clr %2,x
+	;invalid DP
+
+	clra
+	clrb
+	stab %1,x
+	staa %2,x
+	;invalid DP
+=
+	clr %1,x
+	clr %2,x
+	;invalid DP
+
+############################################################################
+#
+#	Below this point are rules that don't want to deal with invalid
+#	markers
+#
+############################################################################
+
+	;invalid DP
+=
+
+#
+#	Store TOS then Push TOS
+#
+	stab $01,x
+	staa $00,x
+	; invalid DP
+	pshb
+	psha
+=
+	jsr storepushtop
+
+
+#
+#	Load of TOS
+#
+	tsx
+	ldab $01,x
+	ldaa $00,x
+=
+	jsr loadtos
+
+
+#
+#	Save to top of stack
+#
+	tsx
+	stab $01,x
+	staa %00,x
+=
+	jsr savetos
+
+#
+#	Clearing a working temporary then popping
+#
+	clra
+	clrb
+	staa @%1
+	stab @%1+1
+	pula
+	pulb
+=
+	clr @%1
+	clr @%1+1
+	pula
+	pulb
+
+#
+#	Minor optimizations
+#
+
+#
+#	Eliminate load of full register for 8bit push. Keep the clr as we
+#	may consume the register
+#
+	ldaa %1
+	ldab %2
+	clra
+	pshb
+=
+	ldab %2
+	clra
+	pshb
+
+#
+#	8bit constant argument sets
+#
+	clrb
+	pshb
+	clrb
+	pshb
+=
+	clrb
+	pshb
+	pshb
+
+#
+#	tos = call
+#
+	tsx
+	stab $01,x
+	staa $00,x
+=
+	jsr storetos
+
+#
+#	tos = call then push it
+#
+	tsx
+	stab $01,x
+	staa $00,x
+	pshb
+	psha
+=
+	jsr storetospush
+
+#
+#	Another form that seems to show up
+#
+	jsr loadtos
+	pshb
+	psha
+=	
+	jsr pushtop
+
+#
+#	Minor optimisation for pushing and loading
+#
+	clra
+	clrb
+	pshb
+	psha
+	tsx
+	ldab %1
+=
+	clrb
+	pshb
+	pshb
+	tsx
+	ldab %1
+
+	clra
+	clrb
+	pshb
+	psha
+	ldaa %1
+=
+	clrb
+	pshb
+	pshb
+	ldaa %1
+
+#
+#	Pointer maths for stores with ++
+#
+	jsr addeqstatic1
+	staa @tmp2
+	stab @tmp2+1
+=
+	jsr addeqeqst1tmp2
+
+#
+#	Clear and store then load after earlier optimisations
+#
+	clr %1
+	clr %2
+	clra
+	clrb
+	stab %3
+	staa %4
+	ldaa %5
+	ldab %6
+=
+	clr %1
+	clr %2
+	clr %3
+	clr %4
+	ldaa %5
+	ldab %6
+
+	clr %1
+	clr %2
+	clra
+	clrb
+	stab %3
+	staa %4
+	clra
+	ldab %5
+=
+	clr %1
+	clr %2
+	clr %3
+	clr %4
+	clra
+	ldab %5
+
+	clra
+	pshb
+	clra
+=
+	clra
+	pshb
+
+
+#
+#	More addition rules
+#
+	ldaa %1
+	ldab %2
+	pshb
+	psha
+	tsx
+	ldab %3
+	ldaa %4
+	addb $01,x
+	adca $00,x
+	ins
+	ins
+=
+	ldaa %1
+	ldab %2
+	addb %3
+	adca %4
+
+#
+#	Setting a static
+#
+	clra
+	ldab #%1
+	staa _%2
+	stab _%2+1
+	ldaa %3
+=
+	ldab #%1
+	stab %2
+	clr %2+1
+	ldaa %3
+
+
+
+#
+#	Final patterns for tidying up branching and the like
+#
+#	Trim jumps to next instruction
+
+	jmp %1
+%1:
+	=
+%1:
+
+#	And terminal jsr rts
+	jsr %1
+	rts
+=
+	jmp %1
 
