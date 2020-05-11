@@ -14,15 +14,15 @@ tosshrax:
 	cmpb #8
 	beq shr8
 	bls loop
-	ldaa 3,x
-	staa 4,x
-	clr 3,x
+	ldaa 2,x
+	staa 3,x
+	clr 2,x
 	subb #8
 loop:
 	tstb
 	beq retdone
-	lsr 3,x
-	ror 4,x
+	lsr 2,x
+	ror 3,x
 	decb
 	bra loop
 ret0:
@@ -31,6 +31,6 @@ ret0:
 retdone:
 	jmp pop2get
 shr8:
-	ldab 3,x
+	ldab 2,x
 	clra
 	jmp pop2

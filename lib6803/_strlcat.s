@@ -6,12 +6,12 @@
 
 _strlcat:
 		tsx
-		ldd 3,x		; size limit
-		addd 5,x	; source limit marker
+		ldd 2,x		; size limit
+		addd 4,x	; source limit marker
 		std @tmp
-		ldd 7,x		; dest
+		ldd 6,x		; dest
 		std @tmp2
-		ldx 5,x		; source
+		ldx 4,x		; source
 endhunt:	tst ,x
 		beq copier	; found where to start
 		inx
@@ -36,7 +36,7 @@ loop:
 		clr ,x
 noroom:
 		tsx		; if we ran out of space we copied size
-		ldd 3,x
+		ldd 2,x
 		rts
 end:
 		ldx @tmp2	; get the destination
@@ -44,5 +44,5 @@ end:
 		tsx
 		ldd @tmp2	; end byte
 		addd @one	; +1
-		subd 3,x	; - start (size used)
+		subd 2,x	; - start (size used)
 		rts

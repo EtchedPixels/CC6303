@@ -9,13 +9,13 @@
 
 _strncpy:
 	tsx
-	ldd	3,x		; size
+	ldd	2,x		; size
 	beq	end3		; size 0 - silly
-	addd	7,x		; dest end mark
+	addd	6,x		; dest end mark
 	std	@tmp2
-	ldd	7,x
+	ldd	6,x
 	std	@tmp		; destination
-	ldx	5,x		; src
+	ldx	4,x		; src
 	;
 	;	Copy bytes up to the size limit given
 	;
@@ -47,6 +47,6 @@ end1:
 end2:
 	tsx
 end3:
-	ldd	5,x
+	ldd	4,x
 	rts
 

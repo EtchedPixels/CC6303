@@ -6,10 +6,8 @@
 tosasrax:
 	tsx
 asraxsh:
-	asr 1,x
-	ror 2,x
+	asr ,x
+	ror 1,x
 	decb
 	bne asraxsh
 	rts
-
-

@@ -6,13 +6,13 @@
 
 _memset:
 	tsx
-	ldd	5,x
+	ldd	4,x
 	stab	@tmp		; destination
-	ldd	3,x		; length
-	ldx	7,x		; destination
+	ldd	2,x		; length
+	ldx	6,x		; destination
 	bsr	nextblock
 	tsx
-	ldd	7,x
+	ldd	6,x
 	rts
 
 nextblock:

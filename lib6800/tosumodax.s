@@ -7,6 +7,6 @@
 
 tosumodax:
 	tsx
-	ldx 3,x
+	ldx 2,x
 	jsr div16x16	
 	jmp pop2

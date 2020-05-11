@@ -12,10 +12,10 @@
 ;	1-4	32bit divisor
 ;
 
-DIVID		.equ	1
-;		5/6,x are a return address and it's easier to just leave
+DIVID		.equ	0
+;		4/5,x are a return address and it's easier to just leave
 ;		the gap
-DIVIS		.equ	7
+DIVIS		.equ	6
 
 		.export div32x32
 		.code

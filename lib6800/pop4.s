@@ -15,7 +15,7 @@ tpop4:
 	ldab @tmp+1
 pop4:
 	tsx		; Fake the missing pulx
-	ldx 1,x
+	ldx ,x
 	ins
 	ins
 	ins

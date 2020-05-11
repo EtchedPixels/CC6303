@@ -8,7 +8,7 @@
 
 tosudivax:
 	tsx
-	ldx 3,x			; get top of stack
+	ldx 2,x			; get top of stack
 	jsr div16x16		; X is now quotient
 	stx @tmp
 	ldd @tmp

@@ -3,7 +3,7 @@
 
 ; We ignore the stdio name
 _fputs:		tsx
-		ldx 5,x
+		ldx 4,x
 putl:
 		ldab ,x
 		beq putsdone

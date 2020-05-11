@@ -13,14 +13,14 @@ tosumulax:
 	tsx
 	psha
 	pshb
-	ldaa 4,x		; low byte
+	ldaa 3,x		; low byte
 	mul			; D is now low x low
 	std @tmp
-	ldaa 3,x		; high byte
+	ldaa 2,x		; high byte
 	pulb
 	mul			; D is now high x low
 	std @tmp1
-	ldaa 4,x		; low byte
+	ldaa 1,x		; low byte
 	pulb			; high byte of D
 	mul			; D is now low x high
 	addd @tmp1		; High bytes

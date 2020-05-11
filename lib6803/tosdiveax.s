@@ -33,20 +33,20 @@ signfixed:
 		;
 		;	Sign rules
 		;
-		ldaa 10,x		; sign of TOS
+		ldaa 9,x		; sign of TOS
 		bpl nosignfix2
 		inc @tmp4
-		ldd 9,x
+		ldd 8,x
 		subd #1
-		std 9,x
-		ldd 7,x
+		std 8,x
+		ldd 6,x
 		sbcb #0
 		sbca #0
 		coma
 		comb
-		std 7,x
+		std 6,x
+		com 8,x
 		com 9,x
-		com 10,x
 nosignfix2:
 		tsx
 		jsr div32x32

@@ -49,12 +49,12 @@ _flex_inch2:
 
 _flex_outch:
 		tsx
-		ldaa 3,x
+		ldaa 2,x
 		jmp $AD0F
 
 _flex_outch2:
 		tsx
-		ldaa 3,x
+		ldaa 2,x
 		jmp $AD12
 
 _flex_getchr:
@@ -65,7 +65,7 @@ _flex_getchr:
 
 _flex_putchr:
 		tsx
-		ldaa 3,x
+		ldaa 2,x
 		jmp $AD18
 
 _flex_inbuff:
@@ -73,12 +73,12 @@ _flex_inbuff:
 
 _flex_pstring:
 		tsx
-		ldx 3,x
+		ldx 2,x
 		jmp $AD1E
 
 _flex_class:
 		tsx
-		ldaa 3,x
+		ldaa 2,x
 		jsr $AD21
 		ldab #0
 		sbca #0
@@ -99,13 +99,13 @@ _flex_rstrio:
 
 _flex_outdec:
 		tsx
-		ldab 3,x
+		ldab 2,x
 		ldx 4,x
 		jmp $AD39
 
 _flex_outhex:
 		tsx
-		ldx 3,x
+		ldx 2,x
 		jmp $AD3C
 
 ;
@@ -129,7 +129,7 @@ _flex_getunpack:
 		beq novalue
 		stx @tmp
 		tsx
-		ldx 3,x
+		ldx 2,x
 		ldaa @tmp
 		staa ,x
 		ldaa @tmp
@@ -142,7 +142,7 @@ nothex:		ldab #$FF
 
 _flex_outadr:
 		tsx
-		ldx 3,x
+		ldx 2,x
 		jmp $AD45
 
 ; Tanslated the same ways inhex

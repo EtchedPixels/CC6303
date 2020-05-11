@@ -13,7 +13,7 @@
 		.code
 des12:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		des
 do11:
@@ -38,36 +38,36 @@ do5:
 
 des11:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		bra do11
 des10:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		bra do10
 des9:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		bra do9
 des8:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		bra do8
 des7:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		bra do7
 des6:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		bra do6
 des5:
 		tsx
-		ldx 1,x
+		ldx ,x
 		stx @tmp
 		bra do5

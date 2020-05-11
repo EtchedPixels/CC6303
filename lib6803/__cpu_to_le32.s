@@ -9,16 +9,16 @@
 
 __cpu_to_le32:
 __le32_to_cpu:
-	; The argument is top of stack 3,s-6,s
+	; The argument is top of stack 2,s-5,s
 	tsx
-	ldx 3,x
+	ldx 2,x
 	pshx
-	ldd 5,x
-	stab 3,x
-	staa 4,x
+	ldd 4,x
+	stab 2,x
+	staa 3,x
 	pulb
 	pula
-	std 5,x
+	std 4,x
 __cpu_to_be32:
 __be32_to_cpu:
 	rts

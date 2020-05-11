@@ -15,7 +15,7 @@
 tosmodax:
 	tsx
 	anda #$7F		; make positive
-	ldx 3,x
+	ldx 2,x
 	psha			; save the sign of the dividend
 	anda #$7F		; make positive
 	jsr div16x16		; do the unsigned divide
@@ -39,7 +39,7 @@ tosdivax:
 	tsx
 	psha			; save sign of divisor
 	anda #$7F		; make positive
-	ldx 3,x
+	ldx 2,x
 	psha			; save the sign of the dividend
 	anda #$7F		; make positive
 	jsr div16x16		; do the unsigned divide
@@ -48,6 +48,6 @@ tosdivax:
 	stab @tmp+1
 	pula			; sign of the dividend
 	tsx
-	eora 1,x		; A bit 7 is now the xor of the signs
+	eora 0,x		; A bit 7 is now the xor of the signs
 	ins
 	bra signfix		; shared sign fixing

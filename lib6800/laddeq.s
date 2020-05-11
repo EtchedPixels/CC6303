@@ -18,24 +18,25 @@ laddeqysp:
 	ldab @tmp2+1
 	addb @tmp2+1
 	adca @tmp
+	inx
 laddeqa:
 	staa @tmp
 	stab @tmp+1
-	ldaa 3,x	; do the low 16bits
-	ldab 4,x
+	ldaa 2,x	; do the low 16bits
+	ldab 3,x
 	addb @tmp+1
 	adca @tmp
 	bcc l1
 	inc sreg	; carry - we don't have abcd
 l1:
-	staa 3,x
-	stab 4,x
-	ldaa 1,x
-	ldab 2,x
+	staa 2,x
+	stab 3,x
+	ldaa ,x
+	ldab 1,x
 	addb @sreg+1
 	adca @sreg
-	staa 1,x
-	stab 2,x
+	staa ,x
+	stab 1,x
 	rts
 
 ;

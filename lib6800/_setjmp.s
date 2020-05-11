@@ -7,9 +7,9 @@
 
 __setjmp:
 	tsx
-	ldaa	1,x
-	ldab	2,x		; return address
-	ldx	3,x		; get the jmp buffer
+	ldaa	,x
+	ldab	1,x		; return address
+	ldx	2,x		; get the jmp buffer
 	sts	,x		; remember the stack pointer
 	staa	2,x		; return address
 	stab	3,x

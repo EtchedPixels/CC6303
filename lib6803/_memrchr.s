@@ -4,13 +4,13 @@
 
 _memrchr:
 		tsx
-		ldd 7,x
+		ldd 6,x
 		dex			; as we are working from the end
 					; not start+len
 		std @tmp2		; end mark
-		addd 3,x
+		addd 2,x
 		std @tmp		; end to start from
-		ldab 6,x
+		ldab 5,x
 		ldx @tmp
 		; Must do the compare before the end check, see the C
 		; standard.

@@ -6,7 +6,7 @@
 _islower:
 		clra
 		tsx
-		ldab 4,x
+		ldab 3,x
 		cmpb #'a'
 		blo fail
 		cmpb #'z'

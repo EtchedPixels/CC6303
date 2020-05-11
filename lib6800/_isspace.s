@@ -6,7 +6,7 @@
 _isspace:
 		clra
 		tsx
-		ldab 4,x
+		ldab 3,x
 		cmpb #' '
 		beq good
 		cmpb #9		; tab

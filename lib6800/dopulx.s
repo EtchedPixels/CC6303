@@ -6,9 +6,9 @@
 
 dopulx:
 	tsx
-	ldx 1,x
+	ldx ,x
 	stx @tmp
-	ldx 3,x
+	ldx 2,x
 	ins
 	ins
 	ins

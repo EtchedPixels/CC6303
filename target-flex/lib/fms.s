@@ -21,9 +21,9 @@ _fms_close:
 		jmp $B403
 _fms_call:
 		tsx
-		ldaa 5,x
-		ldab 6,x
-		ldx 3,x		; FCB
+		ldaa 4,x
+		ldab 5,x
+		ldx 2,x		; FCB
 		clr _fms_error
 		jsr $BE06
 		beq fmsgood
@@ -34,11 +34,11 @@ fmsgood:
 
 _fms_setverify:
 		tsx
-		ldab 3,x
-		stab $D435
+		ldab 2,x
+		stab $B435
 		rts
 _fms_getverify:
-		ldab $D435
+		ldab $B435
 		clra
 		rts
 
@@ -59,7 +59,7 @@ _fms_error:	.byte 0
 
 _flex_getfspec:
 		tsx
-		ldx 3,x
+		ldx 2,x
 		jsr $AD2D
 		ldab #0
 		sbcb #0		; make C into 0 or -1 for error
@@ -71,13 +71,13 @@ _flex_load:
 
 _flex_setext:
 		tsx
-		ldx 3,x
-		ldaa 4,x
+		ldx 2,x
+		ldaa 3,x
 		jmp $AD33
 
 _flex_perror:
 		tsx
-		ldx 3,x
+		ldx 2,x
 		jmp $AD3F
 
 _flex_docmnd:

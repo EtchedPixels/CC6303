@@ -8,7 +8,7 @@
 
 swapstk:
 	tsx		; This 4 instruction sequence
-	ldx 1,x		; is effectively pulx
+	ldx ,x		; is effectively pulx
 	ins
 	ins
 	stx @tmp

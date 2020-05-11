@@ -9,9 +9,9 @@
 
 _strcpy:
 	tsx
-	ldd	5,x
+	ldd	4,x
 	std	@tmp		; destination
-	ldx	3,x		; src
+	ldx	2,x		; src
 copyloop:
 	ldaa	,x
 	inx
@@ -24,5 +24,5 @@ copyloop:
 	tsta
 	bne copyloop
 	tsx
-	ldd	5,x
+	ldd	4,x
 	rts

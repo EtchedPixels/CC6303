@@ -4,11 +4,11 @@
 
 _memchr:
 		tsx
-		ldd 3,x
-		addd 7,x
+		ldd 2,x
+		addd 6,x
 		std @tmp		; stop point
-		ldab 6,x
-		ldx 7,x
+		ldab 5,x
+		ldx 6,x
 		bra memchrn
 		; Must do the compare before the end check, see the C
 		; standard.

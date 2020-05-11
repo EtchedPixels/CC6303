@@ -6,7 +6,7 @@
 _ispunct:
 		clra
 		tsx
-		ldab 4,x
+		ldab 3,x
 		cmpb #' '
 		bls fail
 		cmpb #'z'

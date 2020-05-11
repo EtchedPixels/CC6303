@@ -5,12 +5,12 @@
 
 _memset:
 	tsx
-	ldaa	5,x
-	ldab	6,x
+	ldaa	4,x
+	ldab	5,x
 	stab	@tmp		; destination
-	ldaa	3,x		; length
-	ldab	4,x
-	ldx	7,x		; destination
+	ldaa	2,x		; length
+	ldab	3,x
+	ldx	6,x		; destination
 	bsr	nextblock
 	tsx
 	ldaa	7,x

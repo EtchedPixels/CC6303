@@ -3,11 +3,11 @@
 		.code
 _strncmp:
 		tsx
-		ldd 3,x
-		addd 7,x	; save an end stop value
+		ldd 2,x
+		addd 6,x	; save an end stop value
 		std @tmp2
-		ldd 5,x
-		ldx 7,x
+		ldd 4,x
+		ldx 6,x
 		std @tmp
 loop:
 		ldab ,x		; get *s1 into B

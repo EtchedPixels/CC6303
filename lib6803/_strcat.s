@@ -9,9 +9,9 @@
 
 _strcat:
 	tsx
-	ldd	5,x
+	ldd	4,x
 	std	@tmp		; destination
-	ldx	3,x		; src
+	ldx	2,x		; src
 endhunt:
 	tst	,x
 	beq	copyloop
@@ -28,5 +28,5 @@ copyloop:
 	pulx
 	tsta
 	bne copyloop
-	ldd	5,x
+	ldd	4,x
 	rts

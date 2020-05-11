@@ -7,10 +7,10 @@
 
 _strnlen:
 	tsx
-	ldd 3,x			; work out the stop mark
-	addd 5,x
+	ldd 2,x			; work out the stop mark
+	addd 4,x
 	std @tmp		; save it
-	ldx 5,x
+	ldx 4,x
 	clra
 	clrb
 cl:	tst ,x

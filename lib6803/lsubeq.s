@@ -15,19 +15,20 @@ lsubeqysp:
 	ldd @tmp2
 	addd @tmp
 	ldx @tmp
+	inx
 ;
 ;	In this form X is a pointer to the long
 ;
 lsubeq:
 	std @tmp
-	ldd 5,x		; do the low 16bits
+	ldd 4,x		; do the low 16bits
 	subd @tmp
-	std 5,x
-	ldd 3,x
+	std 4,x
+	ldd 2,x
 	sbcb @sreg+1
 	sbca @sreg
-	std 3,x
-	ldd 5,x
+	std 2,x
+	ldd 4,x
 	rts
 ;
 ;	Same as lsubeq but with a 16bit value to subtract

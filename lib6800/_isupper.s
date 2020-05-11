@@ -6,7 +6,7 @@
 _isupper:
 		clra
 		tsx
-		ldab 4,x
+		ldab 3,x
 		cmpb #'A'
 		blo fail
 		cmpb #'Z'

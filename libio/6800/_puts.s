@@ -2,7 +2,7 @@
 		.code
 
 _puts:		tsx
-		ldx 3,x
+		ldx 2,x
 putl:
 		ldab ,x
 		beq putsdone

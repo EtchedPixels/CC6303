@@ -18,16 +18,16 @@ tosshleax:
 	beq noshift
 	tsx
 loop:
-	asl	6,x
-	rol	5,x
+	asl	5,x
 	rol	4,x
 	rol	3,x
+	rol	2,x
 	decb
 	bne loop
-	ldd	3,x
+	ldd	2,x
 	; Get the value
 	std	@sreg
-	ldd	5,x
+	ldd	4,x
 noshift:
 	jmp pop4
 ret0:

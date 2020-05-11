@@ -355,7 +355,7 @@ static void PullX(int nv)
     if (CPU == CPU_6800) {
         if (nv) {
             int offs = GenTSXByte(1);
-            AddCodeLine("ldx $%02X,x", offs + 1);
+            AddCodeLine("ldx $%02X,x", offs);
             InvalidateX();
         }
         AddCodeLine("ins");
@@ -852,7 +852,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
         InvalidateX();
         AddCodeLine(";Genoffset %u %d %d %d\n",
             Flags, Offs, save_d, exact);
-        Offs += 3;	/* FP is from SP so one below but also have stacked fp */
+        Offs += 2;	/* FP is from SP but also have stacked fp */
         if (Offs < 256 - s) {
 
             /* Usual simple case. X holds fp, caller is using n,X format
@@ -904,9 +904,6 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
     /* Adjust for current stack pointer */
     Offs -= StackPtr;
 
-    /* S points below the data so we need to look further up */
-    Offs += 1;
-
     /* How many bytes offset before we give up and go via D */
     if (CPU != CPU_6800)
         far = 2040;
@@ -924,7 +921,7 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
             AddCodeLine("psha");
         }
         AddCodeLine("sts @tmp");
-        AssignD(Offs, 0);
+        AssignD(Offs + 1, 0);		/* So it matches a TSX based offset */
         AddCodeLine("addd @tmp");
         DToX();
         if (save_d) {
@@ -1631,8 +1628,8 @@ void g_leasp (unsigned Flags, int Offs)
        to fp */
     AddCodeLine(";leasp %d %d\n", FramePtr, Offs);
     if (FramePtr && Offs > 0) {
-//        Offs = -Offs;
-        Offs += 3;
+        /* Because of the frame pointer */
+        Offs += 2;
         if (!(Flags & CF_USINGX) || Offs > 255 || CPU == CPU_6800) {
             LoadD("@fp", 0);
             AddDConst(Offs);
@@ -1649,13 +1646,13 @@ void g_leasp (unsigned Flags, int Offs)
     Offs = -Offs;
     /* Calculate the offset relative to sp */
     Offs += StackPtr;
-    Offs --;		/* Because 1,sp is the top of stack vars */
 
     AddCodeLine(";+leasp %d %d\n", FramePtr, Offs);
 
     if (!(Flags & CF_USINGX)) {
         /* No smarter way when going via D */
         AddCodeLine("sts @tmp1");
+        Offs --;		/* Because 1,sp is the top of stack vars */
         if (Offs) {
             AssignD(-Offs, 0);
             AddD("@tmp1", 0);
@@ -3454,12 +3451,12 @@ void g_add (unsigned flags, unsigned long val)
         }
     } else {
         int offs;
-        /* We can optimize some of these in terms of 1,x */
+        /* We can optimize some of these in terms of ,x */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
                     offs = GenTSXByte(1);
-                    AddCodeLine ("addb $%02X,x", offs + 1);
+                    AddCodeLine ("addb $%02X,x", offs);
                     AddCodeLine ("ins");
                     pop(flags);
                     return;
@@ -3467,7 +3464,7 @@ void g_add (unsigned flags, unsigned long val)
             /* Fall through */
             case CF_INT:
                 offs = GenTSXByte(1);
-                AddDViaX(offs + 1);
+                AddDViaX(offs);
                 PullX(0);
                 pop(flags);
                 return;
@@ -3791,12 +3788,12 @@ void g_or (unsigned flags, unsigned long val)
         g_push (flags & ~CF_CONST, 0);
     }
 
-    /* We can optimize some of these in terms of 1,x */
+    /* We can optimize some of these in terms of ,x */
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
                 offs = GenTSXByte(1);
-                AddCodeLine ("orab $%02X,x", offs + 1 );
+                AddCodeLine ("orab $%02X,x", offs);
                 AddCodeLine ("ins");
                 pop(flags);
                 return;
@@ -3804,8 +3801,8 @@ void g_or (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("orab $%02X,x", offs + 2);
-            AddCodeLine ("oraa $%02X,x", offs + 1);
+            AddCodeLine ("orab $%02X,x", offs + 1);
+            AddCodeLine ("oraa $%02X,x", offs);
             PullX(0);
             pop(flags);
             return;
@@ -3868,12 +3865,12 @@ void g_xor (unsigned flags, unsigned long val)
         g_push (flags & ~CF_CONST, 0);
     }
 
-    /* We can optimize some of these in terms of 1,x */
+    /* We can optimize some of these in terms of ,x */
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
                 offs = GenTSXByte(1);
-                AddCodeLine ("eorb $%02X,x", offs + 1);
+                AddCodeLine ("eorb $%02X,x", offs);
                 AddCodeLine ("ins");
                 pop(flags);
                 return;
@@ -3881,8 +3878,8 @@ void g_xor (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("eorb $%02X,x", offs + 2);
-            AddCodeLine ("eora $%02X,x", offs + 1);
+            AddCodeLine ("eorb $%02X,x", offs + 1);
+            AddCodeLine ("eora $%02X,x", offs);
             PullX(0);
             pop(flags);
             return;
@@ -3981,12 +3978,12 @@ void g_and (unsigned Flags, unsigned long Val)
         Flags &= ~CF_FORCECHAR;
         g_push (Flags & ~CF_CONST, 0);
     }
-    /* We can optimize some of these in terms of 1,x */
+    /* We can optimize some of these in terms of ,x */
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (Flags & CF_FORCECHAR) {
                 offs = GenTSXByte(1);
-                AddCodeLine ("andb $%02X,x", offs + 1);
+                AddCodeLine ("andb $%02X,x", offs);
                 AddCodeLine ("ins");
                 pop(Flags);
                 return;
@@ -3994,8 +3991,8 @@ void g_and (unsigned Flags, unsigned long Val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("andb $%02X,x", offs + 2);
-            AddCodeLine ("anda $%02X,x", offs + 1);
+            AddCodeLine ("andb $%02X,x", offs + 1);
+            AddCodeLine ("anda $%02X,x", offs);
             PullX(0);
             pop(Flags);
             return;
@@ -4515,12 +4512,12 @@ void g_eq (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
     }
-    /* We can optimize some of these in terms of subd 1,x */
+    /* We can optimize some of these in terms of subd ,x */
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
                 offs = GenTSXByte(1);
-                AddCodeLine ("cmpb $%02X,x", offs + 1);
+                AddCodeLine ("cmpb $%02X,x", offs);
                 AddCodeLine("ins");
                 AddCodeLine ("jsr booleq");
                 pop(flags);
@@ -4530,7 +4527,7 @@ void g_eq (unsigned flags, unsigned long val)
         case CF_INT:
             if (CPU != CPU_6800) {
                 offs = GenTSXByte(1);
-                SubDViaX(offs + 1);
+                SubDViaX(offs);
                 PullX(0);
                 AddCodeLine ("jsr booleq");
                 pop(flags);
@@ -4594,12 +4591,12 @@ void g_ne (unsigned flags, unsigned long val)
         g_push (flags & ~CF_CONST, 0);
     }
 
-    /* We can optimize some of these in terms of subd 1,x */
+    /* We can optimize some of these in terms of subd ,x */
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
                 offs = GenTSXByte(1);
-                AddCodeLine ("cmpb $%02X,x", offs + 1);
+                AddCodeLine ("cmpb $%02X,x", offs);
                 AddCodeLine ("ins");
                 AddCodeLine ("jsr boolne");
                 pop(flags);
@@ -4609,7 +4606,7 @@ void g_ne (unsigned flags, unsigned long val)
         case CF_INT:
             if (CPU != CPU_6800) {
                 offs = GenTSXByte(1);
-                SubDViaX(offs + 1);
+                SubDViaX(offs);
                 PullX(0);
                 AddCodeLine ("jsr boolne");
                 pop(flags);
@@ -4774,7 +4771,7 @@ void g_lt (unsigned flags, unsigned long val)
                 if (CPU != CPU_6800) {
                     offs = GenTSXByte(1);
                     StoreD("@tmp", 0);
-                    LoadDViaX(offs + 1);
+                    LoadDViaX(offs);
                     PullX(0);
                     SubD("@tmp", 0);
                     if (flags & CF_UNSIGNED)
@@ -4921,7 +4918,7 @@ void g_le (unsigned flags, unsigned long val)
                 if (CPU != CPU_6800) {
                     offs = GenTSXByte(1);
                     StoreD("@tmp", 0);
-                    LoadDViaX(offs + 1);
+                    LoadDViaX(offs);
                     PullX(0);
                     SubD("@tmp", 0);
                     if (flags & CF_UNSIGNED)
@@ -5085,7 +5082,7 @@ void g_gt (unsigned flags, unsigned long val)
                 if (CPU != CPU_6800) {
                     offs = GenTSXByte(1);
                     StoreD("@tmp", 0);
-                    LoadDViaX (offs + 1);
+                    LoadDViaX (offs);
                     PullX(0);
                     SubD("@tmp", 0);
                     if (flags & CF_UNSIGNED)
@@ -5260,7 +5257,7 @@ void g_ge (unsigned flags, unsigned long val)
                 if (CPU != CPU_6800) {
                     offs = GenTSXByte(1);
                     StoreD("@tmp", 0);
-                    LoadDViaX (offs + 1);
+                    LoadDViaX (offs);
                     PullX(0);
                     SubD("@tmp", 0);
                     if (flags & CF_UNSIGNED)

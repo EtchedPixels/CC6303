@@ -9,6 +9,6 @@
 tossubax:
 	std @tmp
 	tsx
-	ldd 3,x		; top of maths stack as seen by caller
+	ldd 2,x		; top of maths stack as seen by caller
 	subd @tmp
 	jmp pop2

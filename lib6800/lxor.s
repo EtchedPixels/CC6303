@@ -16,12 +16,12 @@ tosxor0ax:
 ;
 tosxoreax:
 	tsx
-	eora	5,x
-	eorb	6,x
+	eora	4,x
+	eorb	5,x
 	staa	@tmp
 	stab	@tmp+1
 	ldaa	@sreg
 	ldab	@sreg+1
-	eora	3,x
-	eorb	4,x
+	eora	2,x
+	eorb	3,x
 	jmp	swap32pop4

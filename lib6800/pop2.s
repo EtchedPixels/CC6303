@@ -6,7 +6,7 @@
 
 pop2:
 	tsx				; no pulx on original 6800
-	ldx 1,x				; so do it by hand
+	ldx ,x				; so do it by hand
 	ins
 	ins
 	ins

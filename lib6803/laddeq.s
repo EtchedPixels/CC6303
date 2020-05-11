@@ -18,17 +18,18 @@ laddeqysp:
 	sts @tmp2
 	ldd @tmp2
 	addd @tmp
+	inx
 laddeqa:
 	std @tmp
-	ldd 3,x		; do the low 16bits
+	ldd 2,x		; do the low 16bits
 	addd @tmp
 	bcc l1
 	inc sreg	; carry - we don't have abcd
 l1:
-	std 3,x
-	ldd 1,x
+	std 2,x
+	ldd ,x
 	addd @sreg
-	std 1,x
+	std ,x
 	rts
 
 ;

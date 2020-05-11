@@ -11,11 +11,11 @@
 toslcmp:
 	tsx
 	std @tmp	; Save the low 16bits
-	ldd 5,x
+	ldd 4,x
 	subd @sreg	; Check the high word
 	beq chklow
 	rts
 chklow:
-	ldd 7,x		; High is same so compare low
+	ldd 6,x		; High is same so compare low
 	subd @tmp
 	rts

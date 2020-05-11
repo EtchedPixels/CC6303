@@ -20,13 +20,13 @@ tosshlax:
 shloop:
 	tstb
 	beq shiftdone
-	lsr 3,x
-	ror 4,x
+	lsr 2,x
+	ror 3,x
 	decb
 	bra shloop
 shiftout:
 	ldd @zero
-	std 3,x
+	std 2,x
 shiftdone:
 ;
 ;	Like pop2 but used when the result ends up in situ

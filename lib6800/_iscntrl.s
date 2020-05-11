@@ -6,7 +6,7 @@
 _iscntrl:
 		clra
 		tsx
-		ldab 4,x
+		ldab 3,x
 		cmpb #32
 		bhs fail
 		ldab #1

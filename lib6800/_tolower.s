@@ -6,7 +6,7 @@
 _tolower:
 		tsx
 		clra
-		ldab 4,x
+		ldab 3,x
 		cmpb #'A'
 		blt done
 		cmpb #'Z'

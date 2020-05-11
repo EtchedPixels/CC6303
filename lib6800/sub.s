@@ -10,8 +10,8 @@ tossubax:
 	staa @tmp
 	stab @tmp+1
 	tsx
-	ldaa 3,x	; top of maths stack as seen by caller
-	ldab 4,x
+	ldaa 2,x	; top of maths stack as seen by caller
+	ldab 3,x
 	subb @tmp+1
 	sbca @tmp
 	jmp pop2

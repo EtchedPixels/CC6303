@@ -6,7 +6,7 @@
 _isprint:
 		clra
 		tsx
-		ldab 4,x
+		ldab 3,x
 		cmpb #32
 		blo fail
 		cmpb #127

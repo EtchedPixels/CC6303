@@ -19,19 +19,19 @@ tosshlax:
 shloop:
 	tstb
 	beq shiftdone
-	lsr 3,x
-	ror 4,x
+	lsr 2,x
+	ror 3,x
 	decb
 	bra shloop
 shiftout:
 	clra
 	clrb
-	staa 3,x
-	stab 4,x
+	staa 2,x
+	stab 3,x
 shiftdone:
 pop2get:
 	tsx				; no pulx on original 6800
-	ldx 1,x				; so do it by hand
+	ldx ,x				; so do it by hand
 	ins
 	ins
 	pula

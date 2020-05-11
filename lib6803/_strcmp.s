@@ -3,8 +3,8 @@
 		.code
 _strcmp:
 		tsx
-		ldd 3,x
-		ldx 5,x
+		ldd 2,x
+		ldx 4,x
 		std @tmp
 loop:
 		ldab ,x		; get *s1 into B

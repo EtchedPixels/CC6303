@@ -6,7 +6,7 @@
 
 _abs:
 		tsx
-		ldd 3,x
+		ldd 2,x
 		bita #$80
 		beq absdone
 		coma

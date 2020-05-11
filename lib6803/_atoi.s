@@ -6,7 +6,7 @@
 
 _atoi:
 		tsx
-		ldx 3,x
+		ldx 2,x
 		clra
 		clrb
 		std @tmp

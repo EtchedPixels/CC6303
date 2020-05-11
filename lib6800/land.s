@@ -16,12 +16,12 @@ tosand0ax:
 ;
 tosandeax:
 	tsx
-	anda	5,x
-	andb	6,x
+	anda	4,x
+	andb	5,x
 	staa	@tmp
 	ldaa	@sreg
 	stab	@tmp+1
 	ldab	@sreg+1
-	anda	3,x
-	andb	4,x
+	anda	2,x
+	andb	3,x
 	jmp	swap32pop4

@@ -587,8 +587,8 @@ L%1:	rts
 	ldaa %3
 	ldab %4
 	tsx
-	subb $02,x
-	sbca $01,x
+	subb $01,x
+	sbca $00,x
 	pulx
 =
 	ldaa %3
@@ -603,8 +603,8 @@ L%1:	rts
 	ldaa %3
 	ldab %4
 	tsx
-	adcb $02,x
-	adda $01,x
+	adcb $01,x
+	adda $00,x
 	inx
 	inx
 =
@@ -619,8 +619,8 @@ L%1:	rts
 	psha
 	ldaa %3
 	ldab %4
-	subb $02,x
-	sbca $01,x
+	subb $01,x
+	sbca $00,x
 	inx
 	inx
 =
@@ -635,8 +635,8 @@ L%1:	rts
 	psha
 	ldaa %3
 	ldab %4
-	addb $02,x
-	adca $01,x
+	addb $01,x
+	adca $00,x
 	inx
 	inx
 =
@@ -707,8 +707,8 @@ L%1:	rts
 	ldaa %3
 	ldab %4
 	tsx
-	subb $02,x
-	sbca $01,x
+	subb $01,x
+	sbca $00,x
 	ins
 	ins
 =
@@ -724,8 +724,8 @@ L%1:	rts
 	ldaa %3
 	ldab %4
 	tsx
-	subb $02,x
-	sbca $01,x
+	subb $01,x
+	sbca $00,x
 	ins
 	ins
 =
@@ -741,8 +741,8 @@ L%1:	rts
 	clra
 	ldab %4
 	tsx
-	subb $02,x
-	sbca $01,x
+	subb $01,x
+	sbca $00,x
 	ins
 	ins
 =
@@ -792,7 +792,7 @@ L%1:	rts
 	jsr dtox
 
 	tsx
-	ldx $01,x
+	ldx $00,x
 	ins
 	ins
 =
@@ -871,11 +871,11 @@ L%1:	rts
 
 # take the return value store it and push it foo(bar(...
 	tsx
-	stab $02,x
-	staa $01,x
+	stab $01,x
+	staa $00,x
 	;invalid DP
-	ldab $02,x
-	ldaa $01,x
+	ldab $01,x
+	ldaa $00,x
 	pshb
 	psha
 =
@@ -885,8 +885,8 @@ L%1:	rts
 # The very common 'push top of stack' forms (being careful that X may not be
 # S)
 	tsx
-	ldab $02,x
-	ldaa $01,x
+	ldab $01,x
+	ldaa $00,x
 	pshb
 	psha
 =
@@ -900,8 +900,8 @@ L%1:	rts
 	tsx
 	staa @tmp
 	stab @tmp+1
-	ldab $02,x
-	ldaa $01,x
+	ldab $01,x
+	ldaa $00,x
 	ins
 	ins
 	subb @tmp
@@ -915,8 +915,8 @@ L%1:	rts
 	tsx
 	staa @tmp
 	stab @tmp+1
-	ldab $02,x
-	ldaa $01,x
+	ldab $01,x
+	ldaa $00,x
 	ins
 	ins
 	subb @tmp

@@ -9,13 +9,13 @@
 
 _memcpy:
 	tsx
-	ldd	7,x
+	ldd	6,x
 	std	@tmp		; destination
-	ldd	3,x		; length
-	ldx	5,x		; src
+	ldd	2,x		; length
+	ldx	4,x		; src
 	bsr	nextblock
 	tsx
-	ldd	7,x
+	ldd	6,x
 	rts
 
 nextblock:

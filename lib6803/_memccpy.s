@@ -4,13 +4,13 @@
 		.code
 _memccpy:
 		tsx
-		ldd 3,x
-		addd 9,x
+		ldd 2,x
+		addd 8,x
 		std @tmp	; end mark
-		ldd 9,x
+		ldd 8,x
 		std @tmp2	; save 
-		ldab 6,x	; match char
-		ldx 7,x		; get source int X
+		ldab 5,x	; match char
+		ldx 6,x		; get source int X
 loop:		ldaa ,x		; get a source byte
 		stx @tmp3
 		ldx @tmp2

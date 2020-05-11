@@ -6,7 +6,7 @@
 _isalnum:
 		clra
 		tsx
-		ldab 4,x
+		ldab 3,x
 		cmpb #'A'
 		bls fail
 		cmpb #'Z'

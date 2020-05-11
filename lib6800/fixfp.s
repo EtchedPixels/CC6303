@@ -10,9 +10,9 @@ fixfp:
 		; for fp on the stack
 		tsx
 		ldaa @fp
-		staa 3,x
+		staa 2,x
 		ldaa @fp+1
-		staa 4,x
+		staa 3,x
 		clra
 		addb @fp+1
 		adca #0
@@ -23,7 +23,7 @@ fixfp:
 		; jumped to from the end of 6800 vararg functions
 restorefp:
 		tsx
-		ldx 1,x
+		ldx ,x
 		inx
 		inx
 		stx @fp

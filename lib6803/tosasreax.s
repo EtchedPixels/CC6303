@@ -13,16 +13,16 @@ tosasreax:
 	beq noshift
 	tsx
 loop:
-	asr	3,x
+	asr	2,x
+	ror	3,x
 	ror	4,x
 	ror	5,x
-	ror	6,x
 	decb
 	bne loop
-	ldd	3,x
+	ldd	2,x
 	; Get the value
 	std	@sreg
-	ldd	5,x
+	ldd	4,x
 noshift:
 	jmp pop4
 ret0:
