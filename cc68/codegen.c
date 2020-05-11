@@ -394,7 +394,7 @@ static void SubDConstCompare(int value)
 {
     if (CPU == CPU_6800) {
         unsigned L = GetLocalLabel();
-        AddCodeLine("cmpa #$%02X", value >> 8);
+        AddCodeLine("cmpa #$%02X", (value >> 8) & 0xFF);
         AddCodeLine("bne %s", LocalLabelName(L));
         AddCodeLine("cmpb #%02x", value & 0xFF);
         g_defcodelabel(L);
