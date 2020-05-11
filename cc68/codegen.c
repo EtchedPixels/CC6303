@@ -1653,7 +1653,8 @@ void g_leasp (unsigned Flags, int Offs)
 
     if (!(Flags & CF_USINGX)) {
         if (CPU == CPU_6800) {
-            if (Offs < 256 && Offs >= 0) {
+            Offs = -Offs;
+            if (Offs < 256) {
                 if (Offs)
                     AddCodeLine("ldab #$%02X", Offs);
                 else
