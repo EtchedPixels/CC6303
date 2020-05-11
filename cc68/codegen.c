@@ -831,8 +831,6 @@ static void XToD(void)
     }
 }
 
-
-    
 /* Generate an offset from the stack into X. We try and minimise the
    required code by using off,x for smaller offsets and maths only
    for bigger ones. The maths for really big offsets is horrible so don't
@@ -1183,8 +1181,6 @@ void g_defcodelabel (unsigned label)
     InvalidateX();
 }
 
-
-
 void g_defdatalabel (unsigned label)
 /* Define a local data label */
 {
@@ -1269,6 +1265,7 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
     push (CF_INT);		/* Return address */
     AddCodeLine(".export _%s", name);
     AddCodeLine("_%s:",name);
+
     /* We have no valid X state on entry */
 
     /* Uglies from the L->R stack handling for varargs */
@@ -1293,7 +1290,7 @@ void g_enter (const char *name, unsigned flags, unsigned argsize)
 
 
 
-void g_leave(void)
+void g_leave(int voidfunc, unsigned flags, unsigned argsize)
 /* Function epilogue */
 {
     /* Should always be zero : however ignore this being wrong if we took
@@ -1312,8 +1309,35 @@ void g_leave(void)
             PullX(1);
             AddCodeLine("stx @fp");
         }
+    } else {
+        if (CPU == CPU_6800 && argsize) {
+            /* The 6800 ABI is for space reasons called function cleans up
+               arguments. The 6803/303 ABI is not because it's rather faster
+               and cleaner that way */
+            if (argsize <= 12)	/* usual case */
+                AddCodeLine("jmp ret%d", argsize);
+            else if (argsize < 256) {
+                if (!voidfunc)
+                    AddCodeLine("pshb");
+                AddCodeLine("ldab #$%02X", argsize);
+                AddCodeLine("stab @tmp + 1");
+                if (!voidfunc)
+                    AddCodeLine("pulb");
+                AddCodeLine("jmp retn8");
+            } else {	/* Insane cases */
+                if (!voidfunc)
+                    AddCodeLine("pshb");
+                AddCodeLine("ldab #$%02X", argsize >> 8);
+                AddCodeLine("stab @tmp");
+                AddCodeLine("ldab #$%02X", argsize);
+                AddCodeLine("stab @tmp + 1");
+                if (!voidfunc)
+                    AddCodeLine("pulb");
+                AddCodeLine("jmp retn");
+            }
+        } else
+            AddCodeLine("rts");
     }
-    AddCodeLine("rts");
 }
 
 
@@ -1654,6 +1678,7 @@ void g_leasp (unsigned Flags, int Offs)
     if (!(Flags & CF_USINGX)) {
         if (CPU == CPU_6800) {
             Offs = -Offs;
+            Offs += 2;		/* Cost of the jsr */
             if (Offs < 256) {
                 if (Offs)
                     AddCodeLine("ldab #$%02X", Offs);
@@ -2578,6 +2603,16 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
 
         case CF_INT:
             Offs = GenOffset(flags, Offs, (flags & CF_CONST) ? 0 : 1, 0);
+            /* Uninline the usual 6800 case */
+            if ((flags & CF_CONST) && Offs == 0 && CPU == CPU_6800) {
+                if (val < 256) {
+                    AddCodeLine ("ldab #$%02X", (unsigned char)val);
+                    AddCodeLine ("jsr addtotosb");
+                } else {
+                    AssignD(val, 0);
+                    AddCodeLine ("jsr addtotos");
+                }
+            }
             if (flags & CF_CONST)
                 AssignD(val, 0);
             AddDViaX(Offs);
@@ -3029,7 +3064,7 @@ void g_test (unsigned flags)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
-                AddCodeLine ("tba");
+                AddCodeLine ("tstb");
                 break;
             }
             /* FALLTHROUGH */
@@ -4632,7 +4667,6 @@ void g_ne (unsigned flags, unsigned long val)
                 pop(flags);
                 return;
             }
-            break;
     }
 
     /* Use long way over the stack */

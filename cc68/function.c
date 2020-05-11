@@ -506,7 +506,7 @@ void NewFunc (SymEntry* Func)
 
     /* Generate the exit code */
 
-    g_leave ();
+    g_leave (F_HasVoidReturn (CurrentFunc), TypeOf(Func->Type), F_GetParamSize(CurrentFunc));
 
     /* Emit references to imports/exports */
     EmitExternals ();

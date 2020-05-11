@@ -47,7 +47,7 @@
 #include "typeconv.h"
 #include "expr.h"
 
-
+#include "cpu.h"
 
 /*****************************************************************************/
 /*                                   Data                                    */
@@ -458,14 +458,6 @@ static unsigned FunctionParamList (FuncDesc* Func)
         Error ("Too few arguments in function call");
     }
 
-    /* Now unwind the Code stack so that we end up with the arguments
-       stacked in conventional C order */
-//    if (ParamCount) {
-//        while(--ParamCount)
-//            PopCodeTail();
-//        PopCode();
-//    }
-
     /* The function returns the size of all parameters pushed onto the stack.
     ** However, if there are parameters missing (which is an error and was
     ** flagged by the compiler) AND a stack frame was preallocated above,
@@ -578,7 +570,9 @@ static void FunctionCall (ExprDesc* Expr)
         g_callind (TypeOf (Expr->Type+1), PtrOffs, ParamSize - Func->ParamSize);
 
         /* Drop parameters, preserve D if needed */
-        g_drop(ParamSize, NotVoid);
+        /* 6800 the callee does the drop */
+        if (CPU != CPU_6800 || (Func->Flags & FD_VARIADIC))
+            g_drop(ParamSize, NotVoid);
         StackPtr += ParamSize;
         /* If we have a pointer on stack, remove it */
         if (PtrOnStack) {
@@ -593,7 +587,8 @@ static void FunctionCall (ExprDesc* Expr)
         /* Normal function */
         g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize - Func->ParamSize);
         /* Drop parameters, preserve D if needed */
-        g_drop(ParamSize, NotVoid);
+        if (Func->Flags & FD_VARIADIC)
+            g_drop(ParamSize, NotVoid);
         StackPtr += ParamSize;
     }
     /* FIXME: optimization - it would be worth tracking how many arguments
