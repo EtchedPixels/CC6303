@@ -2217,8 +2217,12 @@ void g_scale (unsigned flags, long val)
                     /* FALLTHROUGH */
 
                 case CF_INT:
-                    while (p2--)
-                        AslD();
+                    if (CPU == CPU_6800 && p2 > 2)
+                        AddCodeLine("jsr shlax%d\n", p2);
+                    else {
+                        while (p2--)
+                            AslD();
+                    }
                     break;
 
                 case CF_LONG:
