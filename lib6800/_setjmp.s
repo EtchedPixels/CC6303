@@ -15,4 +15,4 @@ __setjmp:
 	stab	3,x
 	clra
 	clrb
-	rts
+	jmp 	ret4

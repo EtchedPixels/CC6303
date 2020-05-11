@@ -12,4 +12,4 @@ _tolower:
 		cmpb #'Z'
 		bhi done
 		addb #$20
-done:		rts
+done:		jmp ret2

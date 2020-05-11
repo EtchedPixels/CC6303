@@ -12,6 +12,6 @@ _isgraph:
 		cmpb #127
 		bhs fail
 		; Any non zero value is valid
-		rts
+		jmp ret2
 fail:		clrb
-		rts
+		jmp ret2

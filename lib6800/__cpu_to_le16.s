@@ -8,12 +8,13 @@
 
 __cpu_to_le16:
 __le16_to_cpu:
-	; The argument is top of stack 3,s-4,s
 	tsx
-	ldaa 2,x
-	ldab 3,x
-	stab 4,x
-	staa 5,x
+	ldx 1,x
+	ins
+	ins
+	pulb
+	pula
+	jmp ,x
 __cpu_to_be16:
 __be16_to_cpu:
-	rts
+	jmp ret2

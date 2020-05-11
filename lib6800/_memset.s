@@ -15,7 +15,7 @@ _memset:
 	tsx
 	ldaa	7,x
 	ldab	8,x
-	rts
+	jmp	ret6
 
 nextblock:
 	tsta

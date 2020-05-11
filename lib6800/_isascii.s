@@ -10,6 +10,7 @@ _isascii:
 		cmpb #127
 		bhs fail
 		ldab #1
-		rts
+		bra popit
 fail:		clrb
-		rts
+popit:
+		jmp ret2

@@ -22,6 +22,5 @@ _ispunct:
 		cmpb #'9'
 		bhi good
 fail:		clrb
-		rts
 		; any non zero is 'good
-good:		rts
+good:		jmp ret2

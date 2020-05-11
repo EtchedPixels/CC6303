@@ -24,4 +24,4 @@ __le32_to_cpu:
 	stab 5,x
 __cpu_to_be32:
 __be32_to_cpu:
-	rts
+	jmp ret4

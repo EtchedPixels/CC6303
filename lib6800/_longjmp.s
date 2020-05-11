@@ -22,4 +22,8 @@ retok:
 	ldx	2,x		; and the restored pc
 	ins			; adjust the stack
 	ins
+	ins			; pop the setjmp arguments
+	ins
+	ins
+	ins
 	jmp	,x

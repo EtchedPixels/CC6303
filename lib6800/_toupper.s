@@ -12,4 +12,4 @@ _toupper:
 		cmpb #'z'
 		bhi done
 		subb #$20
-done:		rts
+done:		jmp ret2

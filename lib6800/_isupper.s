@@ -12,6 +12,6 @@ _isupper:
 		cmpb #'Z'
 		bhi fail
 		; Any non zero value is valid
-		rts
+		jmp ret2
 fail:		clrb
-		rts
+		jmp ret2

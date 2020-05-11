@@ -15,4 +15,4 @@ cl:	tst ,x
 	addd @one
 	bra cl
 to_rts:
-	rts
+	jmp ret2

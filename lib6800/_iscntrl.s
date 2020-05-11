@@ -10,6 +10,6 @@ _iscntrl:
 		cmpb #32
 		bhs fail
 		ldab #1
-		rts
+		jmp ret2
 fail:		clrb
-		rts
+		jmp ret2

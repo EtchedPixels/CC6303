@@ -17,4 +17,4 @@ _isalnum:
 		bls good
 fail:		clrb
 		; any non zero is 'good'
-good:		rts
+good:		jmp ret2

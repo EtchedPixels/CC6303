@@ -14,4 +14,4 @@ _isblank:
 		; Any non zero value is valid
 		clrb
 good:
-		rts
+		jmp ret2
