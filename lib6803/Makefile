@@ -25,6 +25,4 @@ all: $(OBJ)
 	../as68/as68 $^
 
 clean:
-	rm -f $(OBJ) *~
-
-	
+	rm -f *.o *~

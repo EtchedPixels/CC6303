@@ -13,9 +13,11 @@ toslcmp:
 	std @tmp	; Save the low 16bits
 	ldd 4,x
 	subd @sreg	; Check the high word
-	beq chklow
-	rts
-chklow:
+	bne done
 	ldd 6,x		; High is same so compare low
-	subd @tmp
+	sbca @tmp
+	bne done
+	ldd 7,x
+	sbcb @tmp
+done:
 	rts

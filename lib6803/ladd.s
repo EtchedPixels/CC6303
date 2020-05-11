@@ -22,9 +22,4 @@ tosaddeax:
 	adca	@sreg
 	std	@sreg
 	ldd	@tmp
-	pulx
-	ins
-	ins
-	ins
-	ins
-	jmp ,x
+	jmp	pop4
