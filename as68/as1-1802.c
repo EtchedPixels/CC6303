@@ -65,13 +65,52 @@ void getaddr(ADDR *ap)
 	ap->a_type = TUSER|TMINDIR;
 }
 
-void getreg(ADDR *ap)
+void getconst(ADDR *ap)
 {
-	getaddr(ap);
+	int c;
+
+	ap->a_type = 0;
+	ap->a_flags = 0;
+	ap->a_sym = NULL;
+
+	c = getnb();
+
+	if (c == '<')
+		ap->a_flags |= A_LOW;
+	else if (c == '>')
+		ap->a_flags |= A_HIGH;
+	else
+		unget(c);
+	expr1(ap, LOPRI, 0);
 	constify(ap);
 	istuser(ap);
-	if (ap->a_value < 0 || ap->a_value > 15)
-		aerr(INVALID_REG);
+	ap->a_type |= TIMMED;
+	return;
+}
+
+void getreg(ADDR *ap)
+{
+	int c = getnb();
+	if (c == 'r') {
+		c = getnb();
+		if (!isxdigit(c))
+			qerr(SYNTAX_ERROR);
+		if (isdigit(c))
+			c -= '0';
+		else if (isupper(c))
+			c -= 'A' - 10;
+		else
+			c -= 'a' - 10;
+		ap->a_value = c;
+		ap->a_type = TIMMED|TUSER;
+	} else {
+		unget(c);
+		getaddr(ap);
+		constify(ap);
+		istuser(ap);
+		if (ap->a_value < 0 || ap->a_value > 15)
+			aerr(INVALID_REG);
+	}
 }
 
 void getio(ADDR *ap)
@@ -176,7 +215,7 @@ loop:
 		istuser(&a1);
 		if (a1.a_segment != ABSOLUTE)
 			qerr(MUST_BE_ABSOLUTE);
-		segment = ABSOLUTE;
+		outsegment(ABSOLUTE);
 		dot[segment] = a1.a_value;
 		/* Tell the binary generator we've got a new absolute
 		   segment. */
@@ -243,7 +282,7 @@ loop:
 		break;
 	case TIMM8:
 		outab(opcode);
-		getaddr(&a1);
+		getconst(&a1);
 		if ((a1.a_type & TMADDR) != TIMMED)
 			aerr(SYNTAX_ERROR);
 		outrab(&a1);
@@ -265,6 +304,7 @@ loop:
 		break;
 	case TIOPORT:
 		getio(&a1);
+		outab(opcode | a1.a_value);
 		c = getnb();
 		/* INP and OUT are technically 1 byte but in many cases it
 		   is handy to use them as a 2 byte form */
@@ -275,7 +315,6 @@ loop:
 		getaddr(&a2);
 		constify(&a2);
 		istuser(&a2);
-		outab(opcode | a1.a_value);
 		outrab(&a2);
 		break;
 	case TREL:
