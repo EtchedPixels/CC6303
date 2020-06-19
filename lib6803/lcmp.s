@@ -17,7 +17,6 @@ toslcmp:
 	ldd 6,x		; High is same so compare low
 	sbca @tmp
 	bne done
-	ldd 7,x
-	sbcb @tmp
+	sbcb @tmp+1
 done:
 	rts
