@@ -55,22 +55,23 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#define CMD_AS	BINPATH"as68"
-#define CMD_CC	LIBPATH"cc68"
-#define CMD_COPT LIBPATH"copt"
-#define COPT_FILE LIBPATH"cc68.rules"
-#define COPT00_FILE LIBPATH"cc68-00.rules"
-#define CMD_LD	BINPATH"ld68"
-#define CRT0	LIBPATH"crt0.o"
-#define LIBC	LIBPATH"libc.a"
-#define LIB6800	LIBPATH"lib6800.a"
-#define LIB6803	LIBPATH"lib6803.a"
-#define LIB6303	LIBPATH"lib6303.a"
-#define LIBIO	LIBPATH"libio6800.a"
-#define LIBMC10 LIBPATH"libmc10.a"
-#define LIBFLEX LIBPATH"libflex.a"
-#define CMD_TAPEIFY LIBPATH"mc10-tapeify"
-#define CMD_BINIFY LIBPATH"flex-binify"
+#define CMD_AS		BINPATH"as68"
+#define CMD_CC		LIBPATH"cc68"
+#define CMD_COPT 	LIBPATH"copt"
+#define COPT_FILE 	LIBPATH"cc68.rules"
+#define COPT00_FILE 	LIBPATH"cc68-00.rules"
+#define CMD_LD		BINPATH"ld68"
+#define CRT0		LIBPATH"crt0.o"
+#define LIBC		LIBPATH"libc.a"
+#define LIB6800		LIBPATH"lib6800.a"
+#define LIB6803		LIBPATH"lib6803.a"
+#define LIB6303		LIBPATH"lib6303.a"
+#define LIBIO6800	LIBPATH"libio6800.a"
+#define LIBIO6803	LIBPATH"libio6803.a"
+#define LIBMC10 	LIBPATH"libmc10.a"
+#define LIBFLEX 	LIBPATH"libflex.a"
+#define CMD_TAPEIFY 	LIBPATH"mc10-tapeify"
+#define CMD_BINIFY 	LIBPATH"flex-binify"
 
 struct obj {
 	struct obj *next;
@@ -474,11 +475,10 @@ void link_phase(void)
 		append_obj(&libpathlist, LIBPATH, 0);
 		append_obj(&liblist, LIBC, TYPE_A);
 		if (targetos == OS_MC10) {
-			append_obj(&liblist, LIBIO, TYPE_A);
+			append_obj(&liblist, LIBIO6803, TYPE_A);
 			append_obj(&liblist, LIBMC10, TYPE_A);
 		}
 		if (targetos == OS_FLEX) {
-			append_obj(&liblist, LIBIO, TYPE_A);
 			append_obj(&liblist, LIBFLEX, TYPE_A);
 		}
 	}
