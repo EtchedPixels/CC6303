@@ -12,9 +12,10 @@
 #include	"as.h"
 
 static uint16_t segsize[OSEG];
-static uint16_t truesize[OSEG];
+static uint32_t truesize[OSEG];
 static off_t segbase[OSEG];
 static uint16_t segpad[OSEG];
+static uint8_t full[OSEG];	/* So we can tell a full wrap from a 0 start */
 
 static struct objhdr obh;
 
@@ -197,6 +198,18 @@ void outraw(ADDR *a)
 }
 
 /*
+ * Check the bytes being added actually fit.
+ */
+
+void sizecheck(int segment)
+{
+	if (full[segment])
+		err('o', SEGMENT_OVERFLOW);
+	if (pass == 3 && (truesize[segment] == SEGMENT_LIMIT || dot[segment] == SEGMENT_LIMIT))
+		full[segment] = 1;
+}
+
+/*
  * Output an absolute
  * byte to the code and listing
  * streams.
@@ -205,13 +218,12 @@ void outab(uint8_t b)
 {
 	/* Not allowed to put data in the BSS except zero */
 	check_store_allowed(segment, b);
+	sizecheck(segment);
 	outbyte(b);
 	if (b == REL_ESC)	/* Quote relocation markers */
 		outbyte(REL_REL);
 	++dot[segment];
 	++truesize[segment];
-	if (truesize[segment] == SEGMENT_LIMIT || dot[segment] == SEGMENT_LIMIT)
-		err('o', SEGMENT_OVERFLOW);
 	list_addbyte(b);
 }
 
@@ -223,11 +235,10 @@ void outabyte(uint8_t b)
 {
 	/* Not allowed to put data in the BSS except zero */
 	check_store_allowed(segment, b);
+	sizecheck(segment);
 	outbyte(b);
 	++dot[segment];
 	++truesize[segment];
-	if (truesize[segment] == SEGMENT_LIMIT || dot[segment] == SEGMENT_LIMIT)
-		err('o', SEGMENT_OVERFLOW);
 	list_addbyte(b);
 }
 
@@ -242,6 +253,7 @@ void outab2(uint8_t b)
 {
 	/* Not allowed to put data in the BSS except zero */
 	check_store_allowed(segment, b);
+	sizecheck(segment);
 	outbyte(b);
 	if (b == REL_ESC)	/* Quote relocation markers */
 		outbyte(REL_REL);
@@ -249,8 +261,6 @@ void outab2(uint8_t b)
 		reservebyte();
 	++dot[segment];
 	++truesize[segment];
-	if (truesize[segment] == SEGMENT_LIMIT || dot[segment] == SEGMENT_LIMIT)
-		err('o', SEGMENT_OVERFLOW);
 	list_addbyte(b);
 }
 

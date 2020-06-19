@@ -754,7 +754,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	HIPRI	3
 
 #ifndef SEGMENT_LIMIT
-#define SEGMENT_LIMIT	0
+#define SEGMENT_LIMIT	0xFFFF
 #endif
 
 /*
@@ -802,7 +802,7 @@ extern	SYM	*phash[];
 extern	SYM	*uhash[];
 extern	int	lflag;
 extern	jmp_buf	env;
-extern	VALUE	dot[OSEG];
+extern	VALUE   dot[OSEG];
 extern  int	segment;
 extern	int	debug_write;
 extern	char	*fname;
