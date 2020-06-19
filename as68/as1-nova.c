@@ -166,7 +166,7 @@ loop:
 		istuser(&a1);
 		if (a1.a_segment != ABSOLUTE)
 			qerr(MUST_BE_ABSOLUTE);
-		segment = 0;
+		outsegment(ABSOLUTE);
 		dot[segment] = a1.a_value * 2;	/* dot is in bytes */
 		/* Tell the binary generator we've got a new absolute
 		   segment. */
