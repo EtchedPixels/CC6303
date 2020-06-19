@@ -3,9 +3,38 @@
 #	things like live value and constant tracking to make a real dent
 #	in the 6800 output
 #
+
 #
-#	Patterns are applied in *reverse* order
+#	Patterns for tidying up branching and the like
 #
+#	Trim jumps to next instruction
+
+	jmp %1
+%1:
+=
+%1:
+
+	jmp %2
+%1:
+%2:
+=
+%1:
+%2:
+
+	jmp %3
+%1:
+%2:
+%3:
+=
+%1:
+%2:
+%3:
+
+#	And terminal jsr rts
+	jsr %1
+	rts
+=
+	jmp %1
 
 
 # Shorten some other calls with helper variants
@@ -52,83 +81,6 @@
 	ldab #1
 	jne %1
 
-#
-#	Stack - these need work to be useful
-#
-#	Stack helpers
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-	rts
-=
-	jmp ret6
-
-	ins
-	ins
-	ins
-	ins
-	ins
-	ins
-L%1
-	rts
-=
-	jmp ret6
-L%1:	rts
-
-	ins
-	jmp ret6
-=
-	jmp ret7
-
-
-	ins
-	jmp ret7
-=
-	jmp ret8
-
-	ins
-	jmp ret8
-=
-	jmp ret9
-
-	ins
-	jmp ret9
-=
-	jmp ret10
-
-	ins
-	jmp ret10
-=
-	jmp ret11
-
-	ins
-	jmp ret11
-=
-	jmp ret12
-
-	ins
-	jmp ret12
-=
-	jmp ret13
-
-	ins
-	jmp ret13
-=
-	jmp ret14
-
-	ins
-	jmp ret14
-=
-	jmp ret15
-
-	ins
-	jmp ret15
-=
-	jmp ret16
-
 	des
 	des
 	des
@@ -137,6 +89,16 @@ L%1:	rts
 	;invalid XDP
 =
 	jsr des5
+
+	des
+	des
+	des
+	des
+	des
+	tsx
+=
+	jsr des5
+	tsx
 
 	des
 	jsr des5
@@ -743,7 +705,7 @@ L%1:	rts
 	ldaa $00,x
 	jsr dtox
 =
-	jsr toptox
+	ldx ,x
 
 	jsr dtox
 	ldaa @tmp2
@@ -916,16 +878,6 @@ L%1:	rts
 =
 	subb #%2
 	sbca #%1
-
-#
-#	Add to TOS
-#
-	addb $01,x
-	adca $00,x
-	stab $01,x
-	staa $00,x
-=
-	jsr addtotos
 
 #
 #	Constant stores to static
@@ -1183,6 +1135,36 @@ L%1:	rts
 	jsr pshindvx4
 
 #
+#	5,x
+#
+	ldab $06,x
+	ldaa $05,x
+	pshb
+	psha
+=
+	jsr pshindvx5
+
+#
+#	6,x
+#
+	ldab $07,x
+	ldaa $06,x
+	pshb
+	psha
+=
+	jsr pshindvx6
+
+#
+#	7,x
+#
+	ldab $08,x
+	ldaa $07,x
+	pshb
+	psha
+=
+	jsr pshindvx7
+
+#
 #
 #	Shrink some load forms
 #
@@ -1245,7 +1227,7 @@ L%1:	rts
 #
 	tsx
 	stab $01,x
-	staa %00,x
+	staa $00,x
 =
 	jsr savetos
 
@@ -1350,15 +1332,6 @@ L%1:	rts
 	ldaa %1
 
 #
-#	Pointer maths for stores with ++
-#
-	jsr addeqstatic1
-	staa @tmp2
-	stab @tmp2+1
-=
-	jsr addeqeqst1tmp2
-
-#
 #	Clear and store then load after earlier optimisations
 #
 	clr %1
@@ -1434,22 +1407,4 @@ L%1:	rts
 	stab %2
 	clr %2+1
 	ldaa %3
-
-
-
-#
-#	Final patterns for tidying up branching and the like
-#
-#	Trim jumps to next instruction
-
-	jmp %1
-%1:
-	=
-%1:
-
-#	And terminal jsr rts
-	jsr %1
-	rts
-=
-	jmp %1
 
