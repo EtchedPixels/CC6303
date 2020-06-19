@@ -587,7 +587,7 @@ static void FunctionCall (ExprDesc* Expr)
         /* Normal function */
         g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize - Func->ParamSize);
         /* Drop parameters, preserve D if needed */
-        if (Func->Flags & FD_VARIADIC)
+        if (CPU != CPU_6800 || (Func->Flags & FD_VARIADIC))
             g_drop(ParamSize, NotVoid);
         StackPtr += ParamSize;
     }
