@@ -23,6 +23,9 @@ libc:
 	+(cd target-flex; make)
 	mkdir -p tmp
 	rm -f tmp/*
+	rm -f lib6800.a
+	rm -f lib6803.a
+	rm -f lib6303.a
 	cp lib6800/*.o tmp
 	(cd tmp; ar rc ../lib6800.a *.o)
 	cp -f lib6803/*.o tmp
@@ -63,6 +66,7 @@ install:
 	cp as68/osize68 /opt/cc68/bin
 	cp as68/dumprelocs68 /opt/cc68/bin
 	cp copt/copt /opt/cc68/lib
+	cp copt/killdeadlabel /opt/cc68/lib/killdeadlabel68
 	cp frontend/cc68 /opt/cc68/bin/
 	cp cc68.rules /opt/cc68/lib
 	cp cc68-00.rules /opt/cc68/lib
@@ -72,6 +76,7 @@ install:
 	cp lib6803.a /opt/cc68/lib
 	cp lib6303.a /opt/cc68/lib
 	cp libio/6800/libio6800.a /opt/cc68/lib
+	cp libio/6803/libio6803.a /opt/cc68/lib
 	cp include/*.h /opt/cc68/include/
 	cp target-mc10/lib/libmc10.a /opt/cc68/lib
 	cp target-mc10/tools/tapeify /opt/cc68/lib/mc10-tapeify
