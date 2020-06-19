@@ -10,5 +10,5 @@ putl:
 		jsr __putc
 		inx
 		bra putl
-putsdone:	rts
+putsdone:	jmp ret4
 

@@ -5,5 +5,6 @@
 _putchar:
 		tsx
 		ldab 3,x
-		jmp __putc
+		jsr __putc
+		jmp ret2
 

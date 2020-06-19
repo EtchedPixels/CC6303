@@ -10,5 +10,7 @@ putl:
 		inx
 		bra putl
 putsdone:	ldab #10
-		jmp __putc
+		jsr __putc
+		jmp ret2
+
 
