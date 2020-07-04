@@ -59,10 +59,14 @@ nosignfix2:
 		std @sreg
 		ldd 8,x
 		jsr negeax
+		pulx
+		pulx
 		jmp pop4
 nosignfix3:
 		ldd 6,x
 		std @sreg
 		ldd 8,x
+		pulx
+		pulx
 		jmp pop4
 
