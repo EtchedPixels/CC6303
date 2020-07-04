@@ -17,8 +17,11 @@ tosudiveax:
 		pshx
 		tsx
 		jsr div32x32
+		; Extract the result
+		ldd 6,x
+		std @sreg
+		ldd 8,x
+		; Fix up the stack
 		pulx
-		pulb
-		pula
-		stx @sreg
+		pulx
 		jmp pop4

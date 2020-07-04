@@ -55,16 +55,14 @@ nosignfix2:
 		ldab @tmp4
 		anda #1
 		beq nosignfix3
-		pulx
-		pula
-		pulb
-		stx @sreg
+		ldd 6,x
+		std @sreg
+		ldd 8,x
 		jsr negeax
 		jmp pop4
 nosignfix3:
-		pulx
-		pula
-		pulb
-		stx @sreg
+		ldd 6,x
+		std @sreg
+		ldd 8,x
 		jmp pop4
 
