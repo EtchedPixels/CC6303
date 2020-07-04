@@ -60,9 +60,9 @@ loop:		; Shift the dividend left and set bit 0
 		ldab @tmp3+1
 		addb DIVIS+3,x
 		adca DIVIS+2
-		andb #0xFE
 		staa @tmp3
 		stab @tmp3+1
+		dec DIVID+3,x
 done:
 		dec tmp
 		bne loop
