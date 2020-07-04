@@ -12,15 +12,22 @@ tosudiveax:
 		; two
 		pshb
 		psha
+		ldaa @sreg
 		ldab @sreg+1
 		pshb
-		ldaa @sreg
 		psha
 		tsx
 		jsr div32x32
+		; Extract the result
+		ldaa 6,x
+		ldab 7,x
+		staa @sreg
+	        stab @sreg+1
+		ldaa 8,x
+		ldab 9,x
+		; Fix up the stack
 		ins
 		ins
-		pulb
-		pula
-		stx @sreg
+		ins
+		ins
 		jmp pop4

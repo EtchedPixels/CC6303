@@ -61,20 +61,26 @@ nosignfix2:
 		ldab @tmp4
 		anda #1
 		beq nosignfix3
-		pula
-		pulb
+		ldaa 6,x
+		ldab 7,x
 		staa @sreg
 		stab @sreg+1
-		pula
-		pulb
+		ldaa 8,x
+		ldab 9,x
 		jsr negeax
+popout:
+		ins
+		ins
+		ins
+		ins
 		jmp pop4
 nosignfix3:
-		pula
-		pulb
+		ldaa 6,x
+		ldab 7,x
 		staa @sreg
 		stab @sreg+1
-		pula
-		pulb
-		jmp pop4
+		ldaa 8,x
+		ldab 9,x
+		bra popout
+
 
