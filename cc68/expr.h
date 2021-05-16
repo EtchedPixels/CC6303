@@ -103,7 +103,7 @@ void NotViaX(void);
 int XFailed(void);
 /* Check if we were unable to do this via X */
 
-int XFailure;
+extern int XFailure;
 
 /* End of expr.h */
 
