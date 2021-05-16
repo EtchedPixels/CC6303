@@ -34,7 +34,8 @@ signfixed:
 		;
 		;	Sign rules
 		;
-		ldaa 9,x		; sign of TOS
+		tsx
+		ldaa 6,x		; sign of TOS
 		bpl nosignfix2
 		inc @tmp4
 		ldaa 8,x
