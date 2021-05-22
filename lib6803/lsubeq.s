@@ -14,6 +14,7 @@ lsubeqysp:
 	sts @tmp2
 	ldd @tmp2
 	addd @tmp
+	std @tmp
 	ldx @tmp
 	inx
 ;

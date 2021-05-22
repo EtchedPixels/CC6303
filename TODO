@@ -8,6 +8,28 @@ See if can remove other changes for typecast now fixed the typecast code
 
 X and fp tracking
 
+Rule to clean up the usual 32bit store where we don't need the result again
+something like
+
+	std %1,x
+	ldd @sreg
+	std %2,x
+	ldd %1,x
+	; notused D
+
+but more importantly and may need a special rule long stores to array via
+putind
+
+	std @tmp
+	ldd %1,x
+	ldd @sreg
+	std %2,x
+	ldd @tmp
+	; notused D
+
+so we eliminate the std @tmp - will need a compiler marker so we can tell
+if it's this use of @tmp.
+
 Libraries
 
 Fill in the many missing blanks for pure 6800 library code

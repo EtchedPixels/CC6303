@@ -15,7 +15,7 @@ laddeqysp:
 	tsx
 	xgdx
 	addd @tmp
-	inx
+	xgdx
 laddeqa:
 	std @tmp
 	ldd 2,x		; do the low 16bits

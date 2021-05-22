@@ -831,6 +831,19 @@ static void XToD(void)
     }
 }
 
+
+/* Generate the value of an offset from the stack base. We don't have to
+   worry about reach */
+
+static int GenOffsetIndirect(int Offs)
+{
+    /* Frame pointer argument */
+    if (Offs > 0 && FramePtr)
+        return Offs + 2;
+    Offs -= StackPtr;
+    return Offs;
+}
+
 /* Generate an offset from the stack into X. We try and minimise the
    required code by using off,x for smaller offsets and maths only
    for bigger ones. The maths for really big offsets is horrible so don't
@@ -1816,6 +1829,8 @@ void g_putlocal (unsigned Flags, int Offs, long Val)
                 StoreDViaX(Offs + 2);
                 LoadD("@sreg", 0);
                 StoreDViaX(Offs);
+                /* Cheaper than push/pop */
+                LoadDViaX(Offs + 2);
             }
             break;
 
@@ -1913,10 +1928,25 @@ void g_putind (unsigned Flags, unsigned Offs)
             StoreDViaX(Offs);
             break;
 
+        /* Storing a long is messy because we need to recover D afterwards
+           as it may be reused. It's also going to be hard for an optimizer
+           to clean this up well */
         case CF_LONG:
-            StoreDViaX(Offs + 2);
-            LoadD("@sreg", 0);
-            StoreDViaX(Offs);
+            if (CPU != CPU_6800) {
+                AddCodeLine("std @tmp");
+                StoreDViaX(Offs + 2);
+                LoadD("@sreg", 0);
+                StoreDViaX(Offs);
+                AddCodeLine("ldd @tmp");
+            } else {
+                AddCodeLine("psha");
+                StoreDViaX(Offs + 2);
+                AddCodeLine("ldaa @sreg");
+                AddCodeLine("staa $%02x,x", Offs);
+                AddCodeLine("ldaa @sreg+1");
+                AddCodeLine("staa $%02x,x", Offs+1);
+                AddCodeLine("pula");
+            }
             break;
 
         default:
@@ -2625,7 +2655,8 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
                 g_getimmed (flags, val, 0);
             }
             InvalidateX();
-            AddCodeLine ("ldx #$%04X", Offs);
+            Offs = GenOffsetIndirect(Offs);
+            AssignX(Offs);
             AddCodeLine ("jsr laddeqysp");
             break;
 
@@ -2824,6 +2855,7 @@ void g_subeqlocal (unsigned flags, int Offs, unsigned long val)
                 g_getimmed (flags, val, 0);
             }
             InvalidateX();
+            Offs = GenOffsetIndirect(Offs);
             AssignX(Offs);
             AddCodeLine ("jsr lsubeqysp");
             break;

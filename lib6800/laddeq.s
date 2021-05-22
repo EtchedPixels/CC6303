@@ -18,6 +18,9 @@ laddeqysp:
 	ldab @tmp2+1
 	addb @tmp2+1
 	adca @tmp
+	staa @tmp
+	stab @tmp+1
+	ldx @tmp
 	inx
 laddeqa:
 	staa @tmp

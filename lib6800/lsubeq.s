@@ -15,6 +15,8 @@ lsubeqysp:
 	ldab @tmp2+1
 	addb @tmp+1
 	adca @tmp
+	staa @tmp
+	stab @tmp+1
 	ldx @tmp
 lsubeq:
 	staa @tmp
