@@ -266,9 +266,10 @@ static void ParseAutoDecl (Declaration* Decl)
                     Flags |= CF_CONST;
                 else {
                     LoadExpr (CF_NONE, &Expr);
-                    ED_MakeRVal (&Expr);
                     /* Convert it to the target type */
                     TypeConversion (&Expr, Sym->Type);
+                    /* Then make it an rval */
+/* Not needed FIXME doble check                    ED_MakeRVal (&Expr); */
                 }
                 /* Push the value */
                 g_push (Flags | TypeOf (Sym->Type), Expr.IVal);
