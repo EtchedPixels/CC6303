@@ -1321,6 +1321,7 @@ void g_leave(int voidfunc, unsigned flags, unsigned argsize)
         } else {
             PullX(1);
             AddCodeLine("stx @fp");
+            AddCodeLine("rts");
         }
     } else {
         if (CPU == CPU_6800 && argsize) {
