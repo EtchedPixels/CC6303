@@ -2781,15 +2781,9 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
         case CF_LONG:
             NotViaX();
             if (flags & CF_CONST) {
-                if (val < 0x10000) {
-                    LoadD(lbuf, 0);
-                    SubDConst(val);
-                    StoreD(lbuf, 0);
-                } else {
-                    g_getstatic (flags, label, offs);
-                    g_dec (flags, val);
-                    g_putstatic (flags, label, offs);
-                }
+                g_getstatic (flags, label, offs);
+                g_dec (flags, val);
+                g_putstatic (flags, label, offs);
             } else {
                 InvalidateX();
                 AddCodeLine ("ldx #%s", lbuf);
@@ -2887,7 +2881,10 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
             DToX();
             AddCodeLine ("clra");
             AddCodeLine ("ldab $%02X,x", offs);
-            AddCodeLine ("adda #$%02X", (unsigned char)val);
+            if (val == 1)
+                AddCodeLine("decb");
+            else
+                AddCodeLine ("subb #$%02X", (unsigned char)val);
             AddCodeLine ("stab $%02X,x", offs);
             break;
 
@@ -4145,7 +4142,7 @@ void g_asr (unsigned flags, unsigned long val)
                 val &= 0x1F;
                 if (val >= 24) {
                     AssignX(0);
-                    AddCodeLine ("ldab @sreg+1");
+                    AddCodeLine ("ldab @sreg");
                     if ((flags & CF_UNSIGNED) == 0) {
                         unsigned L = GetLocalLabel();
                         AddCodeLine ("bpl %s", LocalLabelName (L));
@@ -4153,9 +4150,13 @@ void g_asr (unsigned flags, unsigned long val)
                         g_defcodelabel (L);
                     }
                     AddCodeLine ("stx @sreg");
-                    /* FIXME: overwrites a byte beyond @sreg, but it's worth
-                       having a scribble byte I think */
-                    AddCodeLine ("stx @sreg+1");
+                    /* For unsigned the sreg goes to 0, for signed it's
+                       FFFF or 0000, and copy a byte of that into the top
+                       half of our 16bit accumulator */
+                    if ((flags & CF_UNSIGNED) == 0)
+                        AddCodeLine("ldaa @sreg");
+                    else
+                        AddCodeLine("clra");
                     val -= 24;
                 }
                 if (val >= 16) {
