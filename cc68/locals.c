@@ -265,11 +265,11 @@ static void ParseAutoDecl (Declaration* Decl)
                 if (ED_IsConstAbsInt (&Expr))
                     Flags |= CF_CONST;
                 else {
-                    LoadExpr (CF_NONE, &Expr);
                     /* Convert it to the target type */
                     TypeConversion (&Expr, Sym->Type);
+                    LoadExpr (CF_NONE, &Expr);
                     /* Then make it an rval */
-/* Not needed FIXME doble check                    ED_MakeRVal (&Expr); */
+//                    ED_MakeRVal (&Expr);
                 }
                 /* Push the value */
                 g_push (Flags | TypeOf (Sym->Type), Expr.IVal);
