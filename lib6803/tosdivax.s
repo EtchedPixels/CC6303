@@ -12,39 +12,59 @@
 
 	.setcpu 6803
 
+;
+;	The sign of the remainder of a division is not defined until C99.
+;	C99 says it's the sign of the dividend.
+;
 tosmodax:
 	tsx
-	anda #$7F		; make positive
-	ldx 2,x
-	psha			; save the sign of the dividend
-	anda #$7F		; make positive
+	anda #$7F		; make the divisor unsigned
+	std @tmp		; save it
+	ldaa 2,x
+	anda #$80		; sign bit of dividend
+	psha			; save it
+	ldaa 2,x		; clear sign bit 
+	anda #$7F
+	staa 2,x
+	ldx 2,x			; get the dividend (unsigned)
+	ldd @tmp		; get the divisor unsigned
 	jsr div16x16		; do the unsigned divide
 				; D = quotient, X = remainder
-	stx @tmp		; save remainder whilst we fix up the sign
-	pula			; sign of the dividend
-signfix:
-	bita #$80		; negative ?
-	beq dd_unsigned
-	ldd @tmp		; Dividend is signed, fix up remainder
-	oraa #$80		; Force negative
-	jmp pop2
-dd_unsigned:
-	ldd @tmp		; Will be unsigned
+	stx @tmp		; save remainder for fixup
+	ldaa @tmp
+	anda #$7F		; clear sign
+	pulb
+	aba			; merge correct sign
+	ldab @tmp+1
 	jmp pop2
 	
 
+;
+;	D = TOS/D signed
+;
+;	The sign of the result is positive if the inputs have the same
+;	sign, otherwise negative
+;
 tosdivax:
 	tsx
-	psha			; save sign of divisor
-	anda #$7F		; make positive
-	ldx 2,x
-	psha			; save the sign of the dividend
-	anda #$7F		; make positive
-	jsr div16x16		; do the unsigned divide
-				; D = quotient, X = remainder
-	std @tmp		; save quotient whilst we fix up the sign
-	pula			; sign of the dividend
-	tsx
-	eora ,x			; A bit 7 is now the xor of the signs
-	ins
-	bra signfix		; shared sign fixing
+	staa @tmp		; save the top of the divisor
+	eora 2,x		; exclusive or of signs
+	anda #$80		; mask so only sign bit
+	psha			; save this so we know what to do at the end
+	ldaa @tmp		; get the top of our divisor back
+	pshb			; stack the divisor
+	psha
+	ldd 2,x			; get the dividend
+	anda #$7F		; make it unsigned
+	std @tmp		; move it into X
+	ldx @tmp
+	pula			; get the divisor back into D
+	pulb
+	anda #$7F		; make the divisor unsigned
+	jsr div16x16		; do the maths
+	stab @tmp		; save the quotient
+	anda #$7F		; clear the sign
+	pulb			; get the resulting sign back
+	aba			; put the sign back in
+	ldab @tmp		; recover the low bits
+	jmp pop2
