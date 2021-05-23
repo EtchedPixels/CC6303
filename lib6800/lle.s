@@ -4,7 +4,7 @@
 
 tosleeax:
 	jsr toslcmp
-	jsr boolle
+	jsr boolule		; toslcmp generates c and z not n
 	jmp pop4
 
 

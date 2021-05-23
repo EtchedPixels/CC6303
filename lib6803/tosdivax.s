@@ -29,13 +29,12 @@ tosmodax:
 	ldx 2,x			; get the dividend (unsigned)
 	ldd @tmp		; get the divisor unsigned
 	jsr div16x16		; do the unsigned divide
-				; D = quotient, X = remainder
-	stx @tmp		; save remainder for fixup
-	ldaa @tmp
-	anda #$7F		; clear sign
-	pulb
-	aba			; merge correct sign
-	ldab @tmp+1
+				; X = quotient, D = remainder
+	stab @tmp		; save the quotient low
+	anda #$7F		; clear the sign
+	pulb			; get the resulting sign back
+	aba			; put the sign back in
+	ldab @tmp		; recover the low bits
 	jmp pop2
 	
 
@@ -62,9 +61,11 @@ tosdivax:
 	pulb
 	anda #$7F		; make the divisor unsigned
 	jsr div16x16		; do the maths
-	stab @tmp		; save the quotient
-	anda #$7F		; clear the sign
-	pulb			; get the resulting sign back
-	aba			; put the sign back in
-	ldab @tmp		; recover the low bits
+				; X = quotient, D = remainder
+	stx @tmp		; save quotient for fixup
+	ldaa @tmp
+	anda #$7F		; clear sign
+	pulb
+	aba			; merge correct sign
+	ldab @tmp+1
 	jmp pop2

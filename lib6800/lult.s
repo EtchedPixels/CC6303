@@ -3,7 +3,7 @@
 	.export tosulteax
 
 tosulteax:
-	jsr toslcmp
+	jsr toslucmp
 	jsr boolult
 	jmp pop4
 

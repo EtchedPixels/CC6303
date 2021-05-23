@@ -3,6 +3,6 @@
 	.export tosuleeax
 
 tosuleeax:
-	jsr toslcmp
+	jsr toslucmp
 	jsr boolule
 	jmp pop4

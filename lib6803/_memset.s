@@ -6,33 +6,17 @@
 
 _memset:
 	tsx
-	ldd	4,x
-	stab	@tmp		; destination
-	ldd	2,x		; length
-	ldx	6,x		; destination
-	bsr	nextblock
-	tsx
-	ldd	6,x
-	rts
+	ldd	6,x		; start
+	addd	2,x		; + length
+	std	@tmp		; end stop
+	ldab	5,x		; fill byte
+	ldx	6,x		; start
 
-nextblock:
-	tsta
-	beq	tailset
-	; Set 256 bytes
-	pshb
-	psha
-	clrb
-	bsr	tailset
-	pula
-	pulb
-	deca
-	bra	nextblock
-
-tailset:
-	ldaa	@tmp
-clearloop:
-	staa	,x
+loop:
+	stab	,x
 	inx
-	decb
-	bne	clearloop
+	cpx	@tmp
+	bne	loop
+	tsx
+	ldx	6,x		; returns the start passed in
 	rts

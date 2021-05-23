@@ -1,6 +1,6 @@
 OBJ =  asreax8.o bneg.o compleax.o __cpu_to_le16.o __cpu_to_le32.o
 OBJ += divide32x32.o divide.o laddeq.o ladd.o land.o lbneg.o lcmp.o lor.o
-OBJ += lsave.o lsubeq.o ltest.o lxor.o makebool.o _memcpy.o _memset.o
+OBJ += lsave.o lsubeq.o ltest.o lxor.o lucmp.o makebool.o
 OBJ += mulax10.o mulax12.o mulax3.o mulax5.o mulax6.o mulax7.o mulax9.o
 OBJ += multiply32x32.o negeax.o pop2.o pop4.o
 OBJ += shlax.o shleax.o shrax.o shr.o _strcpy.o sub.o swap.o

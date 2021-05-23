@@ -4,5 +4,5 @@
 
 toslteax:
 	jsr toslcmp
-	jsr boollt
+	jsr boolult		; toslcmp generates c and z not n
 	jmp pop4
