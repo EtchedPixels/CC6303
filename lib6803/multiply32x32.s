@@ -54,6 +54,9 @@ tosumuleax:
 		addb 2,x	; add in the existing
 		adca 1,x
 		std 1,x
+		bcc norip16
+		inc ,x		; carry into the top byte
+norip16:
 		ldaa 8,x
 		ldab @tmp	; again
 		mul
@@ -97,6 +100,6 @@ tosumuleax:
 is_done:
 		pulx
 		stx @sreg
-		pulb
 		pula
+		pulb
 		jmp pop4
