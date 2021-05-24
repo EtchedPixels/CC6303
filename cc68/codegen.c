@@ -1565,9 +1565,9 @@ void g_getlocal_x (unsigned Flags, int Offs)
             break;
 
         case CF_LONG:
-            LoadDViaX(Offs + 2);
+            LoadDViaX(Offs);
             StoreD ("@sreg", 0);
-            AddCodeLine ("ldx $%02X,x", Offs);
+            AddCodeLine ("ldx $%02X,x", Offs + 2);
             break;
 
         default:
