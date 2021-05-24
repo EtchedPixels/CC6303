@@ -1782,6 +1782,7 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
                 StoreD(lbuf, 2);
                 LoadD("@sreg", 0);
                 StoreD(lbuf, 0);
+                LoadD(lbuf, 2);
             }
             break;
 
@@ -2689,6 +2690,9 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
             else
                 AddCodeLine("addb #$%04X", (unsigned char)val);
             AddCodeLine("stab $%02X,x", offs);
+            AddCodeLine("clra");
+            /* FIXME: do we need to sign extend - 6502 doesn't but that
+               may well be a bug! */
             break;
 
         case CF_INT:
@@ -2886,6 +2890,12 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
             else
                 AddCodeLine ("subb #$%02X", (unsigned char)val);
             AddCodeLine ("stab $%02X,x", offs);
+            if ((flags & CF_UNSIGNED) == 0) {
+                unsigned L = GetLocalLabel();
+                AddCodeLine ("bpl %s", LocalLabelName (L));
+                AddCodeLine ("coma");
+                g_defcodelabel (L);
+            }
             break;
 
         case CF_INT:
@@ -3178,38 +3188,20 @@ void g_push (unsigned flags, unsigned long val)
                         AddCodeLine("psha");
                     }
                 } else {
-                    /* Force immediates via X */
-                    /* FIXME: 6800 support needs adding here */
-                    if (CPU == CPU_6800) {
-                        /* No pshx so do it the hard way */
-                        g_getimmed (flags, val, 0);
+                    g_getimmed (flags | CF_USINGX, val, 0);
+                    InvalidateX();
+                    switch(flags & CF_TYPEMASK) {
+                    case CF_INT:
+                        AddCodeLine("pshx");
+                        break;
+                    case CF_LONG:
+                        /* X is the low bits in this case */
+                        AddCodeLine("pshx");
                         AddCodeLine("pshb");
                         AddCodeLine("psha");
-                        switch (flags & CF_TYPEMASK) {
-                        case CF_INT:
-                            break;
-                        case CF_LONG:
-                            LoadD("@sreg", 0);
-                            AddCodeLine("pshb");
-                            AddCodeLine("psha");
-                            break;
-                        }
-                    } else {
-                        g_getimmed (flags | CF_USINGX, val, 0);
-                        InvalidateX();
-                        switch(flags & CF_TYPEMASK) {
-                        case CF_INT:
-                            AddCodeLine("pshx");
-                            break;
-                        case CF_LONG:
-                            /* X is the low bits in this case */
-                            AddCodeLine("pshx");
-                            AddCodeLine("pshb");
-                            AddCodeLine("psha");
-                            break;
-                        default:
-                            typeerror (flags);
-                        }
+                        break;
+                    default:
+                        typeerror (flags);
                     }
                     push (flags);
                     return;
@@ -3341,6 +3333,7 @@ void g_callind (unsigned Flags, int Offs, int ArgSize)
     } else {
         /* FIXME: check flag type is right here */
         GenOffset(Flags, Offs, 1, 1);
+        AddCodeLine("ldx ,x");
         if ((Flags & CF_FIXARGC) == 0) {
             if (ArgSize)
                 AddCodeLine("ldab #$%02X", ArgSize);
@@ -5607,12 +5600,12 @@ void g_switch (Collection* Nodes, unsigned DefaultLabel, unsigned Depth)
             break;
         case 3:
             AddCodeLine ("psha");
-            AddCodeLine ("ldaa @sreg");
+            AddCodeLine ("ldaa @sreg+1");
             Compare = "cmpa #$%02X";
             break;
         case 4:
             AddCodeLine ("psha");
-            AddCodeLine ("ldaa @sreg+1");
+            AddCodeLine ("ldaa @sreg");
             Compare = "cmpa #$%02X";
             break;
         default:
