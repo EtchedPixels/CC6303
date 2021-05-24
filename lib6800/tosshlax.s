@@ -19,8 +19,8 @@ tosshlax:
 shloop:
 	tstb
 	beq shiftdone
-	lsr 2,x
-	ror 3,x
+	lsl 3,x
+	rol 2,x
 	decb
 	bra shloop
 shiftout:
