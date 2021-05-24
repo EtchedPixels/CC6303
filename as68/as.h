@@ -156,6 +156,104 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	SEGMENT_CLASH	29
 #define UNKNOWN_SYMBOL	30
 
+#elif TARGET_8085
+
+typedef	uint16_t	VALUE;		/* For symbol values */
+
+#define ARCH OA_8080
+#define ARCH_FLAGS 0
+#define ARCH_CPUFLAGS 0
+
+/*
+ * Types. These are used
+ * in both symbols and in address
+ * descriptions. Observe the way the
+ * symbol flags hide in the register
+ * field of the address.
+ */
+#define	TMREG	0x007F			/* Register code */
+#define	TMMDF	0x0001			/* Multidef */
+#define	TMASG	0x0002			/* Defined by "=" */
+#define	TMMODE	0xFF00			/* Mode */
+#define	TMINDIR	0x8000			/* Indirect flag in mode */
+#define TPUBLIC	0x0080			/* Exported symbol */
+
+#define	TNEW	0x0000			/* Virgin */
+#define	TUSER	0x0100			/* User name */
+#define	TBR	0x0200			/* Byte register */
+#define	TWR	0x0300			/* Word register */
+#define	TSR	0x0400			/* Special register (I, R) */
+#define	TDEFB	0x0500			/* defb */
+#define	TDEFW	0x0600			/* defw */
+#define	TDEFS	0x0700			/* defs */
+#define	TDEFM	0x0800			/* defm */
+#define	TORG	0x0900			/* org */
+#define	TEQU	0x0A00			/* equ */
+#define	TCOND	0x0B00			/* conditional */
+#define	TENDC	0x0C00			/* end conditional */
+#define TSEGMENT 0x0D00			/* segments by number */
+#define TEXPORT 0x0E00			/* symbol export */
+#define	TSETCPU	0x0F00			/* setcpu */
+#define	TIMPL	0x1000			/* implicit 8080 */
+#define	TIMPL85	0x1100			/* implicit 8085 */
+#define	TI8	0x1200			/* 8bit immediate */
+#define	TI8_85	0x1300			/* 8bit immediate 8085 */
+#define	TI16	0x1400			/* 16bit immediate */
+#define	TI16_85	0x1500			/* 16bit immediate 8085 */
+#define	TREG8	0x1600			/* 8bit register */
+#define	TREG16	0x1700			/* 16bit register (sp allowed not psw )*/
+#define	TREG16_P 0x1800			/* 16bit push/pop (psw allowed not sp) */
+#define	TMOV	0x1900			/* mov instruction */
+#define TRST    0x1A00			/* rst instruction */
+#define TCC	0x1B00			/* not used but needed for core code */
+#define TREG8_I8 0x1C00			/* reg,constant - mvi etc */
+#define TREG16_I16 0x1D00			/* reg,constant - mvi etc */
+
+/*
+ * Registers.
+ */
+#define	B	0			/* 8bit matching encoding for 8 */
+#define	C	1
+#define	D	2
+#define	E	3
+#define	H	4
+#define	L	5
+#define	M	6
+#define	A	7
+
+#define	SP	8			/* 16bit cases */
+#define	PSW	9
+
+/*
+ *	Error message numbers: FIXME - sort general first
+ */
+
+#define BRACKET_EXPECTED 1
+#define MISSING_COMMA	2
+#define SQUARE_EXPECTED 3
+#define PERCENT_EXPECTED 4
+#define UNEXPECTED_CHR	10
+#define PHASE_ERROR	11
+#define MULTIPLE_DEFS	12
+#define SYNTAX_ERROR	13
+#define MUST_BE_ABSOLUTE	14
+#define MISSING_DELIMITER 15
+#define INVALID_CONST	16
+
+
+#define INVALID_REG	19
+#define ADDR_REQUIRED	20
+#define INVALID_ID	21
+
+#define DIVIDE_BY_ZERO	23
+#define CONSTANT_RANGE  24
+#define DATA_IN_BSS	 25
+#define SEGMENT_OVERFLOW 26
+#define DATA_IN_ZP	27
+#define REQUIRE_8085	28
+#define	SEGMENT_CLASH	29
+#define UNKNOWN_SYMBOL	30
+
 
 #elif TARGET_6502
 
