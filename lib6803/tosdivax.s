@@ -18,23 +18,26 @@
 ;
 tosmodax:
 	tsx
-	anda #$7F		; make the divisor unsigned
-	std @tmp		; save it
-	ldaa 2,x
-	anda #$80		; sign bit of dividend
-	psha			; save it
-	ldaa 2,x		; clear sign bit 
-	anda #$7F
-	staa 2,x
+	bsr absd
+	pshb
+	psha
+	ldd 2,x
+	bita #$80		; sign bit of dividend
+	bne negmod
 	ldx 2,x			; get the dividend (unsigned)
-	ldd @tmp		; get the divisor unsigned
+	pula
+	pulb
 	jsr div16x16		; do the unsigned divide
 				; X = quotient, D = remainder
-	stab @tmp		; save the quotient low
-	anda #$7F		; clear the sign
-	pulb			; get the resulting sign back
-	aba			; put the sign back in
-	ldab @tmp		; recover the low bits
+	jmp pop2
+negmod:
+	bsr negd
+	std 2,x
+	pula
+	pulb
+	ldx 2,x
+	jsr div16x16
+	bsr negd
 	jmp pop2
 	
 
@@ -45,27 +48,37 @@ tosmodax:
 ;	sign, otherwise negative
 ;
 tosdivax:
+	clr @tmp4
 	tsx
-	staa @tmp		; save the top of the divisor
-	eora 2,x		; exclusive or of signs
-	anda #$80		; mask so only sign bit
-	psha			; save this so we know what to do at the end
-	ldaa @tmp		; get the top of our divisor back
-	pshb			; stack the divisor
+	bsr absd
+	pshb
 	psha
-	ldd 2,x			; get the dividend
-	anda #$7F		; make it unsigned
-	std @tmp		; move it into X
-	ldx @tmp
-	pula			; get the divisor back into D
+	ldd 2,x
+	bsr absd
+	std 2,x
+	pula
 	pulb
-	anda #$7F		; make the divisor unsigned
+	ldx 2,x
 	jsr div16x16		; do the maths
 				; X = quotient, D = remainder
 	stx @tmp		; save quotient for fixup
-	ldaa @tmp
-	anda #$7F		; clear sign
-	pulb
-	aba			; merge correct sign
-	ldab @tmp+1
+	ldaa @tmp4
+	rora
+	bcc divdone		; low bit set -> negate
+	ldd @tmp
+	bsr negd
 	jmp pop2
+divdone:
+	ldd @tmp
+	jmp pop2
+
+absd:
+	bita #$80
+	beq ispos
+	inc @tmp4
+negd:
+	subd @one		; negate d
+	coma
+	comb
+ispos:
+	rts

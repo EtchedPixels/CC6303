@@ -14,40 +14,67 @@
 
 tosmodax:
 	tsx
-	anda #$7F		; make positive
+	bsr absd
+	psha
+	ldaa 2,x
+	bita #$80
+	beq negmod
+	pula
 	ldx 2,x
-	psha			; save the sign of the dividend
-	anda #$7F		; make positive
 	jsr div16x16		; do the unsigned divide
-				; D = quotient, X = remainder
-	stx @tmp		; save remainder whilst we fix up the sign
-	pula			; sign of the dividend
-signfix:
-	bita #$80		; negative ?
-	beq dd_unsigned
-	ldaa @tmp		; Dividend is signed, fix up remainder
-	ldab @tmp+1
-	oraa #$80		; Force negative
+				; X = quotient, D = remainder
 	jmp pop2
-dd_unsigned:
-	ldaa @tmp		; Will be unsigned
-	ldab @tmp+1
+negmod:
+	pshb
+	ldab 3,x
+	bsr negd
+	stab 3,x
+	staa 2,x
+	ldx 2,x
+	pulb
+	pula
+	jsr div16x16
+	bsr negd
 	jmp pop2
 	
 
 tosdivax:
 	tsx
-	psha			; save sign of divisor
-	anda #$7F		; make positive
+	clr @tmp4
+	bsr absd
+	pshb
+	psha
+	ldaa 2,x
+	ldab 3,x
+	bsr absd
+	staa 2,x
+	stab 3,x
 	ldx 2,x
-	psha			; save the sign of the dividend
-	anda #$7F		; make positive
+	pula
+	pulb
 	jsr div16x16		; do the unsigned divide
-				; D = quotient, X = remainder
-	staa @tmp		; save quotient whilst we fix up the sign
-	stab @tmp+1
-	pula			; sign of the dividend
-	tsx
-	eora 0,x		; A bit 7 is now the xor of the signs
-	ins
-	bra signfix		; shared sign fixing
+				; X = quotient, D = remainder
+	stx @tmp
+	ldaa @tmp4
+	rora
+	bcs negdiv
+	ldaa @tmp
+	ldab @tmp+1
+	jmp pop2
+negdiv:
+	ldaa @tmp
+	ldab @tmp+1
+	bsr negd
+	jmp pop2
+
+absd:
+	bita #$80
+	beq ispos
+	inc @tmp4
+negd:
+	decb
+	sbca #0
+	coma
+	comb
+ispos:
+	rts
