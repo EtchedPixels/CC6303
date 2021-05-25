@@ -241,7 +241,8 @@ static void ParseAutoDecl (Declaration* Decl)
                 /* Next, allocate the space on the stack. This means that the
                 ** variable is now located at offset 0 from the current sp.
                 */
-                F_AllocLocalSpace (CurrentFunc);
+                /* We now do this in initauto for effiency
+                   F_AllocLocalSpace (CurrentFunc); */
 
                 /* Generate code to copy the initialization data into the
                 ** variable space

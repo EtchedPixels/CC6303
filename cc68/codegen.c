@@ -1035,9 +1035,6 @@ void g_preamble (void)
         case CPU_6303:      AddTextLine ("\t.setcpu\t\t6303");      break;
         default:            Internal ("Unknown CPU: %d", CPU);
     }
-
-    /* Import dp variables */
-    /* FIXME: */
 }
 
 
@@ -1054,7 +1051,7 @@ void g_moveable (void)
     InvalidateX();
 }
 
-/* We have generted code and thrown it away. FIXME: we can do better in this
+/* We have generated code and thrown it away. OPTIMISE: we can do better in this
    case I think */
 void g_removed (void)
 {
@@ -1407,7 +1404,7 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                     /* Load the value */
                     AssignD(W2, 0);
                     StoreD("@sreg", 0);
-                    /* TODO: for 6800 we should try and do byte not word sized
+                    /* OPTIMIZE: for 6800 we should try and do byte not word sized
                        pair optimizing */
                     if (W1 != W2)
                         AssignD(W1, 0);
@@ -1576,8 +1573,6 @@ void g_getlocal_x (unsigned Flags, int Offs)
 }
 
 
-/* FIXME: in the case we are generating code for X do these become no-op */
-
 void g_primary_to_x(void)
 {
     DToX();
@@ -1591,8 +1586,6 @@ void g_x_to_primary(void)
 /* For now we use D but there is a good case for optimising a lot of these
    paths to use X when they don't need X again shortly */
 
-/* FIXME: endiannes */
-
 void g_getind (unsigned Flags, unsigned Offs)
 /* Fetch the specified object type indirect through the primary register
 ** into the primary register
@@ -1602,7 +1595,7 @@ void g_getind (unsigned Flags, unsigned Offs)
     ** the primary. This way we get an easy addition and use the low byte
     ** as the offset
     **
-    ** FIXME: for 6803 we want to fold this into the xdgx helper as it's
+    ** OPTIMIZE: for 6803 we want to fold this into the xdgx helper as it's
     ** cheaper then
     *
     * We want to end up with either
@@ -1619,7 +1612,7 @@ void g_getind (unsigned Flags, unsigned Offs)
     */
     Offs = MakeByteOffs (Flags, Offs);
 
-    /* FIXME: For now. We really want D into X and X into X forms */
+    /* OPTIMIZE: For now. We really want D into X and X into X forms */
     NotViaX();
 
     /* Handle the indirect fetch */
@@ -1720,11 +1713,11 @@ void g_leasp (unsigned Flags, int Offs)
     /* Easier to work backwards */
     Offs = -Offs;
 
-    InvalidateX();		/* FIXME: can we use GenOffset type logic */
+    InvalidateX();		/* OPTIMIZE: can we use GenOffset type logic */
     AddCodeLine("tsx");
-    /* FIXME: probably > 1018 - work this out properly */
+    /* OPTIMIZE: probably > 1018 - work this out properly */
     if (Offs < 1018 && CPU != CPU_6800) {
-        InvalidateX();	/* FIXME: rework off existing X if we can */
+        InvalidateX();	/* OPTIMIZE: rework off existing X if we can */
         AddCodeLine("tsx");
         if (Offs >= 255) {
             AddCodeLine("ldab #$255");
@@ -1740,7 +1733,7 @@ void g_leasp (unsigned Flags, int Offs)
     } else {
         /* Hard case - probably better just to go via D */
         NotViaX();
-        /* FIXME: we need to deal with this case so we can do sane codegen when
+        /* OPTIMIZE: we need to deal with this case so we can do sane codegen when
         working with X as constant */
         Internal("FIXME: g_leasp");
     }
@@ -1844,13 +1837,12 @@ void g_putlocal (unsigned Flags, int Offs, long Val)
 
 
 
-/* FIXME: needs a complete review */
 void g_putind (unsigned Flags, unsigned Offs)
 /* Store the specified object type in the primary register at the address
 ** on the top of the stack
 */
 {
-    /* FIXME: work out actual case values */
+    /* OPTIMIZE: work out actual case values */
     unsigned viaabx = 1536;
     unsigned size = 256;
 
@@ -1967,8 +1959,6 @@ void g_putind (unsigned Flags, unsigned Offs)
 /*                    type conversion and similiar stuff                     */
 /*****************************************************************************/
 
-
-/* FIXME: move off stack ? */
 
 void g_toslong (unsigned flags)
 /* Make sure, the value on TOS is a long. Convert if necessary */
@@ -2251,7 +2241,7 @@ void g_scale (unsigned flags, long val)
 {
     int p2;
 
-    /* FIXME: check if we get called for char and if so return before
+    /* OPTIMIZE: check if we get called for char and if so return before
        NotViaX. */
     NotViaX();
     /* Value may not be zero */
@@ -2390,7 +2380,7 @@ void g_addlocal (unsigned flags, int offs)
 
         case CF_LONG:
             /* Do it the old way */
-            /* FIXME: optimise */
+            /* OPTIMIZE:  */
             g_push (flags, 0);
             g_getlocal (flags, offs);
             g_add (flags, 0);
@@ -2652,7 +2642,7 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
             break;
 
         case CF_LONG:
-            /* FIXME: this needs much improvement for 680x */
+            /* OPTIMIZE: this needs much improvement for 680x */
             if (flags & CF_CONST) {
                 g_getimmed (flags, val, 0);
             }
@@ -2668,7 +2658,7 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
 }
 
 
-/* FIXME: we need a notion not just of using X but of "from X" to fix this
+/* OPTIMIZE: we need a notion not just of using X but of "from X" to fix this
    to generate x relative code when it can. And probably smarts in the caller */
 void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
 /* Emit += for the location with address in d */
@@ -2691,8 +2681,6 @@ void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
                 AddCodeLine("addb #$%04X", (unsigned char)val);
             AddCodeLine("stab $%02X,x", offs);
             AddCodeLine("clra");
-            /* FIXME: do we need to sign extend - 6502 doesn't but that
-               may well be a bug! */
             break;
 
         case CF_INT:
@@ -2881,7 +2869,6 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
 
         case CF_CHAR:
             /* No need to care about sign extension ? */
-            /* FIXME: would a combo makebyteoffs/dtox(offs) help */
             DToX();
             AddCodeLine ("clra");
             AddCodeLine ("ldab $%02X,x", offs);
@@ -2890,13 +2877,6 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
             else
                 AddCodeLine ("subb #$%02X", (unsigned char)val);
             AddCodeLine ("stab $%02X,x", offs);
-            /* FIXME: verify we can remove this */
-            if ((flags & CF_UNSIGNED) == 0) {
-                unsigned L = GetLocalLabel();
-                AddCodeLine ("bpl %s", LocalLabelName (L));
-                AddCodeLine ("coma");
-                g_defcodelabel (L);
-            }
             break;
 
         case CF_INT:
@@ -2930,14 +2910,22 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
 void g_addaddr_local (unsigned flags attribute ((unused)), int offs)
 /* Add the address of a local variable to d */
 {
-    /* FIXME: varargs */
+    /* TODO: varargs */
     /* Add the offset */
     NotViaX();		/* For now: can improve on this due to abx */
-    offs -= StackPtr;
-    if (offs != 0)
-        AddDConst(offs);
-    AddCodeLine("sts @tmp");
-    AddD("@tmp", 0);
+    
+    if (offs > 0 && FramePtr) {
+        AddCodeLine("addd @fp");
+        offs += 2;
+        if (offs != 0)
+            AddDConst(offs);
+    } else {
+        offs -= StackPtr;
+        if (offs != 0)
+            AddDConst(offs);
+        AddCodeLine("sts @tmp");
+        AddD("@tmp", 0);
+    }
 }
 
 
@@ -3014,7 +3002,7 @@ void g_restore (unsigned flags)
 
         case CF_LONG:
             InvalidateX();
-            /* FIXME: INLINE */
+            /* OPTIMIZE: INLINE */
             AddCodeLine ("jsr resteax");
             break;
 
@@ -3111,7 +3099,7 @@ void g_test (unsigned flags)
             /* FALLTHROUGH */
 
         case CF_INT:
-            /* FIXME: are there better options for 6303 at least ? */
+            /* OPTIMIZE: are there better options for 6303 at least ? */
             AddCodeLine ("staa @tmp1");
             AddCodeLine ("orab @tmp1");
             /* Check we get all the codes we need this way */
@@ -3137,7 +3125,7 @@ void g_test (unsigned flags)
 void g_push (unsigned flags, unsigned long val)
 /* Push the primary register or a constant value onto the stack */
 {
-    /* FIXME: we need to do long better especially in the 6800 case */
+    /* OPTIMIZE: we need to do long better especially in the 6800 case */
     if ((flags & CF_CONST) && (flags & CF_TYPEMASK) != CF_LONG) {
 
         /* We have a constant 8 or 16 bit value */
@@ -3178,7 +3166,7 @@ void g_push (unsigned flags, unsigned long val)
                         AddCodeLine("psha");
                         break;
                     case CF_LONG:
-                        /* This is ugly FIXME: for 6800 make g_getimmed
+                        /* This is ugly OPTIMIZE: for 6800 make g_getimmed
                            put the other bits not in X but a reg ? */
                         AddCodeLine("pshb");
                         AddCodeLine("psha");
@@ -3332,7 +3320,7 @@ void g_callind (unsigned Flags, int Offs, int ArgSize)
         }
         AddCodeLine ("jsr ,x");
     } else {
-        /* FIXME: check flag type is right here */
+        /* REVIEW: check flag type is right here */
         GenOffset(Flags, Offs, 1, 1);
         AddCodeLine("ldx ,x");
         if ((Flags & CF_FIXARGC) == 0) {
@@ -3394,7 +3382,7 @@ void g_drop (unsigned Space, int save_d)
 /* Drop space allocated on the stack */
 /* We have ABX but nothing the other way */
 {
-    /* There are a few cases we could save X FIXME */
+    /* There are a few cases we could save X OPTIMIZE */
     InvalidateX();
     if (Space > 10 + 4 * save_d) {
         /* Preserve @sreg/D */
@@ -3434,7 +3422,7 @@ void g_drop (unsigned Space, int save_d)
 void g_space (int Space, int save_d)
 /* Create or drop space on the stack */
 {
-    /* There are some cases we could save X but not clear they matter FIXME */
+    /* There are some cases we could save X but not clear they matter REVIEW */
     InvalidateX();
     if (Space < 0) {
         /* This is actually a drop operation */
@@ -3669,7 +3657,7 @@ void g_mul (unsigned flags, unsigned long val)
         return;
     }
 
-    /* FIXME: Spot near powers of two by bit count for add/push/add/pop/add
+    /* OPTIMIZE: Spot near powers of two by bit count for add/push/add/pop/add
        sequences ? */
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -4132,7 +4120,7 @@ void g_asr (unsigned flags, unsigned long val)
                 return;
 
             case CF_LONG:
-                /* FIXME: we could go with oversize shift = 0 better ? */
+                /* REVIEW: we could go with oversize shift = 0 better ? */
                 val &= 0x1F;
                 if (val >= 24) {
                     AssignX(0);
@@ -4556,7 +4544,7 @@ void g_eq (unsigned flags, unsigned long val)
     };
 
 
-    /* FIXME look at x for NULL case only */
+    /* OPTIMIZE look at x for NULL case only */
     NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -4634,7 +4622,7 @@ void g_ne (unsigned flags, unsigned long val)
         "tosneax", "tosneax", "tosneeax", "tosneeax"
     };
 
-    /* FIXME look at x for NULL case only */
+    /* OPTIMIZE look at x for NULL case only */
     NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -4748,7 +4736,6 @@ void g_lt (unsigned flags, unsigned long val)
 
                 case CF_LONG:
                     /* Do a subtraction */
-                    /* TODO */
                     AddCodeLine ("subb #$%02X", (unsigned char)val);
                     AddCodeLine ("sbca #$%02X", (unsigned char)(val >> 8));
                     AddCodeLine ("ldab @sreg+1");
@@ -5265,7 +5252,7 @@ void g_ge (unsigned flags, unsigned long val)
                     return;
 
                 case CF_LONG:
-                    /* TODO 6303 can use TIM */
+                    /* OPTIMIZE: 6303 can use TIM */
                     /* Just test the high byte */
                     AddCodeLine ("ldab @sreg+1");
                     AddCodeLine ("comb");
@@ -5361,8 +5348,6 @@ void g_ge (unsigned flags, unsigned long val)
 /*                         Allocating static storage                         */
 /*****************************************************************************/
 
-
-/* TODO: BSS v DATA v CONST */
 
 void g_res (unsigned n)
 /* Reserve static storage, n bytes */
@@ -5474,30 +5459,32 @@ void g_initregister (unsigned Label, unsigned Reg, unsigned Size)
 }
 
 
-/* FIXME: we want to move away from this to psh/pop of constant bits */
+/*
+ *	Unlike CC65 we make it our responsibility to make the stack space.
+ *	The 680x is weak at both memcpy and stack adjusting so avoid both
+ *	by just pushing the data
+ */
 void g_initauto (unsigned Label, unsigned Size)
-/* Initialize a local variable at stack offset zero from static data */
 {
-#if 0
     unsigned CodeLabel = GetLocalLabel ();
-    /* FIXME */
-    if (Size <= 128) {
-        AddCodeLine ("ldy #$%02X", Size-1);
-        g_defcodelabel (CodeLabel);
-        AddCodeLine ("lda %s,y", GetLabelName (CF_STATIC, Label, 0));
-        AddCodeLine ("sta (sp),y");
-        AddCodeLine ("dey");
-        AddCodeLine ("bpl %s", LocalLabelName (CodeLabel));
-    } else if (Size <= 256) {
-        AddCodeLine ("ldy #$00");
-        g_defcodelabel (CodeLabel);
-        AddCodeLine ("lda %s,y", GetLabelName (CF_STATIC, Label, 0));
-        AddCodeLine ("sta (sp),y");
-        AddCodeLine ("iny");
-        AddCmpCodeIfSizeNot256 ("cpy #$%02X", Size);
-        AddCodeLine ("bne %s", LocalLabelName (CodeLabel));
-    }
-#endif
+
+    /* Work from end to start pushing bytes */
+    AddCodeLine("ldx #%s", GetLabelName (CF_STATIC, Label, 0));
+    AddCodeLine("stx @tmp");
+    AddCodeLine("ldx #%s+$%04X", GetLabelName (CF_STATIC, Label, 0), Size);
+
+    g_defcodelabel (CodeLabel);
+
+    /* We always have at least one byte */
+    AddCodeLine("ldab ,x");
+    AddCodeLine("pshb");
+    AddCodeLine("inx");
+    AddCodeLine("cpx @tmp");
+    AddCodeLine ("bne %s", LocalLabelName (CodeLabel));
+
+    /* And adjust the stack pointer accordingly */
+    StackPtr -= Size;
+
 }
 
 
