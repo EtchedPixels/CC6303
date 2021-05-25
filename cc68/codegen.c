@@ -2821,7 +2821,7 @@ void g_subeqlocal (unsigned flags, int Offs, unsigned long val)
                     else
                         AddCodeLine ("subb #$%02X", (unsigned char)val);
                 } else {
-                    AddCodeLine ("comb");
+                    AddCodeLine ("negb");
                     AddCodeLine ("addb $%02X,x", Offs);
                 }
                 AddCodeLine ("stab $%02X,x", Offs);
@@ -2890,6 +2890,7 @@ void g_subeqind (unsigned flags, unsigned offs, unsigned long val)
             else
                 AddCodeLine ("subb #$%02X", (unsigned char)val);
             AddCodeLine ("stab $%02X,x", offs);
+            /* FIXME: verify we can remove this */
             if ((flags & CF_UNSIGNED) == 0) {
                 unsigned L = GetLocalLabel();
                 AddCodeLine ("bpl %s", LocalLabelName (L));
