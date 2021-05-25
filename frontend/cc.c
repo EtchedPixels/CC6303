@@ -793,7 +793,7 @@ int main(int argc, char *argv[])
 				targetos = OS_FLEX;
 				cpu = 6800;
 			} else {
-				fprintf(stderr, "cc: only fuzix and mc10 target types are known.\n");
+				fprintf(stderr, "cc: only flex, fuzix and mc10 target types are known.\n");
 				fatal();
 			}
 			break;
