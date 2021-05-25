@@ -54,7 +54,7 @@ nosignfix2:
 		; We now have the positive result. Bit 0 of @tmp4 tells us
 		; if we need to negate the answer
 		ldab @tmp4
-		anda #1
+		andb #1
 		beq nosignfix3
 		ldd 6,x
 		std @sreg
