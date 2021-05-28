@@ -233,21 +233,26 @@ static void ParseAutoDecl (Declaration* Decl)
                 */
                 Size = ParseInit (Sym->Type);
 
+                /* Allocate any pending space on the stack so we have sp
+                ** correct for initauto to start pushing words.
+                */
+
+                F_AllocLocalSpace (CurrentFunc);
+
                 /* Now reserve space for the variable on the stack and correct
                 ** the offset in the symbol table entry.
                 */
                 Sym->V.Offs = F_ReserveLocalSpace (CurrentFunc, Size);
 
-                /* Next, allocate the space on the stack. This means that the
-                ** variable is now located at offset 0 from the current sp.
-                */
-                /* We now do this in initauto for effiency
-                   F_AllocLocalSpace (CurrentFunc); */
-
                 /* Generate code to copy the initialization data into the
                 ** variable space
                 */
                 g_initauto (InitLabel, Size);
+                /*
+                ** g_initauto adjusted the stack pointer so track this
+                ** properly.
+                */
+                F_AdjustLocalSpace (CurrentFunc);
 
             } else {
 

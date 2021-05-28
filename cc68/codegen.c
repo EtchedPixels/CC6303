@@ -2920,11 +2920,21 @@ void g_addaddr_local (unsigned flags attribute ((unused)), int offs)
         if (offs != 0)
             AddDConst(offs);
     } else {
+        /* Would it be better to trash X and tsx, stx @tmp on 680x ? */
         offs -= StackPtr;
         if (offs != 0)
             AddDConst(offs);
-        AddCodeLine("sts @tmp");
-        AddD("@tmp", 0);
+        if (CPU == CPU_6800) {
+            InvalidateX();
+            /* TSX is by far the nicer way to get the +1 in on a 6800 */
+            AddCodeLine("tsx");
+            AddCodeLine("stx @tmp");
+            AddD("@tmp", 0);
+        } else {
+            AddCodeLine("sts @tmp");
+            AddD("@tmp", 0);
+            AddD("@one", 0);
+        }
     }
 }
 
@@ -5476,9 +5486,9 @@ void g_initauto (unsigned Label, unsigned Size)
     g_defcodelabel (CodeLabel);
 
     /* We always have at least one byte */
+    AddCodeLine("dex");
     AddCodeLine("ldab ,x");
     AddCodeLine("pshb");
-    AddCodeLine("inx");
     AddCodeLine("cpx @tmp");
     AddCodeLine ("bne %s", LocalLabelName (CodeLabel));
 

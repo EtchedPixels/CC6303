@@ -138,6 +138,11 @@ void F_AllocLocalSpace (Function* F);
 ** nothing if there is no reserved local space.
 */
 
+void F_AdjustLocalSpace (Function* F);
+/* Adjust our view of the local space when the code generator has allocated
+** the space as a side effect.
+*/
+
 int F_AllocRegVar (Function* F, const Type* Type);
 /* Allocate a register variable for the given variable type. If the allocation
 ** was successful, return the offset of the register variable in the register

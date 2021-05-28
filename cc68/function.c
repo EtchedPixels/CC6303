@@ -249,6 +249,20 @@ void F_AllocLocalSpace (Function* F)
 }
 
 
+void F_AdjustLocalSpace (Function* F)
+/* Account for any pending local space, but do not generate code to create
+   it as the code generator in the caller has created the space as a side
+   effect of thits actions (currently initializing an array)
+*/
+{
+    /* Correct the stack pointer */
+    StackPtr -= F->Reserved;
+
+    /* Nothing more reserved */
+    F->Reserved = 0;
+}
+
+
 
 int F_AllocRegVar (Function* F, const Type* Type)
 /* Allocate a register variable for the given variable type. If the allocation
