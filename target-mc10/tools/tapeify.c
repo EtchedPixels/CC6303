@@ -124,6 +124,7 @@ static uint16_t check_addr(const char *p) {
 int main(int argc, const char *argv[]) {
   uint16_t load, start, wlen;
   int len;
+  int size;
 
   if (argc != 6) {
     fprintf(stderr, "%s: binary cassette load len start\n", argv[0]);
@@ -133,6 +134,11 @@ int main(int argc, const char *argv[]) {
   load = check_addr(argv[3]);
   wlen = check_addr(argv[4]);
   start = check_addr(argv[5]);
+
+  if (start + wlen < start || load < start || load >= start + wlen) {
+    fprintf(stderr, "%s: invalid address range.\n", argv[0]);
+    exit(1);
+  }
 
   infd = open(argv[1], O_RDONLY, 0666);
   if (infd == -1) {
@@ -149,9 +155,14 @@ int main(int argc, const char *argv[]) {
     perror("read");
     exit(1);
   }
-  if (len != 65536) {
-    fprintf(stderr, "%s: not an as1 memory image\n", argv[1]);
+  if (len < start + wlen) {
+    fprintf(stderr, "%s: memory image is short.\n", argv[1]);
     exit(1);
+  }
+  /* This one is not necessarily an error, but probably is */
+  if (len > start + wlen) {
+    fprintf(stderr, "%s: warning, %d bytes truncated from image.\n",
+      argv[1]);
   }
   close(infd);
   output_preamble();
