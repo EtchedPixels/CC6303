@@ -60,18 +60,29 @@ static void output_preamble(void) {
   output(pre, 128);
 }
 
+/* Note: The service manual implies 01 for no gaps or ff for gaps. The
+   actual machine language files are 00 */
 static void header_block(const char *name, uint16_t load, uint16_t start) {
   static uint8_t nbuf[15] = {
     0,0,0,0,0,0,0,0,
-    0x02, 0x00, 0x01,
+    0x02, 0x00, 0x00,
     0,0,0,0
   };
   int i;
 
+  /* Trim the name down if a path was given */
+  const char *p = strrchr(name, '/');
+  if (p == NULL)
+    p = name;
+  else
+    p++;
+
   output_begin(0, 15);
   memcpy(nbuf, "        ", 8);
-  for (i = 0; i < 8 && name[i]; i++)
-    nbuf[i] = toupper(name[i]);
+  for (i = 0; i < 8 && *p; i++) {
+    nbuf[i] = toupper(*p);
+    p++;
+  }
   nbuf[11] = start >> 8;
   nbuf[12] = start & 0xFF;
   nbuf[13] = load >> 8;
@@ -162,7 +173,7 @@ int main(int argc, const char *argv[]) {
   /* This one is not necessarily an error, but probably is */
   if (len > start + wlen) {
     fprintf(stderr, "%s: warning, %d bytes truncated from image.\n",
-      argv[1]);
+      argv[1], len - (start + wlen));
   }
   close(infd);
   output_preamble();
