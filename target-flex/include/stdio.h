@@ -21,7 +21,7 @@ extern int fputs(const char *, FILE *);
 
 extern void rewind(FILE *);
 
-extern int fseek(FILE *, long *, int);e
+extern int fseek(FILE *, long *, int);
 extern long ftell(FILE *);
 
 extern int gets(char *);

@@ -31,6 +31,7 @@ getc_wait:
 __putc:
 	pshx
 	ldx $FFDE
+	tba
 	jsr ,x
 	pulx
 	rts
