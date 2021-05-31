@@ -112,7 +112,7 @@ cc68 [options] [files]
 
 The file types supported are '.c' - which will be preprocessed and compiled,
 '.S' which will be preprocessed and assembled, '.s' which will be assembled,
-and '.o' for objet files.
+and '.o' for object files.
 
 Most of the standard C compiler options are supported. In addition the
 -M otion generates a map file, and -t name sets the target to this name.
