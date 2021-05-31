@@ -36,8 +36,20 @@ not a full C library.
 For a simple test environment the easiest approach at this point is to
 compile the code with cc68 and then link with a suitable crt.o (entry code)
 
+````
 cc68 -m6803 -c foo.c
 ld68 -b -C startaddress crt.o mycode.o /opt/cc68/lib/lib6803.a
+````
+
+## Tandy MC-10 target
+
+````
+cc68 -tmc10 foo.c -o foo
+````
+
+This will produce a foo.c10 that can be loaded into an emulator or turned
+into a wav file. A few minimal C library functions are present including
+putchar/puts.
 
 ## TODO
 

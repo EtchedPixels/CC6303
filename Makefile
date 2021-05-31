@@ -59,6 +59,7 @@ install:
 	mkdir -p /opt/cc68/lib
 	mkdir -p /opt/cc68/include
 	mkdir -p /opt/cc68/include/flex
+	mkdir -p /opt/cc68/include/mc10
 	cp cc68/cc68 /opt/cc68/lib
 	cp as68/as68 /opt/cc68/bin
 	cp as68/ld68 /opt/cc68/bin
@@ -80,6 +81,7 @@ install:
 	cp include/*.h /opt/cc68/include/
 	cp target-mc10/lib/libmc10.a /opt/cc68/lib
 	cp target-mc10/tools/tapeify /opt/cc68/lib/mc10-tapeify
+	cp target-mc10/include/*.h /opt/cc68/include/mc10/
 	cp target-flex/lib/libflex.a /opt/cc68/lib
 	cp target-flex/tools/binify /opt/cc68/lib/flex-binify
 	cp target-flex/include/*.h /opt/cc68/include/flex/
