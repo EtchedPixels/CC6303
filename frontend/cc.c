@@ -72,6 +72,8 @@
 #define LIBFLEX 	LIBPATH"libflex.a"
 #define CMD_TAPEIFY 	LIBPATH"mc10-tapeify"
 #define CMD_BINIFY 	LIBPATH"flex-binify"
+#define INCFLEX		INCPATH"flex/"
+#define INCMC10		INCPATH"mc10/"
 
 struct obj {
 	struct obj *next;
@@ -355,8 +357,6 @@ void convert_c_to_s(char *path)
 
 	build_arglist(CMD_CC);
 	add_argument_list("-I", &inclist);
-	if (!standalone)
-		add_argument("-I "INCPATH);
 	add_argument_list("-D", &deflist);
 	add_argument("-r");
 	add_argument("--add-source");
@@ -496,7 +496,7 @@ void link_phase(void)
 		/* Tandy MC-10 */
 		build_arglist(CMD_TAPEIFY);
 		add_argument(target);
-		add_argument(extend(target, ".tap"));
+		add_argument(extend(target, ".c10"));
 		add_int_argument(17500);
 		add_int_argument(filesize(target) - 17500);
 		add_int_argument(17500);
@@ -618,6 +618,11 @@ char **add_includes(char **p)
 	else
 		append_obj(&inclist, *++p, 0);
 	return p;
+}
+
+void add_system_include(char *p)
+{
+	append_obj(&inclist, p, 0);
 }
 
 void dunno(const char *p)
@@ -800,6 +805,20 @@ int main(int argc, char *argv[])
 		default:
 			usage();
 		}
+	}
+
+	if (!standalone) {
+		switch (targetos) {
+		case OS_FUZIX:
+			break;
+		case OS_FLEX:
+			add_system_include(INCFLEX);
+			break;
+		case OS_MC10:
+			add_system_include(INCMC10);
+			break;
+		}
+		add_system_include(INCPATH);
 	}
 
 	if (target == NULL)

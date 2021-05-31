@@ -5,7 +5,7 @@ all: cc68
 
 AOBJ = cc.o
 
-CFLAGS = -DBINPATH=\"/opt/cc68/bin/\" -DLIBPATH=\"/opt/cc68/lib/\" -DINCPATH=\"/opt/cc68/inc/\"
+CFLAGS = -DBINPATH=\"/opt/cc68/bin/\" -DLIBPATH=\"/opt/cc68/lib/\" -DINCPATH=\"/opt/cc68/include/\"
 
 cc68: cc.o
 	cc -o cc68 cc.o
