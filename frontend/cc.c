@@ -115,7 +115,7 @@ int targetos;
 #define OS_MC10		2
 #define OS_FLEX		3
 
-#define MAXARG	64
+#define MAXARG	512
 
 int arginfd, argoutfd;
 char *arglist[MAXARG];
