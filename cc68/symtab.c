@@ -416,6 +416,12 @@ void LeaveStructLevel (void)
 /*****************************************************************************/
 
 
+/* We has symbols on the globally significant bytes only. This enables us
+   to find global clashes easily */
+static unsigned HashSym(const char *Name)
+{
+    return HashStrN(Name, SYM_MAXLEN);
+}
 
 static SymEntry* FindSymInTable (const SymTable* T, const char* Name, unsigned Hash)
 /* Search for an entry in one table */
@@ -424,8 +430,30 @@ static SymEntry* FindSymInTable (const SymTable* T, const char* Name, unsigned H
     SymEntry* E = T->Tab [Hash % T->Size];
     while (E) {
         /* Compare the name */
-        if (strcmp (E->Name, Name) == 0) {
+        if (strcmp(E->Name, Name) == 0)
             /* Found */
+            return E;
+        /* Not found, next entry in hash chain */
+        E = E->NextHash;
+    }
+
+    /* Not found */
+    return 0;
+}
+
+/* Look for external symbols matching only on the linker length */
+static SymEntry* FindSymInTableExternal (const SymTable* T, const char* Name, unsigned Hash)
+/* Search for an entry in one table */
+{
+    /* Get the start of the hash chain */
+    SymEntry* E = T->Tab [Hash % T->Size];
+    while (E) {
+        /* Compare the name */
+        if (strncmp(E->Name, Name, SYM_MAXLEN) == 0) {
+            /* Found */
+            if (strcmp(E->Name, Name))
+                Error("External names '%s' and '%s' are not unique in the first %d characters.\n",
+                    Name, E->Name, SYM_MAXLEN);
             return E;
         }
         /* Not found, next entry in hash chain */
@@ -442,7 +470,7 @@ static SymEntry* FindSymInTree (const SymTable* Tab, const char* Name)
 /* Find the symbol with the given name in the table tree that starts with T */
 {
     /* Get the hash over the name */
-    unsigned Hash = HashStr (Name);
+    unsigned Hash = HashSym (Name);
 
     /* Check all symbol tables for the symbol */
     while (Tab) {
@@ -475,7 +503,7 @@ SymEntry* FindSym (const char* Name)
 SymEntry* FindGlobalSym (const char* Name)
 /* Find the symbol with the given name in the global symbol table only */
 {
-    return FindSymInTable (SymTab0, Name, HashStr (Name));
+    return FindSymInTable (SymTab0, Name, HashSym (Name));
 }
 
 
@@ -483,7 +511,7 @@ SymEntry* FindGlobalSym (const char* Name)
 SymEntry* FindLocalSym (const char* Name)
 /* Find the symbol with the given name in the current symbol table only */
 {
-    return FindSymInTable (SymTab, Name, HashStr (Name));
+    return FindSymInTable (SymTab, Name, HashSym (Name));
 }
 
 
@@ -517,7 +545,7 @@ SymEntry* FindStructField (const Type* T, const char* Name)
         ** exist.
         */
         if (Struct->V.S.SymTab) {
-            Field = FindSymInTable (Struct->V.S.SymTab, Name, HashStr (Name));
+            Field = FindSymInTable (Struct->V.S.SymTab, Name, HashSym (Name));
         }
     }
 
@@ -536,7 +564,7 @@ static void AddSymEntry (SymTable* T, SymEntry* S)
 /* Add a symbol to a symbol table */
 {
     /* Get the hash value for the name */
-    unsigned Hash = HashStr (S->Name) % T->Size;
+    unsigned Hash = HashSym (S->Name) % T->Size;
 
     /* Insert the symbol into the list of all symbols in this level */
     if (T->SymTail) {
@@ -569,7 +597,7 @@ SymEntry* AddStructSym (const char* Name, unsigned Type, unsigned Size, SymTable
     PRECONDITION (Type == SC_STRUCT || Type == SC_UNION);
 
     /* Do we have an entry with this name already? */
-    Entry = FindSymInTable (TagTab, Name, HashStr (Name));
+    Entry = FindSymInTable (TagTab, Name, HashSym (Name));
     if (Entry) {
 
         /* We do have an entry. This may be a forward, so check it. */
@@ -610,7 +638,7 @@ SymEntry* AddBitField (const char* Name, unsigned Offs, unsigned BitOffs, unsign
 /* Add a bit field to the local symbol table and return the symbol entry */
 {
     /* Do we have an entry with this name already? */
-    SymEntry* Entry = FindSymInTable (SymTab, Name, HashStr (Name));
+    SymEntry* Entry = FindSymInTable (SymTab, Name, HashSym (Name));
     if (Entry) {
 
         /* We have a symbol with this name already */
@@ -645,7 +673,7 @@ SymEntry* AddConstSym (const char* Name, const Type* T, unsigned Flags, long Val
     SymTable* Tab = ((Flags & SC_ENUM) == SC_ENUM)? SymTab0 : SymTab;
 
     /* Do we have an entry with this name already? */
-    SymEntry* Entry = FindSymInTable (Tab, Name, HashStr (Name));
+    SymEntry* Entry = FindSymInTable (Tab, Name, HashSym (Name));
     if (Entry) {
         if ((Entry->Flags & SC_CONST) != SC_CONST) {
             Error ("Symbol '%s' is already different kind", Name);
@@ -692,7 +720,7 @@ DefOrRef* AddDefOrRef (SymEntry* E, unsigned Flags)
 unsigned short FindSPAdjustment (const char* Name)
 /* Search for an entry in the table of SP adjustments */
 {
-    SymEntry* Entry = FindSymInTable (SPAdjustTab, Name, HashStr (Name));
+    SymEntry* Entry = FindSymInTable (SPAdjustTab, Name, HashSym (Name));
 
     if (!Entry) {
         Internal ("No SP adjustment label entry found");
@@ -710,7 +738,7 @@ SymEntry* AddLabelSym (const char* Name, unsigned Flags)
     Collection *AIC = &CurrentFunc->LocalsBlockStack;
 
     /* Do we have an entry with this name already? */
-    SymEntry* Entry = FindSymInTable (LabelTab, Name, HashStr (Name));
+    SymEntry* Entry = FindSymInTable (LabelTab, Name, HashSym (Name));
     if (Entry) {
 
         if (SymIsDef (Entry) && (Flags & SC_DEF) != 0) {
@@ -817,7 +845,7 @@ SymEntry* AddLocalSym (const char* Name, const Type* T, unsigned Flags, int Offs
 /* Add a local symbol and return the symbol entry */
 {
     /* Do we have an entry with this name already? */
-    SymEntry* Entry = FindSymInTable (SymTab, Name, HashStr (Name));
+    SymEntry* Entry = FindSymInTable (SymTab, Name, HashSym (Name));
     if (Entry) {
 
         /* We have a symbol with this name already */
@@ -869,7 +897,7 @@ SymEntry* AddGlobalSym (const char* Name, const Type* T, unsigned Flags)
     SymTable* Tab = IsFunc? SymTab0 : SymTab;
 
     /* Do we have an entry with this name already? */
-    SymEntry* Entry = FindSymInTable (Tab, Name, HashStr (Name));
+    SymEntry* Entry = FindSymInTableExternal(Tab, Name, HashSym (Name));
     if (Entry) {
         Type* EType;
 
@@ -1029,7 +1057,7 @@ void MakeZPSym (const char* Name)
 /* Mark the given symbol as zero page symbol */
 {
     /* Get the symbol table entry */
-    SymEntry* Entry = FindSymInTable (SymTab, Name, HashStr (Name));
+    SymEntry* Entry = FindSymInTable (SymTab, Name, HashSym (Name));
 
     /* Mark the symbol as zeropage */
     if (Entry) {

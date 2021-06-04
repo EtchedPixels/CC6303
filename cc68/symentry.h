@@ -53,10 +53,15 @@
 #include "coll.h"
 #include "inline.h"
 
-/* cc65 */
+/* cc68 */
 #include "datatype.h"
 #include "declattr.h"
 
+
+/* Length in which external symbol uniqueness is required. C99 requires 32
+   external 64 internal. We check in the compiler so we don't generate
+   confusing link or asm errors */
+#define SYM_MAXLEN		32
 
 
 /*****************************************************************************/
@@ -191,8 +196,6 @@ struct SymEntry {
     } V;
     char                       Name[1]; /* Name, dynamically allocated */
 };
-
-
 
 /*****************************************************************************/
 /*                                   Code                                    */
