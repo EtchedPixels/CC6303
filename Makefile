@@ -80,6 +80,7 @@ install:
 	cp libio/6803/libio6803.a /opt/cc68/lib
 	cp include/*.h /opt/cc68/include/
 	cp target-mc10/lib/libmc10.a /opt/cc68/lib
+	cp target-mc10/lib/crt0_mc10.o /opt/cc68/lib
 	cp target-mc10/tools/tapeify /opt/cc68/lib/mc10-tapeify
 	cp target-mc10/include/*.h /opt/cc68/include/mc10/
 	cp target-flex/lib/libflex.a /opt/cc68/lib
