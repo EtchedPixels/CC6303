@@ -1,8 +1,17 @@
 #ifndef _OBJ_H
 #define _OBJ_H
 
+/* Long name is used for cross building and non 8bit environments. In an
+   8bit environment longer names are just too expensive */
+#ifdef OBJ_LONGNAME
+#define MAGIC_OBJ		0x4D1B
+#define MAGIC_OBJ_SWAPPED	0x1B4D
+#define NAMELEN			32
+#else
 #define MAGIC_OBJ		0x3D1A
 #define MAGIC_OBJ_SWAPPED	0x1A3D
+#define NAMELEN			16
+#endif
 
 #define OSEG	8
 
@@ -92,8 +101,9 @@ struct objhdr
 #define S_PUBLIC	0x40		/* unknown is public .. */
 #define S_SEGMENT	0x0F		/* 00 means absolute */
 #define S_ANY		0x0F
+#define S_SIZE		0x30		/* Size bits 0-3 = 1-4 bytes */
 
-#define S_SIZE		19
+#define S_ENTRYSIZE	(3 + NAMELEN)
 
 /*
  * Segments

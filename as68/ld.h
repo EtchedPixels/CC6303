@@ -5,7 +5,7 @@ struct symbol
 {
     struct symbol *next;
     struct object *definedby;
-    char name[16];
+    char name[NAMELEN];
     uint16_t value;
     uint16_t number;	/* Needed when doing ld -r */
     uint8_t type;

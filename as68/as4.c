@@ -347,7 +347,7 @@ static void putsymbol(SYM *s, FILE *ofp)
 	/* 0 absolute, 1-n segments, 15 don't care */
 	flag |= (s->s_segment & S_SEGMENT);
 	putc(flag, ofp);
-	fwrite(s->s_id, 16, 1, ofp);
+	fwrite(s->s_id, NAMELEN, 1, ofp);
 	putc(s->s_value, ofp);
 	putc(s->s_value >> 8, ofp);
 }

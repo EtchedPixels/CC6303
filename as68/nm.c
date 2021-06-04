@@ -28,7 +28,7 @@ static int do_nm(FILE *fp, const char *name)
     uint8_t type;
     int c;
     uint16_t addr;
-    char symname[17];
+    char symname[NAMELEN + 1];
 
     if (show_name)
         printf("%s:\n", name);
@@ -54,9 +54,9 @@ static int do_nm(FILE *fp, const char *name)
             return 0;
         type = (uint8_t)c;
         base++;
-        fread(symname, 16, 1, fp);
-        base += 16;
-        symname[16] = 0;
+        fread(symname, NAMELEN, 1, fp);
+        base += NAMELEN;
+        symname[NAMELEN] = 0;
         /* Address if defined */
         addr = fgetc(fp);
         addr |= fgetc(fp) << 8;

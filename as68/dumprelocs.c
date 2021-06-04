@@ -20,7 +20,7 @@ static char bogus[19] = { "\0OUT OF RANGE\0\0\0\0\0\0" };
 static char *symptr(unsigned int n)
 {
     if (n < numsyms)
-        return symbols + S_SIZE * n;
+        return symbols + S_ENTRYSIZE * n;
     return bogus;
 }
 
@@ -29,9 +29,9 @@ static char *find_symbol(int seg, unsigned short addr)
     uint8_t *p = (uint8_t *)symbols;
     int n = 0;
     while(n++ < numsyms) {
-        if (((p[18] << 8) | p[17]) == addr && seg == (p[0] & S_SEGMENT))
+        if (((p[NAMELEN + 2] << 8) | p[NAMELEN + 1]) == addr && seg == (p[0] & S_SEGMENT))
             return (char *)p;
-        p += S_SIZE;
+        p += S_ENTRYSIZE;
     }
     return NULL;
 }
@@ -42,12 +42,12 @@ static char *find_symbol_before(int seg, unsigned short addr, unsigned short *ap
     uint8_t *candidate = 0;
     int n = 0;
     while(n++ < numsyms) {
-        uint16_t a = (p[18] << 8) | p[17];
+        uint16_t a = (p[NAMELEN + 2] << 8) | p[NAMELEN + 1];
         if (a <= addr && seg == (p[0] & S_SEGMENT) && !(p[0] & S_UNKNOWN)) {
             *ap = a;
             candidate = p;
         }
-        p += S_SIZE;
+        p += S_ENTRYSIZE;
     }
     return (char *)candidate;
 }
@@ -147,7 +147,7 @@ static void reloc_symbol(int fd, int size)
     char *p = relbuf + 12;
     int  n = nextbyte(fd);
     n |= (nextbyte(fd) << 8);
-    p += sprintf(p, "%.16s", symptr(n) + 1);
+    p += sprintf(p, "%.*s", NAMELEN, symptr(n) + 1);
     n = reloc_word(fd, size);
     if (n)
         sprintf(p, "+%d", n);
@@ -242,6 +242,7 @@ static int dump_data(const char *p, int seg, int fd)
         /* Ok an actual relocation */
         if (c == REL_ORG) {
             reloc_type("ORG");
+            /* FIXME: encoded little endian always */
             reloc_value(fd, 2);
             reloc_end();
             continue;
@@ -287,7 +288,7 @@ static int load_symbols(int fd, struct objhdr *oh)
         fprintf(stderr, "Out of memory.\n");
         exit(1);
     }
-    numsyms = symsize / S_SIZE;
+    numsyms = symsize / S_ENTRYSIZE;
     if (lseek(fd, oh->o_symbase, 0) < 0)
         return -1;
     if (read(fd, symbols, symsize) != symsize)

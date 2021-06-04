@@ -185,11 +185,11 @@ static void free_object(struct object *o)
 struct symbol *new_symbol(const char *name, int hash)
 {
 	struct symbol *s = xmalloc(sizeof(struct symbol));
-	strncpy(s->name, name, 16);
+	strncpy(s->name, name, NAMELEN);
 	s->next = symhash[hash];
 	symhash[hash] = s;
 	if (verbose)
-		printf("+%.16s\n", name);
+		printf("+%.*s\n", NAMELEN, name);
 	return s;
 }
 
@@ -200,7 +200,7 @@ struct symbol *find_symbol(const char *name, int hash)
 {
 	struct symbol *s = symhash[hash];
 	while (s) {
-		if (strncmp(s->name, name, 16) == 0)
+		if (strncmp(s->name, name, NAMELEN) == 0)
 			return s;
 		s = s->next;
 	}
@@ -216,7 +216,7 @@ static uint8_t hash_symbol(const char *name)
 	int hash = 0;
 	uint8_t n = 0;
 
-	while(*name && n++ < 16)
+	while(*name && n++ < NAMELEN)
 		hash += *name++;
 	return (hash&(NHASH-1));
 }
@@ -257,7 +257,7 @@ static void segment_mismatch(struct symbol *s, uint8_t type2)
 	   any need. */
 	if (seg2 == ABSOLUTE || seg2 == S_ANY)
 		return;
-	fprintf(stderr, "Segment mismatch for symbol '%.16s'.\n", s->name);
+	fprintf(stderr, "Segment mismatch for symbol '%.*s'.\n", NAMELEN, s->name);
 	fprintf(stderr, "Want segment %d but constrained to %d.\n",
 		seg2, seg1);
 	err |= 2;
@@ -277,8 +277,8 @@ static struct symbol *find_alloc_symbol(struct object *o, uint8_t type, const ch
 	if (s == NULL) {
 		s = new_symbol(id, hash);
 		s->type = type;
-/*FIXME         strlcpy(s->name, id, 16); */
-		strncpy(s->name, id, 16);
+/*FIXME         strlcpy(s->name, id, NAMELEN); */
+		strncpy(s->name, id, NAMELEN);
 		s->value = value;
 		if (!(type & S_UNKNOWN))
 			s->definedby = o;
@@ -304,7 +304,7 @@ static struct symbol *find_alloc_symbol(struct object *o, uint8_t type, const ch
 	/* Two definitions.. usually bad but allow duplicate absolutes */
 	if (((s->type | type) & S_SEGMENT) != ABSOLUTE || s->value != value) {
 		/* FIXME: expand to report files somehow ? */
-		fprintf(stderr, "%.16s: multiply defined.\n", id);
+		fprintf(stderr, "%.*s: multiply defined.\n", NAMELEN, id);
 	}
 	/* Duplicate absolutes - just keep current entry */
 	return s;
@@ -346,7 +346,7 @@ static void write_symbols(FILE *fp)
 	for (i = 0; i < NHASH; i++) {
 		for (s = symhash[i]; s != NULL; s=s->next) {
 			fputc(s->type, fp);
-			fwrite(s->name, 16, 1, fp);
+			fwrite(s->name, NAMELEN, 1, fp);
 			fputc(s->value, fp);
 			fputc(s->value >> 8, fp);
 		}
@@ -370,7 +370,7 @@ static void print_symbol(struct symbol *s, FILE *fp)
 		if (s->type & S_PUBLIC)
 			c = toupper(c);
 	}
-	fprintf(fp, "%04X %c %.16s\n", s->value, c, s->name);
+	fprintf(fp, "%04X %c %.*s\n", s->value, c, NAMELEN, s->name);
 }
 
 /*
@@ -429,7 +429,7 @@ static struct object *load_object(FILE * fp, off_t off, int lib, const char *pat
 {
 	int i;
 	uint8_t type;
-	char name[17];
+	char name[NAMELEN + 1];
 	struct object *o = new_object();
 	struct symbol **sp;
 	int nsym;
@@ -452,7 +452,7 @@ static struct object *load_object(FILE * fp, off_t off, int lib, const char *pat
 	}
 	compatible_obj(&o->oh);
 	/* Load up the symbols */
-	nsym = (o->oh.o_dbgbase - o->oh.o_symbase) / S_SIZE;
+	nsym = (o->oh.o_dbgbase - o->oh.o_symbase) / S_ENTRYSIZE;
 	if (nsym < 0||nsym > 65535)
 		error("bad object file");
 	/* Allocate the symbol entries */
@@ -463,8 +463,8 @@ restart:
 	sp = o->syment;
 	for (i = 0; i < nsym; i++) {
 		type = fgetc(fp);
-		fread(name, 16, 1, fp);
-		name[16] = 0;
+		fread(name, NAMELEN, 1, fp);
+		name[NAMELEN] = 0;
 		value = fgetc(fp) + (fgetc(fp) << 8);
 		if (!(type & S_UNKNOWN) && (type & S_SEGMENT) >= OSEG)
 			error("bad symbol");
@@ -758,6 +758,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 		/* Relocations */
 		size = ((code & S_SIZE) >> 4) + 1;
 
+
 		/* Simple relocation - adjust versus base of a segment of this object */
 		if (code & REL_SIMPLE) {
 			uint8_t seg = code & S_SEGMENT;
@@ -812,7 +813,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 				if (s->type & S_UNKNOWN) {
 					if (ldmode != LD_RFLAG) {
 						if (processing)
-							fprintf(stderr, "%s: Unknown symbol '%.16s'.\n", o->path, s->name);
+							fprintf(stderr, "%s: Unknown symbol '%.*s'.\n", o->path, NAMELEN, s->name);
 						err |= 1;
 					}
 					if (!rawstream) {
