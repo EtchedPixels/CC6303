@@ -84,6 +84,19 @@ unsigned HashStr (const char* S)
     return H;
 }
 
+unsigned HashStrN (const char* S, unsigned Size)
+/* Return a hash value for the given string with length limit */
+{
+    unsigned L, H;
+
+    /* Do the hash */
+    H = L = 0;
+    while (*S && Size--) {
+        H = ((H << 3) ^ ((unsigned char) *S++)) + L++;
+    }
+    return H;
+}
+
 
 
 unsigned HashBuf (const StrBuf* S)

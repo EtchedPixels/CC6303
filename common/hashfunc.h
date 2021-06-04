@@ -65,6 +65,9 @@ unsigned HashInt (unsigned V) attribute ((const));
 unsigned HashStr (const char* S) attribute ((const));
 /* Return a hash value for the given string */
 
+unsigned HashStrN (const char* S, unsigned Len) attribute ((const));
+/* Return a hash value for the given string up to Len bytes */
+
 unsigned HashBuf (const StrBuf* S) attribute ((const));
 /* Return a hash value for the given string buffer */
 
