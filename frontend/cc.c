@@ -1,4 +1,3 @@
-#define DEBUG
 /*
  *	It's easiest to think of what cc does as a sequence of four
  *	conversions. Each conversion produces the inputs to the next step
@@ -62,6 +61,7 @@
 #define COPT00_FILE 	LIBPATH"cc68-00.rules"
 #define CMD_LD		BINPATH"ld68"
 #define CRT0		LIBPATH"crt0.o"
+#define CRT0_MC10	LIBPATH"crt0_mc10.o"
 #define LIBC		LIBPATH"libc.a"
 #define LIB6800		LIBPATH"lib6800.a"
 #define LIB6803		LIBPATH"lib6803.a"
@@ -438,9 +438,10 @@ void link_phase(void)
 			add_argument("-b");
 			add_argument("-C");
 			add_argument("17500");
-			/* I/O at 0-31 */
+			/* I/O at 0-31 next chunk seem to be used in IRQ*/
 			add_argument("-Z");
-			add_argument("32");
+			/* Internal low RAM is 0x80-0xFF, no external low RAM */
+			add_argument("0x90");
 			break;
 		case OS_FLEX:
 			add_argument("-b");
@@ -471,7 +472,10 @@ void link_phase(void)
 	}
 	if (!standalone) {
 		/* Start with crt0.o, end with libc.a and support libraries */
-		add_argument(CRT0);
+		if (targetos == OS_MC10)
+			add_argument(CRT0_MC10);
+		else	/* For now - we will want one per target */
+			add_argument(CRT0);
 		append_obj(&libpathlist, LIBPATH, 0);
 		append_obj(&liblist, LIBC, TYPE_A);
 		if (targetos == OS_MC10) {
