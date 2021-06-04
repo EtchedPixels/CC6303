@@ -1,6 +1,6 @@
 OBJ = mc10.o
 
-all: libmc10.a
+all: libmc10.a crt0_mc10.o
 
 libmc10.a: $(OBJ)
 	ar rc libmc10.a $(OBJ)
