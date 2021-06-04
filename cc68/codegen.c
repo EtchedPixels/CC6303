@@ -5492,9 +5492,7 @@ void g_initauto (unsigned Label, unsigned Size)
     AddCodeLine("cpx @tmp");
     AddCodeLine ("bne %s", LocalLabelName (CodeLabel));
 
-    /* And adjust the stack pointer accordingly */
-    StackPtr -= Size;
-
+    /* The caller will adjust the stack on the basis we made the pushes */
 }
 
 
