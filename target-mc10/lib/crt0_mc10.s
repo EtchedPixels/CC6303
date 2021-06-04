@@ -6,6 +6,8 @@
 ;
 	.code
 
+	.setcpu 6803
+
 	.export _exit
 
 start:
@@ -14,6 +16,15 @@ start:
 	deca
 	staa @zero
 	staa @zero+1
+	ldx #__bss
+	ldd #__bss_size
+	beq nobss
+clear_bss:
+	clr ,x
+	inx
+	subd #1
+	bne clear_bss
+nobss:
 	sts exitsp
 	psha
 	psha
