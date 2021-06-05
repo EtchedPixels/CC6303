@@ -5,3 +5,4 @@ all:
 clean:
 	(cd 6800; make clean)
 	(cd 6803; make clean)
+	rm -f *~

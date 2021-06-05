@@ -9,4 +9,4 @@ libmc10.a: $(OBJ)
 	../../as68/as68 $^
 
 clean:
-	rm -f $(OBJ) *~
+	rm -f $(OBJ) *~ libmc10.a crt0_mc10.o

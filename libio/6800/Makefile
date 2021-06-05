@@ -9,5 +9,4 @@ libio6800.a: $(OBJ)
 	../../as68/as68 $^
 
 clean:
-	rm -f $(OBJ) ~*
-
+	rm -f $(OBJ) *~ libio6800.a
