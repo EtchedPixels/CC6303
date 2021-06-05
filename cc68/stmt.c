@@ -448,6 +448,10 @@ static void ForStatement (void)
     /* Parse the initializer expression */
     if (CurTok.Tok != TOK_SEMI) {
         Expression0 (&lval1);
+        /* Optimizer hint that we can discard the initializer result. We
+           can't keep it for the test as the test is not always run after
+           the initializer */
+        g_statement();
     }
     ConsumeSemi ();
 
@@ -487,6 +491,7 @@ static void ForStatement (void)
     /* Loop body */
     g_defcodelabel (BodyLabel);
     Statement (&PendingToken);
+    g_statement();
 
     /* If we had an increment expression, move the code to the bottom of
     ** the loop. In this case we don't need to jump there at the end of
