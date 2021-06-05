@@ -796,9 +796,10 @@ int main(int argc, char *argv[])
 		case 't':
 			if (strcmp(*p + 2, "fuzix") == 0)
 				targetos = OS_FUZIX;
-			else if (strcmp(*p + 2, "mc10") == 0)
+			else if (strcmp(*p + 2, "mc10") == 0) {
 				targetos = OS_MC10;
-			else if (strcmp (*p + 2, "flex") == 0) {
+				cpu = 6803;
+			} else if (strcmp (*p + 2, "flex") == 0) {
 				targetos = OS_FLEX;
 				cpu = 6800;
 			} else {
