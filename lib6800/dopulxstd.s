@@ -1,5 +1,5 @@
 ;
-;	Uninlined pulx equivalent
+;	Uninlined pulx followed by std ,x equivalent
 ;
 	.export dopulxstd
 	.code
