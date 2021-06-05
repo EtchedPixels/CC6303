@@ -1,8 +1,8 @@
 #	Trim jumps to next instruction
 	jmp %1
-	%1:
+%1:
 =
-	%1:
+%1:
 
 #	And terminal jsr rts
 	jsr %1
@@ -277,7 +277,7 @@
 	ldd _%1
 	pshb
 	psha
-	invalid X,D,P
+	;invalid XDP
 =
 	stx _%1
 	pshx
@@ -289,7 +289,7 @@
 	ldd _%1
 	pshb
 	psha
-	invalid X,D,P
+	;invalid XDP
 =
 	stx _%1
 	pshx
@@ -306,13 +306,13 @@
 	stx %1
 
 	std %1
-	invalid D,P
+	;invalid DP
 	ldd %1
 =
 	std %1
 
 	std %1
-	invalid X,D,P
+	;invalid XDP
 	ldd %1
 =
 	std %1
@@ -405,44 +405,44 @@
 
 #	Branches
 #
-
-	%1:
-		jmp %2
-	%3:
-		jmp %1
+%1:
+	jmp %2
+%3:
+	jmp %1
 =
-	%1:
-	%3:
-		jmp %2
+%1:
+%3:
+	jmp %2
 
 # Review more conditions
+
 	jne %1
 	jmp %2
-	%1:
+%1:
 =
 	jeq %2
-	%1:
+%1:
 
 	jeq %1
 	jmp %2
-	%1:
+%1:
 =
 	jne %2
-	%1:
+%1:
 
 	jcc %1
 	jmp %2
-	%1:
+%1:
 =
 	jcs %2
-	%1:
+%1:
 
 	jcs %1
 	jmp %2
-	%1:
+%1:
 =
 	jcc %2
-	%1:
+%1:
 
 
 # Fix up some of the X cases
@@ -450,29 +450,29 @@
 	ldd %1
 	pshb
 	psha
-	invalid X,D,P
+	;invalid XDP
 =
 	ldx %1
 	pshx
-	invalid X,D,P
+	;invalid XDP
 
 # Push and then invalidate D so can use X single arg entry, with label
 	ldd %1
 	pshb
 	psha
 	%2:
-	invalid X,D,P
+	;invalid XDP
 =
 	ldx %1
 	pshx
 	%2:
-	invalid X,D,P
+	;invalid XDP
 
 # Stack via X
 	ldd %1
 	pshb
 	psha
-	invalid X,D,P
+	;invalid XDP
 =
 	ldx %1
 	pshx
@@ -490,51 +490,51 @@
 	ldd %1
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd #%2
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	jsr _%3
 =
 	ldx %1
 	pshx
 	ldx #%2
 	pshx
-	invalid D,P
+	;invalid DP
 	jsr _%3
 
 # func(arg, static)
 	ldd %1
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd _%2
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	jsr _%3
 =
 	ldx %1
 	pshx
 	ldx _%2
 	pshx
-	invalid D,P
+	;invalid DP
 	jsr _%3
 
 # func(arg, const, const)
 	ldd %1
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd #%2
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd #%3
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	jsr _%4
 =
 	ldx %1
@@ -543,22 +543,22 @@
 	pshx
 	ldx #%3
 	pshx
-	invalid D,P
+	;invalid DP
 	jsr _%4
 
 # func(arg, const, static)
 	ldd %1
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd #%2
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd _%3
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	jsr _%4
 =
 	ldx %1
@@ -567,22 +567,22 @@
 	pshx
 	ldx _%3
 	pshx
-	invalid D,P
+	;invalid DP
 	jsr _%4
 
 # func(arg, static, const)
 	ldd %1
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd _%2
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd #%3
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	jsr _%4
 =
 	ldx %1
@@ -591,22 +591,22 @@
 	pshx
 	ldx #%3
 	pshx
-	invalid D,P
+	;invalid DP
 	jsr _%4
 
 # func(arg, static, static)
 	ldd %1
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd _%2
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	ldd _%3
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	jsr _%4
 =
 	ldx %1
@@ -615,14 +615,14 @@
 	pshx
 	ldx _%3
 	pshx
-	invalid D,P
+	;invalid DP
 	jsr _%4
 
 # Stack via X when X is live but we are calling a user function so _xyz
 	ldd %1
 	pshb
 	psha
-	invalid D,P
+	;invalid DP
 	jsr _%2
 =
 	ldx %1
@@ -690,11 +690,11 @@
 # Optimize a few pull sequences where we can see X is not live
 	pula
 	pulb
-	L%1:
+L%1:
 	tsx
 =
 	pulx
-	L%1:
+L%1:
 	tsx
 
 	pula
@@ -713,7 +713,7 @@
 
 	pula
 	pulb
-	invalid X,D,P
+	;invalid XDP
 =
 	pulx
 	;invalid XDP
@@ -728,15 +728,6 @@
 	pshx
 	tsx
 	ldd %2
-
-# Clean up invalid markers
-	invalid D,P
-=
-	;invalid DP
-
-	invalid X,D,P
-=
-	;invalid XDP
 
 # Some useful tricks with comparisons. Where the comparison sets the flags
 # and the next thing we do is to do a conditional based on them we can
@@ -1068,6 +1059,14 @@
 	ldab %1
 	clra
 
+# Repeat clears
+	clra
+	ldab %1
+	clra
+=
+	clra
+	ldab %1
+
 # Call cleanups(no internal X using helpers start with an underscore) 
 	ldd %1
 	pshb
@@ -1082,15 +1081,53 @@
 	dex
 	stx @tmp
 	ldd @tmp
-	invalid X,D,P
+	;invalid XDP
 =
 	;dropped postdec
 
 	inx
 	stx @tmp
 	ldd @tmp
-	invalid X,D,P
+	;invalid XDP
 =
 	;dropped postinc
 
-# Ditto when stacking
+# Clean up  foo = 0 intialization statements for stack variables
+	clra
+	clrb
+	tsx
+	stab %1,x
+	;invalid DP
+=
+	tsx
+	clr %1,x
+
+	clra
+	clrb
+	tsx
+	std %1,x
+	;invalid DP
+=
+	tsx
+	clr %1,x
+	clr %1+1,x
+
+# Clean up 8bit maths
+	clra
+	ldab %1
+	cmpb %2
+	jsr bool%3
+=
+	ldab %1
+	cmpb %2
+	jsr bool%3
+
+	clra
+	ldab %1
+	pulx
+	stab %2
+	;invalid XDP
+=
+	ldab %1
+	pulx
+	stab %2
