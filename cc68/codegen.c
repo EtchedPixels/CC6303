@@ -115,7 +115,7 @@ static void typeerror (unsigned type)
 
 
 
-static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
+static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs, int addr)
 {
     static char Buf [256];              /* Label name */
 
@@ -147,7 +147,10 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
 
         case CF_REGVAR:
             /* Variable in register bank */
-            xsprintf (Buf, sizeof (Buf), "@reg+%u", (unsigned)((Label+Offs) & 0xFFFF));
+            if (addr)
+                xsprintf (Buf, sizeof (Buf), "reg+%u", (unsigned)((Label+Offs) & 0xFFFF));
+            else
+                xsprintf (Buf, sizeof (Buf), "@reg+%u", (unsigned)((Label+Offs) & 0xFFFF));
             break;
 
         default:
@@ -1420,7 +1423,7 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
     } else {
 
         /* Some sort of label */
-        const char* Label = GetLabelName (Flags, Val, Offs);
+        const char* Label = GetLabelName (Flags, Val, Offs, 1);
 
         /* Load the address into the primary */
         if (Flags & CF_USINGX) {
@@ -1442,7 +1445,7 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
 /* Fetch an static memory cell into the primary register */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs);
+    const char* lbuf = GetLabelName (flags, label, offs, 0);
 
     /* Check the size and generate the correct load operation */
     switch (flags & CF_TYPEMASK) {
@@ -1747,7 +1750,7 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
 /* Store the primary register into the specified static memory cell */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs);
+    const char* lbuf = GetLabelName (flags, label, offs, 0);
 
     /* Check the size and generate the correct store operation */
     switch (flags & CF_TYPEMASK) {
@@ -2398,7 +2401,7 @@ void g_addstatic (unsigned flags, uintptr_t label, long offs)
 /* Add a static variable to ax */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs);
+    const char* lbuf = GetLabelName (flags, label, offs, 0);
 
     NotViaX();
 
@@ -2442,7 +2445,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
 /* Emit += for a static variable */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs);
+    const char* lbuf = GetLabelName (flags, label, offs, 0);
 
 
     /* Check the size and determine operation */
@@ -2450,6 +2453,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
 
         case CF_CHAR:
             if (CPU == CPU_6800) {
+                lbuf = GetLabelName (flags, label, offs, 1);
                 AddCodeLine("ldx #%s", lbuf);
                 if (flags & CF_FORCECHAR) {
                     if (flags & CF_CONST) {
@@ -2504,6 +2508,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
 
         case CF_INT:
             if (CPU == CPU_6800) {
+                lbuf = GetLabelName (flags, label, offs, 1);
                 AddCodeLine("ldx #%s", lbuf);
                 if (flags & CF_CONST) {
                     if (val <= 4) {
@@ -2558,6 +2563,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
 
         case CF_LONG:
             NotViaX();
+            lbuf = GetLabelName (flags, label, offs, 1);
             if (flags & CF_CONST) {
                 if (val < 0x100 && CPU == CPU_6800) {
                     AddCodeLine ("ldx #%s", lbuf);
@@ -2712,7 +2718,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
 /* Emit -= for a static variable */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs);
+    const char* lbuf = GetLabelName (flags, label, offs, 0);
 
     /* Check the size and determine operation */
     switch (flags & CF_TYPEMASK) {
@@ -2778,6 +2784,7 @@ void g_subeqstatic (unsigned flags, uintptr_t label, long offs,
                 g_putstatic (flags, label, offs);
             } else {
                 InvalidateX();
+                lbuf = GetLabelName (flags, label, offs, 1);
                 AddCodeLine ("ldx #%s", lbuf);
                 AddCodeLine ("jsr lsubeq");
             }
@@ -2944,7 +2951,7 @@ void g_addaddr_static (unsigned flags, uintptr_t label, long offs)
 /* Add the address of a static variable to d */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs);
+    const char* lbuf = GetLabelName (flags, label, offs, 1);
 
     NotViaX();
     if (CPU == CPU_6800) {
@@ -5397,7 +5404,7 @@ void g_defdata (unsigned flags, unsigned long val, long offs)
     } else {
 
         /* Create the correct label name */
-        const char* Label = GetLabelName (flags, val, offs);
+        const char* Label = GetLabelName (flags, val, offs, 1);
 
         /* Labels are always 16 bit */
         AddDataLine ("\t.word\t%s", Label);
@@ -5459,12 +5466,12 @@ void g_initregister (unsigned Label, unsigned Reg, unsigned Size)
     /* Register variables do always have less than 128 bytes */
     while(Size > 1) {
         Size -= 2;
-        LoadD(GetLabelName(CF_STATIC, Label, 0), Size);
-        StoreD(GetLabelName(CF_REGVAR, Reg, 0), Size);
+        LoadD(GetLabelName(CF_STATIC, Label, 0, 0), Size);
+        StoreD(GetLabelName(CF_REGVAR, Reg, 0, 0), Size);
     }
     if (Size) {
-        AddCodeLine("ldab %s", GetLabelName(CF_STATIC, Label, 0));
-        AddCodeLine("stab %s", GetLabelName(CF_REGVAR, Reg, 0));
+        AddCodeLine("ldab %s", GetLabelName(CF_STATIC, Label, 0, 0));
+        AddCodeLine("stab %s", GetLabelName(CF_REGVAR, Reg, 0, 0));
     }
 }
 
@@ -5479,9 +5486,9 @@ void g_initauto (unsigned Label, unsigned Size)
     unsigned CodeLabel = GetLocalLabel ();
 
     /* Work from end to start pushing bytes */
-    AddCodeLine("ldx #%s", GetLabelName (CF_STATIC, Label, 0));
+    AddCodeLine("ldx #%s", GetLabelName (CF_STATIC, Label, 0, 1));
     AddCodeLine("stx @tmp");
-    AddCodeLine("ldx #%s+$%04X", GetLabelName (CF_STATIC, Label, 0), Size);
+    AddCodeLine("ldx #%s+$%04X", GetLabelName (CF_STATIC, Label, 0, 1), Size);
 
     g_defcodelabel (CodeLabel);
 
@@ -5503,12 +5510,12 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
     if (Size <= 8) {
         while(Size > 1) {
             Size -= 2;
-            LoadD(GetLabelName(CF_STATIC, InitLabel, 0), Size);
-            StoreD(GetLabelName(CF_STATIC, VarLabel, 0), Size);
+            LoadD(GetLabelName(CF_STATIC, InitLabel, 0, 0), Size);
+            StoreD(GetLabelName(CF_STATIC, VarLabel, 0, 0), Size);
         }
         if (Size) {
-            AddCodeLine("ldab %s", GetLabelName(CF_STATIC, InitLabel, 0));
-            AddCodeLine("stab %s", GetLabelName(CF_STATIC, VarLabel, 0));
+            AddCodeLine("ldab %s", GetLabelName(CF_STATIC, InitLabel, 0, 0));
+            AddCodeLine("stab %s", GetLabelName(CF_STATIC, VarLabel, 0, 0));
         }
     } else {
         if (CPU == CPU_6800) {
@@ -5533,7 +5540,7 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
             g_getimmed (CF_USINGX |CF_INT | CF_UNSIGNED | CF_CONST, Size, 0);
             AddCodeLine ("pshx");
         }
-        AddCodeLine ("jsr %s", GetLabelName (CF_EXTERNAL, (uintptr_t) "memcpy", 0));
+        AddCodeLine ("jsr %s", GetLabelName (CF_EXTERNAL, (uintptr_t) "memcpy", 0, 0));
         PullX(0);
         PullX(0);
         PullX(0);
