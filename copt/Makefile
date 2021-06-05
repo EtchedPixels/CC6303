@@ -16,7 +16,8 @@ killdeadlabel: killdeadlabel.o
 	$(CC) -c -o $@ $(CFLAGS) $(LOCAL_CFLAGS) $(INCLUDES) $^
 
 clean:
-	rm -f $(OBJS) copt *~ */*~
+	rm -f $(OBJS) $(REGEX_OBJS) copt
+	rm -f killdeadlabel killdeadlabel.o *~ */*~
 
 
 #Dependencies
