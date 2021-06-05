@@ -16,6 +16,7 @@
 		.export ret11
 		.export ret12
 		.export retn
+		.export retn8
 
 ret1:
 		tsx
