@@ -889,8 +889,8 @@
 	stab _%1+1
 	;invalid XDP
 =
-	clr %1
-	clr %1+1
+	clr _%1
+	clr _%1+1
 
 	clra
 	clrb
@@ -898,8 +898,8 @@
 	stab _%1+1
 	;invalid DP
 =
-	clr %1
-	clr %1+1
+	clr _%1
+	clr _%1+1
 
 #
 #	See if we can load via X. There are very few cases we can do this
@@ -1404,7 +1404,7 @@
 	ldaa %3
 =
 	ldab #%1
-	stab %2
-	clr %2+1
+	stab _%2
+	clr _%2+1
 	ldaa %3
 
