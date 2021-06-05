@@ -12,7 +12,7 @@
 
 start:
 	ldaa #1
-	staa @one
+	staa @one+1
 	deca
 	staa @zero
 	staa @zero+1

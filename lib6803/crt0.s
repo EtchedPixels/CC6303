@@ -10,7 +10,7 @@ start:
 	clrb
 	std @zero
 	inca
-	staa @one
+	staa @one+1
 	ldx #__bss
 	ldd #__bss_size
 	beq nobss
