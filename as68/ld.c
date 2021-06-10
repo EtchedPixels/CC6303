@@ -777,8 +777,6 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 			/* Relocate the value versus the new segment base and offset of the
 			   object */
 			r = target_get(o, size, ip);
-			if (high)
-				r <<= 8;
 //			fprintf(stderr, "Target is %x, Segment %d base is %x\n", 
 //				r, seg, o->base[seg]);
 			r += o->base[seg];
@@ -787,6 +785,8 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 				fprintf(stderr, "relocation failed at 0x%04X\n", dot);
 				warning("relocation exceeded");
 			}
+			/* A high relocation had a 16bit input value we relocate versus
+			   the base then chop down */
 			if (high && rawstream) {
 				r >>= 8;
 				size = 1;

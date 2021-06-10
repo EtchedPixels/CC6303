@@ -207,6 +207,7 @@ static int dump_data(const char *p, int seg, int fd)
 {
     int c;
     int size;
+    int high;
     
     dot = 0;
     bytect = 0;
@@ -247,22 +248,25 @@ static int dump_data(const char *p, int seg, int fd)
             reloc_end();
             continue;
         }
+        high = 0;
         if (c == REL_OVERFLOW) {
             reloc_tag("O");
             c = nextbyte(fd);
         }
         if (c == REL_HIGH) {
             reloc_tag("H");
+            high = 1;
             c = nextbyte(fd);
         }
         size = ((c & S_SIZE) >> 4) + 1;
         reloc_size(size);
+
         if (c & REL_SIMPLE) {
             reloc_type("SEG");
             reloc_seg(c & S_SEGMENT);
             reloc_symvalue(fd, c & S_SEGMENT, size);
             reloc_end();
-            dot += size;
+            dot += size - high;
             continue;
         }
         switch(c & REL_TYPE) {
@@ -272,7 +276,7 @@ static int dump_data(const char *p, int seg, int fd)
             reloc_type("SYM");
             reloc_symbol(fd, size);
             reloc_end();
-            dot += size;
+            dot += size - high;
             continue;  
         }         
     }

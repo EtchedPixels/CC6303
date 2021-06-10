@@ -136,9 +136,9 @@ static void check_store_allowed(uint8_t segment, uint16_t value)
  *	A_LOW and A_HIGH indicate 8bit partial relocations. We handle these
  *	internally.
  */
-void outraw(ADDR *a)
+static void outreloc(ADDR *a, int bytes)
 {
-	int s = 1 << 4;
+	int s = (bytes - 1) << 4;
 	/* We must insert a relocation record for anything relocatable,
 	   but also for anything which is a symbol, as the linker may
 	   need to do absolute resolution between modules */
@@ -150,10 +150,13 @@ void outraw(ADDR *a)
 		if (a->a_flags & A_LOW) {
 			outbyte(REL_OVERFLOW);
 			s = 0 << 4;
+			a->a_value &= 0xFF;
 		}
 		if (a->a_flags & A_HIGH) {
 			outbyte(REL_HIGH);
-			s = 0 << 4;
+			/* High relocations are two byte to allow the linker
+			   to calculate carry between the low/high byte */
+			s = 1 << 4;
 		}
 		if (a->a_sym == NULL) {
 			/* low bits of 16 bit is an 8bit relocation with
@@ -167,34 +170,72 @@ void outraw(ADDR *a)
 		/* Relocatable constant, store unquoted as know the size */
 		if (a->a_flags & A_LOW)
 			outabyte(a->a_value);
-		else if (a->a_flags & A_HIGH)
-			outabyte(a->a_value >> 8);
-		else {
+		else if (a->a_flags & A_HIGH) {
 #ifdef TARGET_BIGENDIAN
 			outabyte(a->a_value >> 8);
-			outabyte(a->a_value);
+			/* We need this to relocate but it is not really in
+			   the program stream so don't count it as such */
+			outbyte(a->a_value);
 #else
-			outabyte(a->a_value);
+			outbyte(a->a_value);
 			outabyte(a->a_value >> 8);
 #endif
+		} else {
+			if (bytes == 1)
+				/* abchk2 ? */
+				outabyte(a->a_value);
+			else {
+#ifdef TARGET_BIGENDIAN
+				outabyte(a->a_value >> 8);
+				outabyte(a->a_value);
+#else
+				outabyte(a->a_value);
+				outabyte(a->a_value >> 8);
+#endif
+			}
 		}
 	} else {
 		/* Relocatable constant. This may change and thus need
 		   to be padded */
-		   if (a->a_flags & A_LOW)
-			outab2(a->a_value);
-		else if (a->a_flags & A_HIGH)
-			outab2(a->a_value >> 8);
-		else {
+		if (a->a_flags & A_HIGH) {
 #ifdef TARGET_BIGENDIAN
 			outab2(a->a_value >> 8);
-			outab2(a->a_value);
+			/* We need this to relocate but it is not really in
+			   the program stream so don't count it as such */
+			outabyte(a->a_value);
 #else
-			outab2(a->a_value);
+			outabyte(a->a_value);
 			outab2(a->a_value >> 8);
 #endif
+		} else if (a->a_flags & A_LOW) {
+			if (bytes == 1)
+				outabyte(a->a_value & 0xFF);
+			else
+				outab2(a->a_value & 0xFF);
+		} else {
+			if (bytes == 1)
+				outabchk2(a->a_value);
+			else {
+#ifdef TARGET_BIGENDIAN
+				outab2(a->a_value >> 8);
+				outab2(a->a_value);
+#else
+				outab2(a->a_value);
+				outab2(a->a_value >> 8);
+#endif
+			}
 		}
 	}
+}
+
+void outraw(ADDR *a)
+{
+	outreloc(a, 2);
+}
+
+void outrab(ADDR *a)
+{
+	outreloc(a, 1);
 }
 
 /*
@@ -288,51 +329,6 @@ void outrabrel(ADDR *a)
 	/* relatives without a symbol don't need relocation but they
 	   still may need a pad byte */
 	outab2(a->a_value);
-}
-
-/*
- *	We should probably fold outraw and outrab as they are not very
- *	different except in the default value of s.
- */
-void outrab(ADDR *a)
-{
-	int s = 0;
-	uint16_t mode = (a->a_type & TMMODE);
-	if (mode == TBR || mode == TWR) {
-		a->a_flags |= A_LOW;
-		if (a->a_segment != ABSOLUTE)
-			aerr(MUST_BE_ABSOLUTE);
-	}
-	if (a->a_segment != ABSOLUTE) {
-		check_store_allowed(segment, 1);
-		outbyte(REL_ESC);
-		if (a->a_flags & A_LOW) {
-			outbyte(REL_OVERFLOW);
-			a->a_value &= 0xFF;
-		}
-		if (a->a_flags & A_HIGH)
-			outbyte(REL_HIGH);
-		if (a->a_sym == NULL) {
-			outbyte(s | REL_SIMPLE | a->a_segment);
-		} else {
-			outbyte(s | REL_SYMBOL);
-			outbyte(a->a_sym->s_number & 0xFF);
-			outbyte(a->a_sym->s_number >> 8);
-		}
-		if (a->a_flags & A_HIGH)
-			outabyte(a->a_value >> 8);
-		else if (a->a_flags & A_LOW)
-			outabyte(a->a_value & 0xFF);
-		else
-			outabyte(a->a_value);
-	} else {
-		if (a->a_flags & A_HIGH)
-			outabchk2(a->a_value >> 8);
-		else if (a->a_flags & A_LOW)
-			outabchk2(a->a_value & 0xFF);
-		else
-			outabchk2(a->a_value);
-	}
 }
 
 static void putsymbol(SYM *s, FILE *ofp)
