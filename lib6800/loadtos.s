@@ -14,7 +14,7 @@ loadtos:
 savetos:
 	tsx
 	stab $03,x
-	stab $02,x
+	staa $02,x
 	rts
 
 addtotosb:
