@@ -12,9 +12,11 @@ _memcpy:
 	ldd	6,x
 	std	@tmp		; destination
 	ldd	2,x		; length
+	beq	nocopy
 	ldx	4,x		; src
 	bsr	nextblock
 	tsx
+nocopy:
 	ldd	6,x
 	rts
 
