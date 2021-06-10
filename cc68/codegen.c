@@ -416,11 +416,11 @@ static void SubDConstCompare(int value)
 static void SubD(const char *where, int offset)
 {
     if (CPU == CPU_6800) {
+        AddCodeLine("subb %s+%d", where, offset + 1);
         if (offset)
-            AddCodeLine("subb %s+%d", where, offset);
+            AddCodeLine("sbca %s+%d", where, offset);
         else
-            AddCodeLine("subb %s", where);
-        AddCodeLine("sbca %s+%d", where, offset + 1);
+            AddCodeLine("sbca %s", where);
     } else {
         if (offset == 0)
             AddCodeLine("subd %s", where);
@@ -446,10 +446,8 @@ static void SubDViaX(int offset)
 static void AddDConst(int value)
 {
     if (CPU == CPU_6800) {
-        if ((value & 0xFF) == 1) {
-            AddCodeLine("incb");
-            AddCodeLine("adca #$%02X", (value >> 8) & 0xFF);
-        } else if (value & 0xFF) {
+        /* Can't use incb here as it doesn't change carry */
+        if (value & 0xFF) {
             AddCodeLine("addb #$%02X", value & 0xFF);
             AddCodeLine("adca #$%02X", (value >> 8) & 0xFF);
         } else
