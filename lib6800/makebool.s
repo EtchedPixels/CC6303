@@ -62,6 +62,6 @@ boolule:
 	beq	ret1
 boolult:			; use C flag
 	ldab	#0		; clrb clears the flag
-	rolb
-	clra
+	ldaa	#0		; clear firs so the flags are right
+	rolb			; leaves us with valid EQ/NE as well
 	rts

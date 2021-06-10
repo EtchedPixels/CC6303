@@ -18,6 +18,7 @@ pshind:
 	tsx
 	ldx ,x		; return address
 	stx @tmp
+	tsx
 	stab $01,x	; swap return address with parameter
 	staa $00,x
 	jmp jmptmp
@@ -26,26 +27,26 @@ pshindvx1:
 	ldaa $01,x
 	bra pshind
 pshindvx2:
-	ldab $02,x
-	ldaa $01,x
-	bra pshind
-pshindvx3:
 	ldab $03,x
 	ldaa $02,x
 	bra pshind
-pshindvx4:
+pshindvx3:
 	ldab $04,x
 	ldaa $03,x
 	bra pshind
-pshindvx5:
+pshindvx4:
 	ldab $05,x
 	ldaa $04,x
 	bra pshind
-pshindvx6:
+pshindvx5:
 	ldab $06,x
 	ldaa $05,x
 	bra pshind
-pshindvx7:
+pshindvx6:
 	ldab $07,x
 	ldaa $06,x
+	bra pshind
+pshindvx7:
+	ldab $08,x
+	ldaa $07,x
 	bra pshind

@@ -4,21 +4,26 @@
 ;
 	.export _memcpy
 
+	.setcpu 6800
 	.code
 
 _memcpy:
 	tsx
-	ldaa	7,x
-	ldab	8,x
+	ldaa	6,x
+	ldab	7,x
 	staa	@tmp		; destination
 	stab	@tmp+1
-	ldaa	3,x		; length
-	ldab	4,x
-	ldx	5,x		; src
+	ldaa	2,x		; length
+	oraa	3,x
+	beq	nocopy
+	ldaa	2,x
+	ldab	3,x
+	ldx	4,x		; src
 	bsr	nextblock
 	tsx
-	ldaa	7,x
-	ldab	8,x
+nocopy:
+	ldaa	6,x
+	ldab	7,x
 	jmp	ret6
 
 nextblock:
