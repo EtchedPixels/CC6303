@@ -31,7 +31,7 @@ fixfp:
 restorefp:
 		tsx
 		ldx ,x
-		inx
-		inx
+		ins
+		ins
 		stx @fp
 		rts
