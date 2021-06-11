@@ -32,8 +32,7 @@ do5:
 		des
 		des
 		des
-		des
-		des
+		; and two for free from the JSR
 		jmp jmptmp
 
 des11:
