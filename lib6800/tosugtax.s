@@ -1,6 +1,8 @@
 ;
 ;	Compare top of stack with D
 ;
+;	True if TOS > D, we actually check this as D <= TOS
+;
 
 		.export tosugtax
 		.code
@@ -9,6 +11,6 @@ tosugtax:
 		cmpa 2,x
 		bne noteq
 		cmpb 3,x
-noteq:		jsr boolugt
+noteq:		jsr boolule
 		jmp pop2flags
 

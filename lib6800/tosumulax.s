@@ -26,8 +26,8 @@ nextbit:
 		bcc noadd
 		addb 4,x
 		adca 3,x
-noadd:		rora
-		rorb
+noadd:		rola
+		rolb
 		dec @tmp
 		bne nextbit
 		; For a 16x16 to 32bit just store 3-4,x into sreg
