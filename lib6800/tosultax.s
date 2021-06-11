@@ -10,4 +10,4 @@ tosultax:
 		bne noteq
 		cmpb 3,x
 noteq:		jsr boolult
-		jmp pop2
+		jmp pop2flags

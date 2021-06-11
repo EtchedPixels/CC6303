@@ -10,4 +10,5 @@ tosugtax:
 		bne noteq
 		cmpb 3,x
 noteq:		jsr boolugt
-		jmp pop2
+		jmp pop2flags
+
