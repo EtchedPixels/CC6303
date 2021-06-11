@@ -375,10 +375,7 @@ static void PullX(int nv)
 static void SubDConst(int value)
 {
     if (CPU == CPU_6800) {
-        if ((value & 0xFF) == 1) {
-            AddCodeLine("decb");
-            AddCodeLine("sbca #$%02X", (value >> 8) & 0xFF);
-        } else if (value & 0xFF) {
+        if (value & 0xFF) {
             AddCodeLine("subb #$%02X", value & 0xFF);
             AddCodeLine("sbca #$%02X", (value >> 8) & 0xFF);
         } else
@@ -2638,6 +2635,7 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
                     AssignD(val, 0);
                     AddCodeLine ("jsr addtotos");
                 }
+                break;
             }
             if (flags & CF_CONST)
                 AssignD(val, 0);
