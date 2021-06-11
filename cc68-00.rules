@@ -81,60 +81,6 @@
 	ldab #1
 	jne %1
 
-	des
-	des
-	des
-	des
-	des
-	;invalid XDP
-=
-	jsr des5
-
-	des
-	des
-	des
-	des
-	des
-	tsx
-=
-	jsr des5
-	tsx
-
-	des
-	jsr des5
-=
-	jsr des6
-
-	des
-	jsr des6
-=
-	jsr des7
-
-	des
-	jsr des7
-=
-	jsr des8
-
-	des
-	jsr des8
-=
-	jsr des9
-
-	des
-	jsr des9
-=
-	jsr des10
-
-	des
-	jsr des10
-=
-	jsr des11
-
-	des
-	jsr des11
-=
-	jsr des12
-
 # Some trivial optimizations for clra/clrb cases
 	clra
 	ldab #$01
@@ -1176,6 +1122,7 @@
 	staa %2,x
 	;invalid DP
 =
+	tsx
 	clr %1,x
 	clr %2,x
 	;invalid DP

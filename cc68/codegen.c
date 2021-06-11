@@ -3459,8 +3459,18 @@ void g_space (int Space, int save_d)
                 Space -= 2;
             }
         }
-        while (Space--)
-            AddCodeLine("des");
+        while (Space >= 12) {
+            InvalidateX();
+            AddCodeLine("jsr des12");
+            Space -= 12;
+        }
+        if (Space > 4) {
+            InvalidateX();
+            AddCodeLine("jsr des%d", Space);
+        } else {
+            while (Space--)
+                AddCodeLine("des");
+        }
     }
 }
 
