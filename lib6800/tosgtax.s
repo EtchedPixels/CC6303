@@ -9,5 +9,6 @@ tosgtax:
 		cmpa 2,x
 		bne noteq
 		cmpb 3,x
-noteq:		jsr boolgt
-		jmp pop2
+noteq:		jsr boollt
+		jmp pop2flags
+

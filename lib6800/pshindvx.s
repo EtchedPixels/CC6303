@@ -12,41 +12,82 @@
 	.code
 
 pshindvx:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $01,x
 	ldaa $00,x
-pshind:
-	tsx
-	ldx ,x		; return address
-	stx @tmp
-	tsx
-	stab $01,x	; swap return address with parameter
-	staa $00,x
-	jmp jmptmp
+	pshb
+	psha
+	jmp @jmptmp
 pshindvx1:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $02,x
 	ldaa $01,x
-	bra pshind
+	pshb
+	psha
+	jmp @jmptmp
 pshindvx2:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $03,x
 	ldaa $02,x
-	bra pshind
+	pshb
+	psha
+	jmp @jmptmp
 pshindvx3:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $04,x
 	ldaa $03,x
-	bra pshind
+	pshb
+	psha
+	jmp @jmptmp
 pshindvx4:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $05,x
 	ldaa $04,x
-	bra pshind
+	pshb
+	psha
+	jmp @jmptmp
 pshindvx5:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $06,x
 	ldaa $05,x
-	bra pshind
+	pshb
+	psha
+	jmp @jmptmp
 pshindvx6:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $07,x
 	ldaa $06,x
-	bra pshind
+	pshb
+	psha
+	jmp @jmptmp
 pshindvx7:
+	pula
+	pulb
+	staa @tmp
+	stab @tmp+1
 	ldab $08,x
 	ldaa $07,x
-	bra pshind
+	pshb
+	psha
+	jmp @jmptmp
