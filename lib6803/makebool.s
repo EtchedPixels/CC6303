@@ -28,6 +28,7 @@ booleq:
 ret1:
 	ldd	@one
 	rts
+
 boolne:
 	bne	ret1
 ret0:
