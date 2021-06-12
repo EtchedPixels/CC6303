@@ -1,14 +1,11 @@
-#
 #	This is fairly ineffective, we need a proper optimizer that can do
 #	things like live value and constant tracking to make a real dent
 #	in the 6800 output
 #
-
 #
 #	Patterns for tidying up branching and the like
 #
 #	Trim jumps to next instruction
-
 	jmp %1
 %1:
 =
@@ -36,6 +33,56 @@
 =
 	jmp %1
 
+#
+#	Terminal load
+#
+	ldaa %1
+	ldab %2
+	;invalid XDP
+=
+	;invalid XDP
+
+	clra
+	ldab %1
+	;invalid XDP
+=
+	;invalid XDP
+
+	clra
+	clrb
+	;invalid XDP
+=
+	;invalid XDP
+
+	ldaa %1
+	tab
+	;invalid XDP
+=
+	;invalid XDP
+
+	ldaa %1
+	ldab %2
+	;invalid DP
+=
+	;invalid DP
+
+	clra
+	ldab %1
+	;invalid DP
+=
+	;invalid DP
+
+	clra
+	clrb
+	;invalid DP
+=
+	;invalid DP
+
+	ldaa %1
+	tab
+	;invalid DP
+=
+	;invalid DP
 
 # Shorten some other calls with helper variants
 # bnega only inspects b and changes a and b
@@ -46,29 +93,26 @@
 	ldab %1
 	jsr bnega
 
-
 # Unneeded reloads (NOTWORKING)
-
-	stab %1
-	staa %2
+	staa %1
+	stab %2
 	;invalid DP
-	ldab %1
-	ldaa %2
+	ldaa %1
+	ldab %2
 =
-	stab %1
-	staa %2
+	staa %1
+	stab %2
 	;invalid DP
 
-	stab %1
-	staa %2
+	staa %1
+	stab %2
 	;invalid XDP
-	ldab %1
-	ldaa %2
+	ldaa %1
+	ldab %2
 =
-	stab %1
-	staa %2
+	staa %1
+	stab %2
 	;invalid XDP
-
 
 # Silly logic removals
 	clra
@@ -332,7 +376,6 @@
 =
 	;
 
-
 	pshb
 	psha
 	pula
@@ -371,13 +414,13 @@
 	clrb
 
 # Silly reloads (safe as we don't load X)
-	stab %1
-	staa %2
-	ldab %1
-	ldaa %2
+	staa %1
+	stab %2
+	ldaa %1
+	ldab %2
 =
-	stab %1
-	staa %2
+	staa %1
+	stab %2
 
 #	Branches
 #
@@ -424,11 +467,11 @@
 # Clean up trailing references from things like p++;
 	ldaa %1
 	ldab %2
-	L%3
+L%3
 	ldaa %4
 	ldab %5
 =
-	L%3
+L%3
 	ldaa %4
 	ldab %5
 
@@ -592,7 +635,6 @@
 	clra
 
 # Subtract clean up
-
 	ldaa %1
 	ldab %2
 	pshb
@@ -646,18 +688,52 @@
 
 
 # Optimize common dtox patterns
-
-	ldab $01,x
-	ldaa $00,x
+	ldaa %1,x
+	ldab %1+1,x
 	jsr dtox
 =
-	ldx ,x
+	ldx %1,x
+
+	ldaa #>%1
+	ldab #<%1
+	jsr dtox
+=
+	ldx #%1
+
+	ldaa _%1
+	ldab _%1+1
+	jsr dtox
+=
+	ldx _%1
+
+# Struct offset maths assign 0
+	clr @%1
+	clr @%1+1
+	pula
+	pulb
+	addb #%2
+	adca #%3
+	jsr dtox
+	ldaa @%1
+	ldab @%1+1
+	staa %4,x
+	stab %4+1,x
+	;invalid DP
+=
+	pula
+	pulb
+	addb #%2
+	adca #%3
+	jsr dtox
+	clr %4,x
+	clr %4+1,x
+	;invalid DP
 
 	jsr dtox
 	ldaa @tmp2
 	ldab @tmp2+1
-	stab $01,x
-	staa $00,x
+	staa $01,x
+	stab $00,x
 =
 	jsr dtoxstoretmp2
 
@@ -675,8 +751,8 @@
 	jsr dtoxldb
 
 	jsr dtox
-	ldab $01,x
-	ldaa $00,x
+	ldaa $01,x
+	ldab $00,x
 =
 	jsr dtoxldw
 
@@ -708,20 +784,6 @@
 	staa $00,x
 =
 	jsr dopulxstd
-
-#
-#	We often push top, clear tmp2 and pop it. We can do better
-#
-	jsr pshtop
-	clra
-	clrb
-	staa @tmp2
-	stab @tmp2+1
-	pula
-	pulb
-=
-	clr @tmp2
-	clr @tmp2+1
 
 #
 #	We also sometimes push d, clear tmp2 and pop
@@ -774,34 +836,24 @@
 	stab $01,x
 	staa $00,x
 	;invalid DP
-	ldab $01,x
-	ldaa $00,x
+	ldaa $01,x
+	ldab $00,x
 	pshb
 	psha
 =
 	tsx
 	jsr storedpush
 
-# The very common 'push top of stack' forms (being careful that X may not be
-# S)
-	tsx
-	ldab $01,x
-	ldaa $00,x
-	pshb
-	psha
-=
-	tsx
-	jsr pshtop
 
 # Subtract cleanup
-
+#
 	ldaa _%1
 	ldab _%2
 	tsx
 	staa @tmp
 	stab @tmp+1
-	ldab $01,x
 	ldaa $00,x
+	ldab $00+1,x
 	ins
 	ins
 	subb @tmp
@@ -815,8 +867,8 @@
 	tsx
 	staa @tmp
 	stab @tmp+1
-	ldab $01,x
 	ldaa $00,x
+	ldab $00+1,x
 	ins
 	ins
 	subb @tmp
@@ -824,6 +876,27 @@
 =
 	subb #%2
 	sbca #%1
+
+#
+#	8bit post increment (not matching ? FIXME)
+#
+	ldab %1,x
+	stab @tmp1
+	incb
+	stab %1,x
+	ldab @tmp1
+=
+	ldab %1
+	inc %1,x
+
+	ldab _%1
+	stab @tmp1
+	incb
+	stab _%1
+	ldab @tmp1
+=
+	ldab _%1
+	inc _%1
 
 #
 #	Constant stores to static
@@ -891,55 +964,6 @@
 	stx @%3
 	;invalid XDP
 
-	
-	
-
-############################################################################
-#
-#	Below this point are rules that want to deal with discovered
-#	as well as actual generated invalid DP markers
-#
-############################################################################
-
-#
-#	Add deducable invalidity markers. Whenever we load A and B we know
-#	that we can add an invalid DP marker just before
-#
-	ldaa %1
-	ldab %2
-	=
-	;invalid DP
-	ldaa %1
-	ldab %2
-
-	clra
-	ldab %1
-	=
-	;invalid DP
-	clra
-	ldab %1
-
-	ldaa %1
-	clrb
-	=
-	;invalid DP
-	ldaa %1
-	clrb
-
-	clra
-	clrb
-	=
-	;invalid DP
-	clra
-	clrb
-
-	ldaa %1
-	tab
-	=
-	;invalid DP
-	ldaa %1
-	tab
-
 ############################################################################
 #
 #	Below this point are rules that want to deal with DP only so we
@@ -947,7 +971,6 @@
 #	out when debugging rulesets!
 #
 ############################################################################
-
 	;invalid XDP
 =
 	;invalid DP
@@ -1003,7 +1026,6 @@
 #
 #	Constant two bytes the same (usually -1)
 #
-
 	ldab #$%1
 	tba
 	pshb
@@ -1016,15 +1038,686 @@
 	;invalid DP
 
 #
+#	Clean up tail loads 8bit increment
+#
+	ldab	@%1
+	;invalid DP
+=
+	;invalid DP
+
+#
+#	General tail loads 8 and 16 bit
+#	Don't try and clean up tail static loads, we will end up eliminating
+#	things like MMIO
+#
+	ldaa	%1,x
+	ldab	%2,x
+	;invalid DP
+=
+	;invalid DP
+
+	clra
+	ldab	%2,x
+	;invalid DP
+=
+	;invalid DP
+
+#
+#	Stores 8 bit with no trailing use
+#
+	clra
+	ldab %1
+	jsr dopulxstb
+	;invalid DP
+=
+	ldab %1
+	jsr dopulxstb
+	;invalid DP
+
+#
+#	Push of 0 that is then replaced by other data
+#
+	clra
+	clrb
+	pshb
+	psha
+	;invalid DP
+=
+	clra
+	psha
+	psha
+	;invalid DP
+
+#
+#	Where we are loading zero via the temp helpers we can avoid
+#	the whole push and reload. We want this before pshindvx hides
+#	the optimization
+#
+	pshb
+	psha
+	clr @%1
+	clr @%1+1
+	pula
+	pulb
+=
+	clr @%1
+	clr @%1+1
+
+#
+#	Reorder static cases with no side effects.
+#
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa #%2
+	ldab #%3
+	staa @%4
+	stab @%4+1
+	pula
+	pulb
+=
+	ldaa #%2
+	ldab #%3
+	staa @%4
+	stab @%4+1
+	ldaa %1,x
+	ldab %1+1,x	
+
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa #%2
+	tab
+	staa @%3
+	stab @%3+1
+	pula
+	pulb
+=
+	ldaa #%2
+	staa @%3
+	staa @%3+1
+	ldaa %1,x
+	ldab %1+1,x	
+
+#
+#	Clear variants
+#
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	clrb
+	staa @%2
+	stab @%2+1
+	pula
+	pulb
+=
+	clr @%2
+	clr @%2+1
+	ldaa %1,x
+	ldab %1+1,x	
+
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	ldab #%3
+	staa @%2
+	stab @%2+1
+	pula
+	pulb
+=
+	clr @%2
+	ldab #%3
+	stab @%2+1
+	ldaa %1,x
+	ldab %1+1,x	
+
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa #%3
+	clrb
+	staa @%2
+	stab @%2+1
+	pula
+	pulb
+=
+	ldaa #%3
+	staa @%2
+	clr @%2+1
+	ldaa %1,x
+	ldab %1+1,x	
+
+#
+#	Stores via a stack based pointer - use X when we can
+#	16 and 8 and clear variants
+#
+#	16bit via X
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa #%2
+	ldab #%3
+	jsr dopulx
+	staa %4,x
+	stab %4+1,x
+=
+	ldx %1,x
+	ldaa #%2
+	ldab #%3
+	staa %4,x
+	stab %4+1,x
+
+# 16bit via X add const
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa _%2
+	ldab _%2+1
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx %1,x
+	ldaa _%2
+	ldab _%2+1
+	staa %3,x
+	stab %3+1,x
+
+# 16bit via X A and B same
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa #%2
+	tab
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx %1,x
+	ldaa #%2
+	tab
+	staa %3,x
+	stab %3+1,x
+
+# 16bit static plus const
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldaa #%2
+	ldab #%3
+	jsr dopulx
+	staa %4,x
+	stab %4+1,x
+=
+	ldx _%1
+	ldaa #%2
+	ldab #%3
+	staa %4,x
+	stab %4+1,x
+
+# 16bit static of static
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldaa _%2
+	ldab _%2+1
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx _%1
+	ldaa _%2
+	ldab _%2+1
+	staa %3,x
+	stab %3+1,x
+
+# 16bit of static A and B same
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldaa #%2
+	tab
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx _%1
+	ldaa #%2
+	tab
+	staa %3,x
+	stab %3+1,x
+
+# 16bit of X high byte 0 no requirement for keeping D
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+	;invalid DP
+=
+	ldx %1,x
+	ldab #%2
+	clr %2,x
+	stab %3+1,x
+	;invalid DP
+
+# 16bit static high byte 0 no requirement for keeping D
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+	;invalid DP
+=
+	ldx _%1
+	ldab #%2
+	clr %2,x
+	stab %3+1,x
+	;invalid DP
+
+# 16bit of X low byte 0 no requirement for keeping D
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa #%2
+	clrb
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+	;invalid DP
+=
+	ldx %1,x
+	ldaa #%2
+	staa #%3,x
+	clr %3+1,x
+	;invalid DP
+
+# 16bit of static low byte 0 no requirement for keeping D
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldaa #%2
+	clrb
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+	;invalid DP
+=
+	ldx _%1
+	ldaa #%2
+	staa #%3,x
+	clr %3+1,x
+	;invalid DP
+
+# 16bit of X, clear, no requirement for keeping D
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+	;invalid DP
+=
+	ldx %1,x
+	clr %2,x
+	clr %2+1,x
+	;invalid DP
+
+# 16bit of static, clear, no requirement for keeping D
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+	;invalid DP
+=
+	ldx _%1
+	clr %2,x
+	clr %2+1,x
+	;invalid DP
+
+#
+#	FIXME: look at matching 8bit forms when we know XDP and turning
+#
+# 8bit of X, no requirement to keep D
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	stab %3,x
+	;invalid DP
+=
+	ldx %1,x
+	ldab #%2
+	stab %3,x
+	;invalid DP
+
+# 8bit of static, no requirement to keep D
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	stab %3,x
+	;invalid DP
+=
+	ldx _%1
+	ldab #%2
+	stab %3,x
+	;invalid DP
+
+# 8bit of X, zero, no requirement to keep D
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	stab %2,x
+	;invalid DP
+=
+	ldx %1,x
+	clr %2,x
+	;invalid DP
+
+# 8bit of static, zero, no requirement to keep D
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	stab %2,x
+	;invalid DP
+=
+	ldx _%1
+	clr %2,x
+	;invalid DP
+
+#
+#	Pure 8bit forms
+#
+# 8bit via X to const
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldab #%2
+	jsr dopulx
+	stab %3,x
+=
+	ldx %1,x
+	ldab #%2
+	stab %3,x
+
+#8bit via X to static
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldab _%2
+	jsr dopulx
+	stab %3,x
+=
+	ldx %1,x
+	ldab _%2
+	stab %3,x
+
+# 8bit static to const
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldab #%2
+	jsr dopulx
+	stab %3,x
+=
+	ldx %1,x
+	ldab #%2
+	stab %3,x
+
+#8bit via static, to static
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldab _%2
+	jsr dopulx
+	stab %3,x
+=
+	ldx _%1
+	ldab _%2
+	stab %3,x
+
+#
+#	Cases we need the data still
+#
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx %1,x
+	ldab #%2
+	clr %2,x
+	clra
+	stab %3+1,x
+
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	stab %3,x
+=
+	ldx %1,x
+	ldab #%2
+	clr %2,x
+	clra
+	stab %3+1,x
+
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa #%2
+	clrb
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx %1,x
+	ldaa #%2
+	staa #%3,x
+	clrb
+	clr %3+1,x
+
+# And for static
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx _%1
+	ldab #%2
+	clr %2,x
+	clra
+	stab %3+1,x
+
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	ldab #%2
+	jsr dopulx
+	stab %3,x
+=
+	ldx _%1
+	ldab #%2
+	clr %2,x
+	clra
+	stab %3+1,x
+
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldaa #%2
+	clrb
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx _%1
+	ldaa #%2
+	staa #%3,x
+	clrb
+	clr %3+1,x
+
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+=
+	ldx _%1
+	clr %2,x
+	clr %2+1,x
+	clra
+	clrb
+
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	stab %2,x
+=
+	ldx _%1
+	clr %2,x
+	clra
+	clrb
+
+# Seems to be failing FIXME
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+=
+	ldx %1,x
+	clr %2,x
+	clr %2+1,x
+	clra
+	clrb
+
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	stab %2,x
+=
+	ldx %1,x
+	clr %2,x
+	clra
+	clrb
+
+# The very common 'push top of stack' forms (being careful that X may not be
+# S)
+	tsx
+	ldaa $01,x
+	ldab $01+1,x
+	pshb
+	psha
+=
+	tsx
+	jsr pshtop
+
+#
+#	We often push top, clear tmp2 and pop it. We can do better
+#
+	jsr pshtop
+	clra
+	clrb
+	staa @tmp2
+	stab @tmp2+1
+	pula
+	pulb
+=
+	clr @tmp2
+	clr @tmp2+1
+
+#
 #	The next batch need expanding to cover cases where they are followed
 #	by ld/clr a/b pairs.
 #
-
-#
 #	,x
 #
-	ldab $01,x
 	ldaa $00,x
+	ldab $00+1,x
 	pshb
 	psha
 =
@@ -1033,8 +1726,8 @@
 #
 #	1,x
 #
-	ldab $02,x
 	ldaa $01,x
+	ldab $01+1,x
 	pshb
 	psha
 =
@@ -1043,8 +1736,8 @@
 #
 #	2,x
 #
-	ldab $03,x
 	ldaa $02,x
+	ldab $02+1,x
 	pshb
 	psha
 =
@@ -1053,28 +1746,18 @@
 #
 #	3,x
 #
-	ldab $04,x
 	ldaa $03,x
+	ldab $03+1,x
 	pshb
 	psha
 =
 	jsr pshindvx3
 
 #
-#	5,x
+#	4,
 #
-	ldab $06,x
-	ldaa $05,x
-	pshb
-	psha
-=
-	jsr pshindvx5
-
-#
-#	4,x
-#
-	ldab $05,x
 	ldaa $04,x
+	ldab $04+1,x
 	pshb
 	psha
 =
@@ -1083,8 +1766,8 @@
 #
 #	5,x
 #
-	ldab $06,x
 	ldaa $05,x
+	ldab $05+1,x
 	pshb
 	psha
 =
@@ -1093,8 +1776,8 @@
 #
 #	6,x
 #
-	ldab $07,x
 	ldaa $06,x
+	ldab $06+1,x
 	pshb
 	psha
 =
@@ -1103,18 +1786,67 @@
 #
 #	7,x
 #
-	ldab $08,x
-	ldaa $07,x
+	ldab $07,x
+	ldaa $07+1,x
 	pshb
 	psha
 =
 	jsr pshindvx7
 
+############################################################################
+#
+#	Below this point are rules that want to deal with discovered
+#	as well as actual generated invalid DP markers
+#
+############################################################################
+#
+#	Add deducable invalidity markers. Whenever we load A and B we know
+#	that we can add an invalid DP marker just before
+#
+	ldaa %1
+	ldab %2
+=
+%once
+	;invalid DP
+	ldaa %1
+	ldab %2
+
+	clra
+	ldab %1
+=
+%once
+	;invalid DP
+	clra
+	ldab %1
+
+	ldaa %1
+	clrb
+=
+%once
+	;invalid DP
+	ldaa %1
+	clrb
+
+	clra
+	clrb
+=
+%once
+	;invalid DP
+	clra
+	clrb
+
+	ldaa %1
+	tab
+=
+%once
+	;invalid DP
+	ldaa %1
+	tab
+
 #
 #
 #	Shrink some load forms
 #
-
 	clra
 	clrb
 	tsx
@@ -1135,6 +1867,29 @@
 =
 	clr %1,x
 	clr %2,x
+	;invalid DP
+
+#
+#	Store optimisations
+#
+	clra
+	clrb
+	staa _%1
+	stab _%1+1
+	;invalid DP
+=
+	clr _%1
+	clr _%1+1
+	;invalid DP
+
+	clra
+	clrb
+	staa %1,x
+	stab %1+1,x
+	;invalid DP
+=
+	clr %1,x
+	clr %1+1,x
 	;invalid DP
 
 ############################################################################
@@ -1143,9 +1898,21 @@
 #	markers
 #
 ############################################################################
-
 	;invalid DP
 =
+
+#
+#	Stack via X load
+#
+	ldaa %1,x
+	ldab %1+1,x
+	jsr dtox
+	ldaa %2,x
+	ldab %2+1,x
+=
+	ldx %1,x
+	ldaa %2,x
+	ldab %2+1,x
 
 #
 #	Store TOS then Push TOS
@@ -1158,23 +1925,31 @@
 =
 	jsr storepushtop
 
-
 #
 #	Load of TOS
 #
 	tsx
-	ldab $01,x
 	ldaa $00,x
+	ldab $00+1,x
 =
 	jsr loadtos
 
+#
+#
+#
+	pshb
+	psha
+	jsr loadtos
+=
+	pshb
+	psha
 
 #
 #	Save to top of stack
 #
 	tsx
-	stab $01,x
 	staa $00,x
+	stab $01,x
 =
 	jsr savetos
 
@@ -1196,7 +1971,6 @@
 #
 #	Minor optimizations
 #
-
 #
 #	Eliminate load of full register for 8bit push. Keep the clr as we
 #	may consume the register
@@ -1226,8 +2000,8 @@
 #	tos = call
 #
 	tsx
-	stab $01,x
 	staa $00,x
+	stab $00+1,x
 =
 	jsr storetos
 
@@ -1320,7 +2094,6 @@
 	clra
 	pshb
 
-
 #
 #	More addition rules
 #
@@ -1329,8 +2102,8 @@
 	pshb
 	psha
 	tsx
-	ldab %3
-	ldaa %4
+	ldaa %3
+	ldab %4
 	addb $01,x
 	adca $00,x
 	ins
@@ -1354,4 +2127,445 @@
 	stab _%2
 	clr _%2+1
 	ldaa %3
+
+#
+#	Convoluted structure assignments
+#
+	pshb
+	psha
+	ldaa #$%1
+	ldab #$%2
+	staa @tmp2
+	stab @tmp2+1
+	pula
+	pulb
+	addb #$%3
+	adca #$%4
+	jsr dtoxstoretmp2
+=
+	addb #$%3
+	adca #$%4
+	ldx #$%1%2
+	jsr dswapxstore
+
+	pshb
+	psha
+	ldaa #$%1
+	ldab #$%2
+	staa @tmp2
+	stab @tmp2+1
+	pula
+	pulb
+	adda #$%3
+	jsr dtoxstoretmp2
+=
+	adda #$%3
+	ldx #$%1%2
+	jsr dswapxstore
+
+#
+#	Make stack space and store constant - use push
+#
+	des
+	des
+	ldaa #%1
+	ldab #%2
+	jsr storetos
+=
+	ldaa #%1
+	ldab #%2
+	pshb
+	psha
+
+#
+#	One of the few cases we can easily work via X
+#
+	ldaa %1,x
+	ldab %1+1,x
+	jsr dtox
+	ldab %2,x
+	ldaa %2+1,x
+=
+	ldx %1,x
+	ldab %2,x
+	ldaa %2+1,x
+
+	jsr pshindxv%1
+	ldaa #%1
+	ldab #%2
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx %1,x
+	ldaa #%1
+	ldab #%2
+	staa %3,x
+	stab %3+1,x
+
+#
+#	8bit initialize of a local into space just created
+#
+	des
+	clra
+	ldab #%1
+	tsx
+	stab $00,x
+=
+	ldab #%1
+	pshb
+	tsx
+
+#
+#	Some simple 8bit bool opts - bool* will set up A and B
+#
+	clra
+	ldab %1
+	cmpb %2
+	jsr bool%3
+=
+	ldab %1
+	cmpb %2
+	jsr bool%3
+
+#
+#	Some more big patterns the compiler struggles with
+#
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldaa %2
+	ldab %3
+	staa @sreg
+	stab @sreg+1
+	ldaa %4
+	ldab %5
+	jsr dopulx
+=
+	ldx _%1
+	ldaa %2
+	ldab %3
+	staa @sreg
+	stab @sreg+1
+	ldaa %4
+	ldab %5
+
+	ldaa #>$%1
+	ldab #<$%2
+	pshb
+	psha
+	ldaa %3
+	ldab %4
+	staa @sreg
+	stab @sreg+1
+	ldaa %5
+	ldab %6
+	jsr dopulx
+=
+	ldx #$%1%2
+	ldaa %3
+	ldab %4
+	staa @sreg
+	stab @sreg+1
+	ldaa %5
+	ldab %6
+
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	ldaa %2
+	ldab %3
+	staa @sreg
+	stab @sreg+1
+	ldaa %4
+	ldab %5
+	jsr dopulx
+=
+	ldx %1,x
+	ldaa %2
+	ldab %3
+	staa @sreg
+	stab @sreg+1
+	ldaa %4
+	ldab %5
+
+#
+#	Tidy up clears into structs
+#
+	clr @tmp2
+	clr @tmp2+1
+	addb #%1
+	adca #%2
+	jsr dtoxstoretmp2b
+=
+	addb #%1
+	adca #%2
+	jsr dtoxstorew0
+
+	clr @tmp2
+	clr @tmp2+1
+	adda #%1
+	jsr dtoxstoretmp2b
+=
+	adda #%1
+	jsr dtoxstorew0
+
+#
+#	More X optimisations
+#
+	jsr loadtos
+	pshb
+	psha
+	ldaa #%1
+	ldab #%2
+	jsr dopulx
+	staa %3,x
+	stab %3+1,x
+=
+	ldx ,x
+	ldaa #%1
+	ldab #%2
+	staa %3,x
+	stab %3+1,x
+
+	jsr loadtos
+	pshb
+	psha
+	ldaa #%1
+	tab
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+=
+	ldx ,x
+	ldaa #%1
+	tab
+	staa %2,x
+	stab %2+1,x
+
+	jsr loadtos
+	pshb
+	psha
+	clra
+	ldab #%1
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+=
+	ldx ,x
+	clra
+	ldab #%1
+	staa %2,x
+	stab %2+1,x
+
+	jsr loadtos
+	pshb
+	psha
+	clra
+	ldab #%1
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+=
+	ldx ,x
+	clra
+	ldab #%1
+	staa %2,x
+	stab %2+1,x
+
+	jsr loadtos
+	pshb
+	psha
+	clra
+	clrb
+	jsr dopulx
+	staa %2,x
+	stab %2+1,x
+=
+	ldx ,x
+	clra
+	clrb
+	staa %2,x
+	stab %2+1,x
+
+#
+#	Another form that seems to show up
+#
+	jsr loadtos
+	pshb
+	psha
+=	
+	jsr pushtop
+
+#
+#	Short form for pulxstb we can re-order
+#
+#	FIXME: earlier up match cases ending with a store on the dopulx then
+#	invalidating so that we can avoid going via X versu ext address
+#
+#	FIXME: why is this rule failing (one below is fine)
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	tsx
+	ldab %2,x
+	jsr dopulxstb
+=
+	tsx
+	ldab %2-2,x
+	stab _%1
+
+# FIXME why is this failing
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldab #%2
+	jsr dopulxstb
+=
+	ldab #%2
+	stab _%1
+
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	tsx
+	ldaa %2,x
+	ldab %2+1,x
+	jsr dopulx
+=
+	tsx
+	ldaa %2-2,x
+	ldab %2-1,x
+	ldx _%1
+
+	ldaa _%1
+	ldab _%1+1
+	pshb
+	psha
+	ldaa #%2
+	ldab #%3
+	jsr dopulx
+=
+	ldaa #%2
+	ldab #%3
+	ldx _%1
+
+#
+#	Some more maths compares we can cheat on a bit
+#
+	ldab %1
+	tstb
+	jsr bool%2
+=
+	tst %1
+	jsr bool%2
+
+#
+#	Flag tests
+#
+	clra
+	ldab %1
+	andb %2
+	staa @tmp1
+	orab @tmp1
+=
+	ldab %1
+	andb %2
+
+	clra
+	ldab %1
+	andb %2
+	jsr bnegax
+=
+	ldab %1
+	andb %2
+	jsr bnegax
+
+#
+#	Trivial for calls
+#
+	clra
+	psha
+	psha
+	clra
+=
+	clra
+	psha
+	psha
+
+#
+#	Some cases we can go via X
+#
+	ldaa %1,x
+	ldab %1+1,x
+	pshb
+	psha
+	jsr dtoxclra
+	ldab %2,x
+	stab @tmp1
+	incb
+	jsr dopulx
+	stab %2,x
+	ldab @tmp1
+=
+	ldx %1,x
+	clra
+	ldab %2,x
+	inc %2,x
+
+#
+#	Clear patterns of the above we can then squash a bit more
+#
+	tsx
+	ldx %1,x
+	clr %2,x
+	clr %2+1,x
+	tsx
+	ldx %1,x
+=
+	tsx
+	ldx %1,x
+	clr %2,x
+	clr %2+1,x
+
+	tsx
+	ldx %1,x
+	clr %2,x
+	tsx
+	ldx %1,x
+=
+	tsx
+	ldx %1,x
+	clr %2,x
+
+#
+#	If we stored to top of stack and then reload that's pointless
+#
+	jsr storetos
+	ldaa $00,x
+	ldab $00+1,x
+=
+	jsr storetos
+
+#
+#	Increment of a byte indexed via computation
+#
+	pshb
+	psha
+	jsr dtoxclra
+	ldab %1,x
+	stab @tmp1
+	incb
+	jsr dopulx
+	stab %1,x
+	ldab @tmp1
+=
+	jsr dtoxclra
+	ldab %1,x
+	inc %1,x
 
