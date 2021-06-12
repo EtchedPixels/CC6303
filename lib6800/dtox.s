@@ -5,7 +5,7 @@
 	.export dtoxldw
 	.export dtoxstoretmp2
 	.export dtoxstoretmp2b
-
+	.export dtoxstorew0
 dtox:
 dtoxclra:
 	stab @tmp+1
@@ -18,6 +18,9 @@ dtoxldb:
 	ldab ,x
 	rts
 
+dtoxstorew0:
+	clr @tmp2+1
+	clr @tmp2
 dtoxstoretmp2:
 	bsr dtox
 	ldaa @tmp2
