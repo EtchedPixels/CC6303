@@ -198,15 +198,7 @@ static void outreloc(ADDR *a, int bytes)
 		/* Relocatable constant. This may change and thus need
 		   to be padded */
 		if (a->a_flags & A_HIGH) {
-#ifdef TARGET_BIGENDIAN
 			outab2(a->a_value >> 8);
-			/* We need this to relocate but it is not really in
-			   the program stream so don't count it as such */
-			outabyte(a->a_value);
-#else
-			outabyte(a->a_value);
-			outab2(a->a_value >> 8);
-#endif
 		} else if (a->a_flags & A_LOW) {
 			if (bytes == 1)
 				outabyte(a->a_value & 0xFF);
