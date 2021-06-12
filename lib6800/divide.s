@@ -28,7 +28,7 @@
 div16x16:
 	; TODO - should be we spot div by 0 and trap out ?
 	staa @tmp1		; divisor
-	stab @tmp2
+	stab @tmp1+1
 	ldaa #16		; bit count
 	staa @tmp		; counter
 	clra
