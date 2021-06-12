@@ -964,6 +964,13 @@ L%3
 	stx @%3
 	;invalid XDP
 
+#	Clean up any stray tsx where we removed the code entirely or added
+#	one
+	tsx
+	;invalid XDP
+=
+	;invalid XDP
+
 ############################################################################
 #
 #	Below this point are rules that want to deal with DP only so we
@@ -973,6 +980,45 @@ L%3
 ############################################################################
 	;invalid XDP
 =
+	;invalid DP
+
+# 16bit post increment
+	ldaa %1,x
+	ldab %1+1,x
+	staa @tmp
+	stab @tmp+1
+	addb #%2
+	adca #%3
+	staa %1,x
+	stab %1+1,x
+	ldaa @tmp
+	ldab @tmp+1
+	;invalid DP
+=
+	ldaa %1,x
+	ldab %1+1,x
+	addb #%2
+	adca #%3
+	staa %1,x
+	stab %1+1,x
+	;invalid DP
+
+	ldaa %1,x
+	ldab %1+1,x
+	staa @tmp
+	stab @tmp+1
+	adda #%2
+	staa %1,x
+	stab %1+1,x
+	ldaa @tmp
+	ldab @tmp+1
+	;invalid DP
+=
+	ldaa %1,x
+	ldab %1+1,x
+	adda #%2
+	staa %1,x
+	stab %1+1,x
 	;invalid DP
 
 #
@@ -1688,18 +1734,19 @@ L%3
 # The very common 'push top of stack' forms (being careful that X may not be
 # S)
 	tsx
-	ldaa $01,x
-	ldab $01+1,x
+	ldaa $00,x
+	ldab $00+1,x
 	pshb
 	psha
 =
-	tsx
 	jsr pshtop
+	tsx
 
 #
 #	We often push top, clear tmp2 and pop it. We can do better
 #
 	jsr pshtop
+	tsx
 	clra
 	clrb
 	staa @tmp2
@@ -1709,6 +1756,7 @@ L%3
 =
 	clr @tmp2
 	clr @tmp2+1
+	tsx
 
 #
 #	The next batch need expanding to cover cases where they are followed
@@ -1892,6 +1940,7 @@ L%3
 	clr %1+1,x
 	;invalid DP
 
+
 ############################################################################
 #
 #	Below this point are rules that don't want to deal with invalid
@@ -1919,7 +1968,6 @@ L%3
 #
 	stab $01,x
 	staa $00,x
-	; invalid DP
 	pshb
 	psha
 =
@@ -2569,3 +2617,17 @@ L%3
 	ldab %1,x
 	inc %1,x
 
+#
+#	Remove any post cleanup TSX dups
+#
+	tsx
+	tsx
+=
+	tsx
+
+	tsx
+L%1:
+	tsx
+=
+L%1:
+	tsx
