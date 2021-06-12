@@ -310,8 +310,8 @@ static void LoadDViaX(unsigned short offset)
     if (CPU == CPU_6800) {
         if (offset > 254)
             Internal("Bad offset $%02X in LoadDViaX.\n", offset);
-        AddCodeLine("ldab $%02X,x", offset + 1);
         AddCodeLine("ldaa $%02X,x", offset);
+        AddCodeLine("ldab $%02X+1,x", offset);
     } else {
         if (offset > 255)
             Internal("Bad offset $%02X in LoadDViaX.\n", offset);
@@ -343,8 +343,8 @@ static void StoreDViaX(int offset)
     if (CPU == CPU_6800) {
         if (offset > 254)
             Internal("Bad offset $%02X in StoreDViaX.\n", offset);
-        AddCodeLine("stab $%02X,x", offset + 1);
         AddCodeLine("staa $%02X,x", offset);
+        AddCodeLine("stab $%02X+1,x", offset);
     } else {
         if (offset > 255)
             Internal("Bad offset $%02X in StoreDViaX.\n", offset);
@@ -431,7 +431,7 @@ static void SubDViaX(int offset)
     if (CPU == CPU_6800) {
         if (offset > 254)
             Internal("Bad offset $%02X in LoadDViaX.\n", offset);
-        AddCodeLine("subb $%02X,x", offset + 1);
+        AddCodeLine("subb $%02X+1,x", offset);
         AddCodeLine("sbca $%02X,x", offset);
     } else {
         if (offset > 255)
@@ -480,7 +480,7 @@ static void AddDViaX(int offset)
     if (CPU == CPU_6800) {
         if (offset > 254)
             Internal("Bad offset $%02X in LoadDViaX.\n", offset);
-        AddCodeLine("addb $%02X,x", offset + 1);
+        AddCodeLine("addb $%02X+1,x", offset);
         AddCodeLine("adca $%02X,x", offset);
     } else {
         if (offset > 255)
@@ -3891,7 +3891,7 @@ void g_or (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("orab $%02X,x", offs + 1);
+            AddCodeLine ("orab $%02X+1,x", offs);
             AddCodeLine ("oraa $%02X,x", offs);
             PullX(0);
             pop(flags);
@@ -3968,7 +3968,7 @@ void g_xor (unsigned flags, unsigned long val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("eorb $%02X,x", offs + 1);
+            AddCodeLine ("eorb $%02X+1,x", offs);
             AddCodeLine ("eora $%02X,x", offs);
             PullX(0);
             pop(flags);
@@ -4081,7 +4081,7 @@ void g_and (unsigned Flags, unsigned long Val)
             /* Fall through */
         case CF_INT:
             offs = GenTSXWord(1);
-            AddCodeLine ("andb $%02X,x", offs + 1);
+            AddCodeLine ("andb $%02X+1,x", offs);
             AddCodeLine ("anda $%02X,x", offs);
             PullX(0);
             pop(Flags);
