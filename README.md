@@ -60,9 +60,6 @@ putchar/puts.
 
 - Make embedding C source into asm as comments work for debugging
 
-- The assembler uses 15 char names internally. The compiler does not. This
-  leads to asm errors when the symbols clash.
-
 - Maybe float: cc65 lacks float beyond the basic parsing support, so this
   means extending the back end to handle all the fp cases (probably via
   stack) and using the long handling paths for the non maths ops.
