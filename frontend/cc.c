@@ -114,6 +114,7 @@ int targetos;
 #define OS_FUZIX	1
 #define OS_MC10		2
 #define OS_FLEX		3
+int fuzixsub;
 
 #define MAXARG	512
 
@@ -433,6 +434,24 @@ void link_phase(void)
 	build_arglist(CMD_LD);
 	switch (targetos) {
 		case OS_FUZIX:
+			switch(fuzixsub) {
+			case 0:
+				break;
+			case 1:
+				add_argument("-b");
+				add_argument("-C");
+				add_argument("256");
+				add_argument("-Z");
+				add_argument("0");
+				break;
+			case 2:
+				add_argument("-b");
+				add_argument("-C");
+				add_argument("512");
+				add_argument("-Z");
+				add_argument("2");
+				break;
+			}
 			break;
 		case OS_MC10:
 			add_argument("-b");
@@ -744,8 +763,6 @@ int main(int argc, char *argv[])
 			only_one_input = 1;
 			break;
 		case 'l':
-			/* FIXME: need to expand to understand -lc as
-			   "libc.a" etc */
 			p = add_library(p);
 			break;
 		case 'I':
@@ -794,8 +811,18 @@ int main(int argc, char *argv[])
 			mapfile = 1;
 			break;
 		case 't':
-			if (strcmp(*p + 2, "fuzix") == 0)
+			if (strcmp(*p + 2, "fuzix") == 0) {
 				targetos = OS_FUZIX;
+				fuzixsub = 0;
+			}
+			else if (strcmp(*p + 2, "fuzixrel1") == 0) {
+				targetos = OS_FUZIX;
+				fuzixsub = 1;
+			}
+			else if (strcmp(*p + 2, "fuzixrel2") == 0) {
+				targetos = OS_FUZIX;
+				fuzixsub = 2;
+			}
 			else if (strcmp(*p + 2, "mc10") == 0) {
 				targetos = OS_MC10;
 				cpu = 6803;
