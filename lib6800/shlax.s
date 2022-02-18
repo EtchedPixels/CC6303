@@ -18,23 +18,23 @@
 
 shlax7:
 	lslb
-	rora
+	rola
 shlax6:
 	lslb
-	rora
+	rola
 shlax5:
 	lslb
-	rora
+	rola
 shlax4:
 	lslb
-	rora
+	rola
 shlax3:
 	lslb
-	rora
+	rola
 	lslb
-	rora
+	rola
 	lslb
-	rora
+	rola
 	rts
 
 shlax9:
