@@ -9,5 +9,5 @@ tosleax:
 		cmpa 2,x
 		bne noteq
 		cmpb 3,x
-noteq:		jsr boolle
-		jmp pop2
+noteq:		jsr boolge		; we did the comparison backwards
+		jmp pop2flags

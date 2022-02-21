@@ -10,4 +10,4 @@ tosneax:
 		bne noteq
 		cmpa 2,x
 noteq:		jsr boolne
-		jmp pop2
+		jmp pop2flags
