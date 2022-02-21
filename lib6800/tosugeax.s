@@ -10,4 +10,4 @@ tosugeax:
 		bne noteq
 		cmpb 3,x
 noteq:		jsr booluge
-		jmp pop2
+		jmp pop2flags
