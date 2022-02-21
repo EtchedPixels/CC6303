@@ -10,4 +10,4 @@ tosgeax:
 		bne noteq
 		cmpb 3,x
 noteq:		jsr boolge
-		jmp pop2
+		jmp pop2flags
