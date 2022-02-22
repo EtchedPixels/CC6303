@@ -459,7 +459,7 @@ static void AddDConst(int value)
     }
 }
 
-static void AddD(const char *where, int offset)
+static void AddD(const char *where, unsigned int offset)
 {
     if (CPU == CPU_6800) {
         AddCodeLine("addb %s+%d", where, offset + 1);
@@ -475,7 +475,7 @@ static void AddD(const char *where, int offset)
     }
 }
 
-static void AddDViaX(int offset)
+static void AddDViaX(unsigned int offset)
 {
     if (CPU == CPU_6800) {
         if (offset > 254)
@@ -3545,7 +3545,7 @@ void g_add (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR) {
-                    offs = GenTSXByte(1);
+                    offs = GenTSXByte(0);
                     AddCodeLine ("addb $%02X,x", offs);
                     AddCodeLine ("ins");
                     pop(flags);
@@ -3553,7 +3553,7 @@ void g_add (unsigned flags, unsigned long val)
                 }
             /* Fall through */
             case CF_INT:
-                offs = GenTSXByte(1);
+                offs = GenTSXWord(0);
                 AddDViaX(offs);
                 PullX(0);
                 pop(flags);
