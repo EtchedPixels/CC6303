@@ -16,7 +16,7 @@ OBJ += storedpush.o dopulxstb.o dopulxstd.o storetos.o
 OBJ += loadtos.o pshindvx.o ret.o leasp.o
 OBJ += toseqax.o tosneax.o tosltax.o tosgtax.o tosleax.o tosgeax.o
 OBJ += tosultax.o tosugtax.o tosuleax.o tosugeax.o
-OBJ += tosumulax.o tosumodeax.o
+OBJ += tosumulax.o tosumodeax.o multiply32x32.o
 
 OBJ += __cpu_to_le16.o __cpu_to_le32.o
 OBJ += _memcpy.o _memset.o _strlen.o _strcpy.o
