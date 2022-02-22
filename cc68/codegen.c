@@ -462,11 +462,11 @@ static void AddDConst(int value)
 static void AddD(const char *where, int offset)
 {
     if (CPU == CPU_6800) {
+        AddCodeLine("addb %s+%d", where, offset + 1);
         if (offset)
-            AddCodeLine("addb %s+%d", where, offset);
+            AddCodeLine("adca %s+%d", where, offset);
         else
-            AddCodeLine("addb %s", where);
-        AddCodeLine("adca %s+%d", where, offset + 1);
+            AddCodeLine("adca %s", where);
     } else {
         if (offset == 0)
             AddCodeLine("addd %s", where);
