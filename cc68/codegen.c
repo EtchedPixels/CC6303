@@ -1683,7 +1683,7 @@ void g_leasp (unsigned Flags, int Offs)
     if (!(Flags & CF_USINGX)) {
         if (CPU == CPU_6800) {
             Offs = -Offs;
-            Offs += 2;		/* Cost of the jsr */
+            Offs += 3;		/* Cost of the jsr +1 */
             if (Offs < 256) {
                 if (Offs)
                     AddCodeLine("ldab #$%02X", Offs);
