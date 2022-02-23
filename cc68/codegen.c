@@ -2464,8 +2464,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                         } else {
                             AddCodeLine("ldab #%d", (int)val);
                         }
-                    }
-                    if (flags & CF_UNSIGNED) {
+                    } else if (flags & CF_UNSIGNED) {
                         AddCodeLine("clra");
                         AddCodeLine("addb ,x");
                         AddCodeLine("stab ,x");
