@@ -60,7 +60,9 @@ static void constant_to_zp(ADDR *ap, int dp)
 			qerr(MUST_BE_ABSOLUTE);
 		if (ap->a_value > 255)
 			aerr(CONSTANT_RANGE);
-		ap->a_segment = ZP;
+		/* Preserve constants and don't relocate them */
+		if (ap->a_segment != ABSOLUTE)
+			ap->a_segment = ZP;
 	}
 }
 
