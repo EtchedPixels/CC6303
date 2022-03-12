@@ -829,6 +829,96 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	SEGMENT_CLASH	27
 #define NOT_REG0	28
 
+#elif TARGET_TMS9995
+
+typedef	uint16_t	VALUE;		/* For symbol values */
+
+#define ARCH OA_TMS9900
+#define ARCH_FLAGS OF_BIGENDIAN
+#define ARCH_CPUFLAGS OA_TMS9900_9995		/* For now until CPU type properly settable */
+
+#define TARGET_BIGENDIAN
+
+/*
+ * Types. These are used
+ * in both symbols and in address
+ * descriptions. Observe the way the
+ * symbol flags hide in the register
+ * field of the address.
+ */
+#define	TMREG	0x000F			/* Register code */
+#define	TMMDF	0x0001			/* Multidef */
+#define	TMASG	0x0002			/* Defined by "=" */
+#define	TMMODE	0xFF00			/* Mode */
+#define	TMINDIR	0x8000			/* Indirect flag in mode */
+#define TPUBLIC	0x0080			/* Exported symbol */
+#define TMADDR	0x00F0			/* Addressing mode bits */
+
+#define TDIRECT	0x0010			/* Direct page */
+#define TINDEX	0x0020			/* Indexed */
+#define TIMMED	0x0030			/* Immediate */
+
+#define	TNEW	0x0000			/* Virgin */
+#define	TUSER	0x0100			/* User name */
+#define	TBR	0x0200			/* Byte register */
+#define	TWR	0x0300			/* Word register */
+#define	TSR	0x0400			/* Special register */
+#define	TDEFB	0x0500			/* defb */
+#define	TDEFW	0x0600			/* defw */
+#define	TDEFS	0x0700			/* defs */
+#define	TDEFM	0x0800			/* defm */
+#define	TORG	0x0900			/* org */
+#define	TEQU	0x0A00			/* equ */
+#define	TCOND	0x0B00			/* conditional */
+#define	TENDC	0x0C00			/* end conditional */
+#define TSEGMENT 0x0D00			/* segments by number */
+#define TEXPORT 0x0E00			/* symbol export */
+#define TCC	0x0F00
+/* CPU specific codes */
+#define TIMPL	0x1000			/* Implicit */
+#define TDOMA	0x1100			/* addr, addr */
+#define TDOMAW	0x1200			/* R, addr */
+#define TSMD	0x1300			/* addr */
+#define TXOP	0x1400			/* XOP */
+#define TSOP	0x1500			/* R */
+#define TCRUM	0x1600			/* */
+#define TCRUS	0x1700			/* signed offset */
+#define TJUMP	0x1800			/* signed offet PC relative */
+#define TSHIFT	0x1900			/* reg, num */
+#define TIMM	0x1A00			/* reg, num */
+#define TIRL	0x1B00			/* addr */
+#define TIRLS	0x1C00			/* reg */
+
+/*
+ *	Error message numbers
+ */
+
+#define BRACKET_EXPECTED 1
+#define MISSING_COMMA	2
+#define SQUARE_EXPECTED 3
+#define PERCENT_EXPECTED 4
+#define UNEXPECTED_CHR	10
+#define PHASE_ERROR	11
+#define MULTIPLE_DEFS	12
+#define SYNTAX_ERROR	13
+#define MUST_BE_ABSOLUTE	14
+#define MISSING_DELIMITER 15
+#define INVALID_CONST	16
+#define BRA_RANGE	17
+#define REG_RANGE	18
+#define ADDR_REQUIRED	19
+#define INVALID_ID	20
+#define BADMODE		21
+#define DIVIDE_BY_ZERO	22
+#define CONSTANT_RANGE  23
+#define DATA_IN_BSS	24
+#define SEGMENT_OVERFLOW 25
+#define REG_REQUIRED	26
+#define	SEGMENT_CLASH	27
+#define REG_ZEROONLY	28
+#define TOOMANYJCC	29
+#define REG_NOTZERO	30
+
 #else
 #error "Unknown target"
 #endif
@@ -934,8 +1024,6 @@ extern void isokaors(ADDR *, int);
 extern int outpass(void);
 extern void outabsolute(int);
 extern void outsegment(int);
-extern void outaw(uint16_t);
-extern void outaw2(uint16_t);
 extern void outab(uint8_t);
 extern void outabyte(uint8_t);
 extern void outab2(uint8_t);

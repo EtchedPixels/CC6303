@@ -25,6 +25,7 @@ struct objhdr
 #define OA_6800		4
 #define OA_Z8		5
 #define OA_1802		6
+#define OA_TMS9900	7
     uint8_t o_flags;
 #define OF_BIGENDIAN	1
 #define OF_WORDMACHINE	2	/* 16bit word addressed */
@@ -52,6 +53,7 @@ struct objhdr
 #define OA_6800_6303	2
 #define OA_6800_68HC11	4
 
+#define OA_TMS9900_9995 1	/* TMS 9995 */
     uint16_t o_unused;		/* So it packs right */
     uint32_t o_segbase[OSEG];
     uint16_t o_size[OSEG];

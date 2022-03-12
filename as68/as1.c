@@ -97,6 +97,12 @@ void getaddr(ADDR *ap)
 	}
 }
 
+/* Little endian */
+static void outaw(uint16_t a)
+{
+	outab(a);
+	outab(a >> 8);
+}
 
 /*
  * Assemble one line.

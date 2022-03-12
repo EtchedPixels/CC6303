@@ -117,10 +117,6 @@ void outsegment(int seg)
 /*
  * Output a word. Use the target word order with padding as needed
  */
-void outaw2(uint16_t w)
-{
-}
-
 static void check_store_allowed(uint8_t segment, uint16_t value)
 {
 	if (value == 0)
