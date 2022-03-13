@@ -420,6 +420,7 @@ loop:
 		opcode |= wreg();
 		comma();
 		opcode |= genshift() << 4;
+		outaw(opcode);
 		break;
 	case TIMM:
 		opcode |= wreg();
