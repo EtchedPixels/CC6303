@@ -1,5 +1,5 @@
 /*
- * 8080/8085 assembler.
+ * TMS9995 assembler.
  * Assemble one line of input.
  */
 #include	"as.h"
@@ -199,6 +199,8 @@ static void outarg(ADDR *a1)
    bus variants of the CPU order bytes */
 static void outaw(uint16_t val)
 {
+	if (dot[segment] & 1)
+		aerr(ALIGNMENT);
 	outab(val >> 8);
 	outab(val);
 }
@@ -315,6 +317,8 @@ loop:
 		break;
 
 	case TDEFW:
+		if (dot[segment] & 1)
+			aerr(ALIGNMENT);
 		do {
 			getaddr(&a1);
 			constify(&a1);
@@ -398,6 +402,8 @@ loop:
 	case TJUMP:
 		getaddr(&a1);
 		disp = a1.a_value - dot[segment] - 2;
+		/* Disp is in words */
+		disp >>= 1;
 		if (pass == 3 && (disp < -128 || disp > 127 || segment_incompatible(&a1)))
 			aerr(BRA_RANGE);
 		opcode |= (uint8_t)disp;
@@ -414,6 +420,7 @@ loop:
 		getaddr(&a1);
 		constify(&a1);
 		istuser(&a1);
+		outaw(opcode);
 		outraw(&a1);
 		break;
 	case TIRL:

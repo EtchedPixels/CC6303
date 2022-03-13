@@ -918,6 +918,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define REG_ZEROONLY	28
 #define TOOMANYJCC	29
 #define REG_NOTZERO	30
+#define ALIGNMENT	31
 
 #else
 #error "Unknown target"

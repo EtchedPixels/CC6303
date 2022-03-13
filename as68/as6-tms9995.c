@@ -36,7 +36,7 @@ SYM	sym[] = {
 	{	0,	"export",	TEXPORT,	XXXX	},
 	{	0,	".byte",	TDEFB,		XXXX	},
 	{	0,	".word",	TDEFW,		XXXX	},
-	{	0,	".blkb",	TDEFS,		XXXX	},
+	{	0,	".ds",		TDEFS,		XXXX	},
 	{	0,	".ascii",	TDEFM,		XXXX	},
 	{	0,	".org",		TORG,		XXXX	},
 	{	0,	".equ",		TEQU,		XXXX	},
@@ -184,6 +184,9 @@ SYM	sym[] = {
         {	0,	"ckon",		TIMPL,		0x03A0	},
         {	0,	"lrex",		TIMPL,		0x03E0	},
 
+        /* Pseudo instructions some assemblers allow */
+        /* RT = BR *R11 */
+        {	0,	"rt",		TIMPL,		0x045B	},
 };
 
         
@@ -230,6 +233,7 @@ char *etext[] = {
 	"R0 or constant"		/* 28 */
 	"too many Jcc",			/* 29 */
 	"cannot index with R0",		/* 30 */
+	"alignment error"		/* 31 */
 };
 
 /*
