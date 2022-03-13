@@ -888,6 +888,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TIMM	0x1A00			/* reg, num */
 #define TIRL	0x1B00			/* addr */
 #define TIRLS	0x1C00			/* reg */
+#define TEVEN	0x1D00			/* even macro op */
 
 /*
  *	Error message numbers

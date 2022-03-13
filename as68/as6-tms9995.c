@@ -45,15 +45,25 @@ SYM	sym[] = {
 	{	0,	".code",	TSEGMENT,	CODE	},
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
-	{	0,	".zp",		TSEGMENT,	ZP	},
+
+	/* We don't have a direct page or such things but we do have a
+	   small fast RAM area on the TMS9995 which serves the same
+	   purpose so reuse it for that */
+	{	0,	".dp",		TSEGMENT,	ZP	},
+
+	/* Word alignment is needed a lot so we want an op for it. Should
+	   probably add this all over : TODO */
+
+	{	0,	".even",	TEVEN,		XXXX	},
+	{	0,	"even",		TEVEN,		XXXX	},
 
 	/* Instructions by format */
 
 	/* 4.5.1 "Dual operand, multiple addressing for source/dest" */
 
         /* 4bits of op code, then two mode/reg pairs */	
-	{	0,	"a",		TDOMA,		0xC000	},
-	{	0,	"ab",		TDOMA,		0xD000	},
+	{	0,	"a",		TDOMA,		0xA000	},
+	{	0,	"ab",		TDOMA,		0xB000	},
 	{	0,	"c",		TDOMA,		0x8000  },
 	{	0,	"cb",		TDOMA,		0x9000  },
 	{	0,	"s",		TDOMA,		0x6000	},

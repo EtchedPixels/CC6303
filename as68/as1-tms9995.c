@@ -347,6 +347,13 @@ loop:
 			outab(0);
 		break;
 
+		/* When we do jump expansion this will be ok because they
+		   are always word aligned and word sized */
+	case TEVEN:
+		if (dot[segment] & 1)
+			outab(0);	/* Zero so it works in BSS */
+		break;
+
 	case TIMPL:
 		outaw(opcode);
 		break;
