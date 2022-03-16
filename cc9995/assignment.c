@@ -140,17 +140,12 @@ void Assignment (ExprDesc* Expr)
 
                 /* Push the address (or whatever is in D in case of errors) */
                 g_push (CF_PTR | CF_UNSIGNED, 0);
-
-                /* Really we need to fix up CanLoadViaX() to have a pure flag form so we
-                   can push this down */
-                if (CPU == CPU_6800)
-                    g_push (CF_INT | CF_UNSIGNED | CF_CONST, CheckedSizeOf (ltype));
-                else
-                    /* Load the size of the struct into X */
-                    g_push (CF_INT | CF_USINGX | CF_UNSIGNED | CF_CONST, CheckedSizeOf (ltype));
+                g_push (CF_INT | CF_UNSIGNED | CF_CONST, CheckedSizeOf (ltype));
                 g_call (CF_FIXARGC, Func_memcpy, 6);
                 /* Now drop the stacked arguments */
-                g_drop(6, 0);
+                g_drop(6);
+                /* FIXME: check if thius works on 680x and if it needs to fix
+                   StackPtr, also if right on 6800 v 6803 */
             }
 
         } else {

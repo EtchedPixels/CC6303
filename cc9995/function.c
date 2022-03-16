@@ -238,7 +238,7 @@ void F_AllocLocalSpace (Function* F)
     if (F->Reserved > 0) {
 
         /* Create space on the stack */
-        g_space (F->Reserved, 0);
+        g_space (F->Reserved);
 
         /* Correct the stack pointer */
         StackPtr -= F->Reserved;
@@ -320,12 +320,11 @@ static void F_RestoreRegVars (Function* F)
             /*int Offs       = Sym->V.R.SaveOffs; */
             /* Drop the accumulated uninteresting storage */
             if (ByteTotal) {
-                g_drop(ByteTotal, F_HasReturn(CurrentFunc));
-                StackPtr += ByteTotal;
+                g_drop(ByteTotal);
                 ByteTotal = 0;
             }
             /* Pop and restore the reg var */
-            g_restore_regvar(0, Sym->V.R.RegOffs, Bytes);
+            g_restore_regvar(Sym->V.R.SaveOffs, Sym->V.R.RegOffs, Bytes);
         } else {
             /* Don't try and drop anything that's not a local auto variable */
             if (SymIsAuto (Sym) && !SymIsParam (Sym)) {
@@ -340,8 +339,7 @@ static void F_RestoreRegVars (Function* F)
     }
     /* Drop any remaining uninteresting storage */
     if (ByteTotal) {
-        g_drop(ByteTotal, F_HasReturn(CurrentFunc));
-        StackPtr += ByteTotal;
+        g_drop(ByteTotal);
     }
 }
 
@@ -424,6 +422,9 @@ void NewFunc (SymEntry* Func)
     /* Allocate a new literal pool */
     PushLiteralPool (Func);
 
+    /* Setup the stack */
+    StackPtr = 0;
+
     /* Generate function entry code if needed */
     g_enter (Func->Name, TypeOf(Func->Type), F_GetParamSize(CurrentFunc));
 
@@ -432,8 +433,6 @@ void NewFunc (SymEntry* Func)
         g_stackcheck ();
     }
 
-    /* Setup the stack */
-    StackPtr = 0;
 
     /* Walk through the parameter list and allocate register variable space
     ** for parameters declared as register. Generate code to swap the contents
@@ -453,9 +452,7 @@ void NewFunc (SymEntry* Func)
         /* Check for a register variable */
         if (SymIsRegVar (Param)) {
 
-            /* FIXME: This one is harder to do right */
-            /* Allocate space */
-            int Reg = -1; //FIXME F_AllocRegVar (CurrentFunc, Param->Type);
+            int Reg = F_AllocRegVar (CurrentFunc, Param->Type);
 
             /* Could we allocate a register? */
             if (Reg < 0) {
@@ -464,9 +461,8 @@ void NewFunc (SymEntry* Func)
             } else {
                 /* Remember the register offset */
                 Param->V.R.RegOffs = Reg;
-
                 /* Generate swap code */
-//FIXME         g_swap_regvars (Param->V.R.SaveOffs, Reg, CheckedSizeOf (Param->Type));
+                g_swap_regvars (Param->V.R.SaveOffs, Reg, CheckedSizeOf (Param->Type));
             }
         }
 

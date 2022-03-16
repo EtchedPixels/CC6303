@@ -126,6 +126,9 @@ static void ParseRegisterDecl (Declaration* Decl, int Reg)
     ** the save area.
     */
     Sym = AddLocalSym (Decl->Ident, Decl->Type, Decl->StorageClass, Reg);
+    
+    /* Flag to pull as we go */
+    Sym->V.R.SaveOffs = -1;
 
     /* Check for an optional initialization */
     if (CurTok.Tok == TOK_ASSIGN) {
@@ -204,6 +207,15 @@ static void ParseAutoDecl (Declaration* Decl)
         /* Add the symbol to the symbol table. The stack offset we use here
         ** may get corrected later.
         */
+
+        /* Allocate a word for each local char. This keeps the stack aligned
+           and also means we can use word ops for most things for speed */
+        if (Size == SIZEOF_CHAR)
+            Size = SIZEOF_INT;
+
+
+        fprintf(stderr, "!Auto sym alloc %d, %d\n", Size,
+            F_GetStackPtr(CurrentFunc) - Size);
         Sym = AddLocalSym (Decl->Ident, Decl->Type,
                            Decl->StorageClass,
                            F_GetStackPtr (CurrentFunc) - (int) Size);
@@ -255,11 +267,11 @@ static void ParseAutoDecl (Declaration* Decl)
                 F_AdjustLocalSpace (CurrentFunc);
 
             } else {
-
                 /* Allocate previously reserved local space */
                 F_AllocLocalSpace (CurrentFunc);
 
                 /* Setup the type flags for the assignment */
+                /* FIXME: always NONE at this point */
                 Flags = (Size == SIZEOF_CHAR)? CF_FORCECHAR : CF_NONE;
 
                 /* Parse the expression */
@@ -278,8 +290,7 @@ static void ParseAutoDecl (Declaration* Decl)
 //                    ED_MakeRVal (&Expr);
                 }
                 /* Push the value */
-                g_push (Flags | TypeOf (Sym->Type), Expr.IVal);
-
+                g_push_now (Flags | TypeOf (Sym->Type), Expr.IVal);
             }
 
             /* Mark the variable as referenced */
@@ -510,6 +521,7 @@ void DeclareLocals (void)
 {
     /* Remember the current stack pointer */
     int InitialStack = StackPtr;
+    fprintf(stderr, "InitialStack %d\n", StackPtr);
 
     /* A place to store info about potential initializations of auto variables */
     CollAppend (&CurrentFunc->LocalsBlockStack, 0);

@@ -88,7 +88,7 @@ int XFailure;
 int XDepth;
 CodeMark XCode;
 
-void NotViaR2(void)
+void NotViaX(void)
 {
     XFailure = 1;
 }
@@ -97,7 +97,7 @@ void NotViaR2(void)
    recursively and we will make a final assessment in EndVia the final
    depth */
    
-void TryViaR2(void)
+void TryViaX(void)
 {
     if (XDepth++ == 0) {
 //        printf("Begin try via X\n");
@@ -110,7 +110,7 @@ void TryViaR2(void)
    yet to resolve the attempt return 0. If we fail return 1 (maybe cause type
    later) and throw out the failed code. */
    
-int EndViaR2(void)
+int EndViaX(void)
 {
     if (--XDepth == 0) {
 //        printf("End via X %d\n", XFailure);
@@ -122,7 +122,7 @@ int EndViaR2(void)
     return 0;
 }
 
-int SourceR2(void)
+int SourceX(void)
 {
     return XDepth;
 }
@@ -420,7 +420,12 @@ static unsigned FunctionParamList (FuncDesc* Func)
         Flags |= TypeOf (Expr.Type);
 
         ArgSize = sizeofarg (Flags);
-        g_push (Flags, Expr.IVal);
+
+        /* We push a word */
+        if (ArgSize == SIZEOF_CHAR)
+            ArgSize = SIZEOF_INT;
+
+        g_push_now (Flags, Expr.IVal);
         /* Hint to the optimizer that it can optimize use of R0-R2 */
         g_statement();
         
@@ -547,11 +552,10 @@ static void FunctionCall (ExprDesc* Expr)
 
         /* Drop parameters */
         g_drop(ParamSize);
-        StackPtr += ParamSize;
+
         /* If we have a pointer on stack, remove it */
         if (PtrOnStack) {
             g_drop (SIZEOF_PTR);
-            pop (CF_PTR);
         }
 
         /* Skip T_PTR */
@@ -562,7 +566,6 @@ static void FunctionCall (ExprDesc* Expr)
         g_call (TypeOf (Expr->Type), (const char*) Expr->Name, ParamSize - Func->ParamSize);
         /* Drop parameters, preserve D if needed */
         g_drop(ParamSize);
-        StackPtr += ParamSize;
     }
     /* FIXME: optimization - it would be worth tracking how many arguments
        we have accumulated to clean up - to say 16 bytes and then fix it
@@ -834,8 +837,8 @@ static void ArrayRef (ExprDesc* Expr)
     GetCodePos (&Mark1);
     if (!ConstBaseAddr) {
         /* Get a pointer to the array into X if we can D if not */
-        if (CanLoadViaR2(CF_NONE, Expr)) {
-            LoadExprR2 (CF_NONE, Expr);
+        if (CanLoadViaX(CF_NONE, Expr)) {
+            LoadExprX (CF_NONE, Expr);
             use_x = 1;
         } else {
             LoadExpr (CF_NONE, Expr);
@@ -847,7 +850,7 @@ static void ArrayRef (ExprDesc* Expr)
         */
         GetCodePos (&Mark2);
         if (use_x)
-            g_push(CF_PTR|CF_USINGR2, 0);
+            g_push(CF_PTR|CF_USINGX, 0);
         else
             g_push (CF_PTR, 0);
     }
@@ -1354,7 +1357,7 @@ void Store (ExprDesc* Expr, const Type* StoreType)
     ED_MarkAsUntested (Expr);
 }
 
-int CanStoreViaR2 (unsigned Flags, ExprDesc *Expr)
+int CanStoreViaX (unsigned Flags, ExprDesc *Expr)
 {
     if (ED_IsBitField(Expr)) {
         return 0;
@@ -1381,7 +1384,7 @@ int CanStoreViaR2 (unsigned Flags, ExprDesc *Expr)
     return 1;
 }
 
-void StoreR2 (ExprDesc* Expr, const Type* StoreType)
+void StoreX (ExprDesc* Expr, const Type* StoreType)
 /* Store the X register into the location denoted by Expr. If StoreType
 ** is given, use this type when storing instead of Expr->Type. If StoreType
 ** is NULL, use Expr->Type instead.
@@ -1402,27 +1405,27 @@ void StoreR2 (ExprDesc* Expr, const Type* StoreType)
 
         case E_LOC_ABS:
             /* Absolute: numeric address or const */
-            g_putstatic (Flags|CF_USINGR2, Expr->IVal, 0);
+            g_putstatic (Flags|CF_USINGX, Expr->IVal, 0);
             break;
 
         case E_LOC_GLOBAL:
             /* Global variable */
-            g_putstatic (Flags|CF_USINGR2, Expr->Name, Expr->IVal);
+            g_putstatic (Flags|CF_USINGX, Expr->Name, Expr->IVal);
             break;
 
         case E_LOC_STATIC:
         case E_LOC_LITERAL:
             /* Static variable or literal in the literal pool */
-            g_putstatic (Flags|CF_USINGR2, Expr->Name, Expr->IVal);
+            g_putstatic (Flags|CF_USINGX, Expr->Name, Expr->IVal);
             break;
 
         case E_LOC_REGISTER:
             /* Register variable */
-            g_putstatic (Flags|CF_USINGR2, Expr->Name, Expr->IVal);
+            g_putstatic (Flags|CF_USINGX, Expr->Name, Expr->IVal);
             break;
 
         case E_LOC_STACK:
-            Internal("StoreR2Stack");
+            Internal("StoreXStack");
             break;
 
         case E_LOC_PRIMARY:

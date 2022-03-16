@@ -760,7 +760,7 @@ SymEntry* AddLabelSym (const char* Name, unsigned Flags)
                 ** so we simply emit the SP adjustment code.
                 */
                 if (StackPtr != DOR->StackPtr) {
-                    g_space (StackPtr - DOR->StackPtr, 0);
+                    g_space (StackPtr - DOR->StackPtr);
                 }
 
                 /* Are we jumping into a block with initalization of an object that

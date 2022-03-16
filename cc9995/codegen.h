@@ -390,6 +390,9 @@ void g_test (unsigned flags);
 void g_push (unsigned flags, unsigned long val);
 /* Push the primary register or a constant value onto the stack */
 
+void g_push_now (unsigned flags, unsigned long val);
+/* Push the primary register or a constant value onto the stack immediately */
+
 void g_swap (unsigned flags);
 /* Swap the primary register and the top of the stack. flags give the type
 ** of *both* values (must have same size).
@@ -404,6 +407,9 @@ void g_callind (unsigned Flags, int Offs, int ArgSize);
 void g_jump (unsigned Label);
 /* Jump to specified internal label number */
 
+void g_jump_nofix (unsigned Label);
+/* Jump to specified internal label number without fixes */
+
 void g_truejump (unsigned flags, unsigned label);
 /* Jump to label if zero flag clear */
 
@@ -413,10 +419,10 @@ void g_falsejump (unsigned flags, unsigned label);
 void g_lateadjustSP (unsigned label);
 /* Adjust stack based on non-immediate data */
 
-void g_drop (unsigned Space, int save_d);
+void g_drop (unsigned Space);
 /* Drop space allocated on the stack */
 
-void g_space (int space, int save_d);
+void g_space (int space);
 /* Create or drop space on the stack */
 
 void g_cstackcheck (void);
@@ -476,6 +482,7 @@ void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size);
 
 extern void g_save_regvar(int Offs, int Reg, unsigned Size);
 extern void g_restore_regvar(int Offs, int Reg, unsigned Size);
+extern void g_swap_regvars(int offs, int reg, unsigned size);
 
 /*****************************************************************************/
 /*                             Switch statement                              */

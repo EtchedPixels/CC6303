@@ -126,11 +126,18 @@
 #include "codegen.h"
 
 
+#define REGALLOC_BASE	8
+
+static unsigned FramePtr;
+
+static unsigned int flagsvalid;
+static unsigned int flagstype;
 
 /*****************************************************************************/
 /*                                  Helpers                                  */
 /*****************************************************************************/
 
+static void RUse(unsigned int reg);
 
 
 static void typeerror (unsigned type)
@@ -144,9 +151,14 @@ static void typeerror (unsigned type)
     }
 }
 
+static int GetRegVarOf(unsigned Flags, uintptr_t Label, long Offs)
+{
+    if ((Flags & CF_ADDRMASK) != CF_REGVAR)
+        return 0;
+    return REGALLOC_BASE + (unsigned)((Label+Offs) & 0xFFFF);
+}
 
-
-static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs, int addr)
+static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs)
 {
     static char Buf [256];              /* Label name */
 
@@ -156,30 +168,30 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs, int
         case CF_STATIC:
             /* Static memory cell */
             if (Offs) {
-                xsprintf (Buf, sizeof (Buf), "%s%+ld", LocalLabelName (Label), Offs);
+                xsprintf (Buf, sizeof (Buf), "@%s%+ld", LocalLabelName (Label), Offs);
             } else {
-                xsprintf (Buf, sizeof (Buf), "%s", LocalLabelName (Label));
+                xsprintf (Buf, sizeof (Buf), "@%s", LocalLabelName (Label));
             }
             break;
 
         case CF_EXTERNAL:
             /* External label */
             if (Offs) {
-                xsprintf (Buf, sizeof (Buf), "_%s%+ld", (char*) Label, Offs);
+                xsprintf (Buf, sizeof (Buf), "@_%s%+ld", (char*) Label, Offs);
             } else {
-                xsprintf (Buf, sizeof (Buf), "_%s", (char*) Label);
+                xsprintf (Buf, sizeof (Buf), "@_%s", (char*) Label);
             }
             break;
 
         case CF_ABSOLUTE:
             /* Absolute address */
-            xsprintf (Buf, sizeof (Buf), "0x%04X", (unsigned)((Label+Offs) & 0xFFFF));
+            xsprintf (Buf, sizeof (Buf), "@0x%04X", (unsigned)((Label+Offs) & 0xFFFF));
             break;
 
         case CF_REGVAR:
             /* Variable in register bank */
             /* FIXME: just offs ? */
-            xsprintf (Buf, sizeof (Buf), "R%u", (unsigned)((Label+Offs) & 0xFFFF));
+            xsprintf (Buf, sizeof (Buf), "!R%u", REGALLOC_BASE + (unsigned)((Label+Offs) & 0xFFFF));
             break;
 
         default:
@@ -190,15 +202,21 @@ static const char* GetLabelName (unsigned Flags, uintptr_t Label, long Offs, int
     return Buf;
 }
 
+
 /* Generate the value of an offset from the stack base. We don't have to
    worry about reach */
 
-static int GenOffset(int Offs)
+static int GenOffset(int Offs, unsigned int *r)
 {
     /* Frame pointer argument */
-    if (Offs > 0 && FramePtr)
+    if (Offs > 0 && FramePtr) {
+        *r = 4;
+        RUse(4);
         return Offs + 2;
+    }
     Offs -= StackPtr;
+    RUse(3);
+    *r = 3;
     return Offs;
 }
 
@@ -226,11 +244,6 @@ void g_fileinfo (const char* Name, unsigned long Size, unsigned long MTime)
     /* TODO */
 }
 
-/* The code that follows may be moved around */
-void g_moveable (void)
-{
-}
-
 /* We have generated code and thrown it away. OPTIMISE: we can do better in this
    case I think */
 void g_removed (void)
@@ -242,8 +255,6 @@ void g_removed (void)
 /*****************************************************************************/
 /*                              Segment support                              */
 /*****************************************************************************/
-
-
 
 void g_userodata (void)
 /* Switch to the read only data segment */
@@ -285,13 +296,279 @@ void g_segname (segment_t Seg)
     }
 }
 
+/*****************************************************************************/
+/*                                   Aliaser                                 */
+/*****************************************************************************/
+
+struct regalias {
+    uint8_t type;
+#define ALIAS_UNKNOWN		0	/* No idea what it is */
+#define ALIAS_REGISTER		1	/* Copy of register */
+#define ALIAS_CONST		2	/* Constant */
+#define ALIAS_LIVE		3	/* Unknown live content */
+#define ALIAS_LIVECONST		4	/* Known live constant */
+    uint16_t val;
+};
+
+static struct regalias alias[16];
 
 
+static void RUse(unsigned int reg);
+
+static void RBreakLinks(unsigned int reg)
+{
+    struct regalias *r = alias;
+    unsigned int i;
+    int rp = -1;
+
+    fprintf(stderr, "RBreakLinks %d [", reg);
+    for (i = 0; i < 16 ; i++) {
+        if (r->type == ALIAS_REGISTER && r->val == reg) {
+            /* Move the alias */
+            if (rp != -1) {
+                fprintf(stderr, "%d->%d", i, rp);
+                r->val = rp;
+            }
+            else {
+                /* First case.. crystalize a referenceable copy */
+                /* Any further copies will reference the new live */
+                fprintf(stderr, "%d", i);
+                rp = i;
+                RUse(i);
+            }
+        }
+        r++;
+    }
+    fprintf(stderr, "]\n");
+}
+
+/*
+ *	We keep register such that all aliases point to an actual
+ *	instantiated register. That means that when we replace it
+ *	we have little work to do
+ *
+ *	mod
+ *	0	not modifying - discard
+ *	1	
+ */
+static void RReplace(unsigned int reg, unsigned int mod)
+{
+    struct regalias *r = alias + reg;
+
+    if (mod != 2)
+        fprintf(stderr, "Replacing %d mod %d\n", reg, mod);    
+    if (mod) {
+        /* We will modify the register so recover the actual value */
+        switch(r->type) {
+            case ALIAS_REGISTER:
+                AddCodeLine("MOV R%d, R%d", r->val, reg);
+                r->type = ALIAS_LIVE;	/* Live value */
+                flagsvalid = 0;
+                break;
+            case ALIAS_CONST:
+                fprintf(stderr, "Realize const %d %d\n", reg, r->val);
+                if (r->val == 0)
+                    AddCodeLine("CLR R%d", reg);
+                else {
+                    AddCodeLine("LI R%d, %d", reg, r->val);
+                    flagsvalid = 0;
+                }
+                r->type = ALIAS_LIVECONST;
+                break;
+            /* Cannot materialize an unknown alias */
+            case ALIAS_UNKNOWN:
+                if (mod == 1)
+                    Internal("RRepUNK R%d", reg);
+                break;
+            case ALIAS_LIVECONST:
+            case ALIAS_LIVE:
+                /* Break any references */
+                RBreakLinks(reg);
+                break;
+        }
+    } else {
+        if (r->type == ALIAS_LIVE)
+            RBreakLinks(reg);
+        r->type = ALIAS_UNKNOWN;
+    }
+}
+
+static void RSetConstant(unsigned int reg, uint16_t val);
+
+/*
+ *	Remember a register is a copy of another
+ */
+static void RSetRegister(unsigned int reg, unsigned int r2)
+{
+    /* Walk the aliases to find the actual holding register */
+    fprintf(stderr, "RSetRegister %d to %d: ", reg, r2);
+    while(alias[r2].type == ALIAS_REGISTER)
+        r2 = alias[r2].val;
+    fprintf(stderr, "r2 root is %d, type %d\n", r2, alias[r2].type);
+    /* Special case - constant 0 is best remembered as constant */
+    if (alias[r2].type == ALIAS_CONST && alias[r2].val == 0) {
+        RSetConstant(reg, 0);
+        return;
+    }
+    /* Set up our alias */
+    RReplace(reg, 0);
+    fprintf(stderr, "RSetRegister %d now alias of %d\n", reg, r2);
+    alias[reg].type = ALIAS_REGISTER;
+    alias[reg].val = r2;
+}
+
+/*
+ *	Remember a register is a constant
+ */
+static void RSetConstant(unsigned int reg, uint16_t val)
+{
+    unsigned i;
+    struct regalias *r = alias;
+
+    /* Firstly look to see the constant is in another register already. If
+       so then we can instead declare ourselves an alias of the register as
+       a register move is cheaper than a constant load (except 0) */
+    if (val) {
+        for (i = 0; i < 15; i++) {
+            if (r->type == ALIAS_CONST && r->val == val) {
+                RSetRegister(reg, i);
+                return;
+            }
+            r++;
+        }
+    }
+    /* Clean up any old value */
+    RReplace(reg, 0);
+    alias[reg].type = ALIAS_CONST;
+    alias[reg].val = val;
+}
+
+static void RSetUnknown(unsigned int reg)
+{
+    RReplace(reg, 0);
+}
+
+static void RUse(unsigned int reg)
+{
+    RReplace(reg, 1);
+}
+
+static void RSetLive(unsigned int reg)
+{
+    /* Flush the old */
+    RReplace(reg, 0);
+    /* Remember it's now live */
+    alias[reg].type = ALIAS_LIVE;
+}
+
+static void RFlush(void)
+{
+    unsigned i;
+    struct regalias *r = alias;
+    for (i = 0; i < 8; i++)
+        r++->type = ALIAS_UNKNOWN;
+    /* Caller register variables are assumed valid on entry */
+    while(i < 16 )
+        RSetLive(i++);
+    /* Working registers magically set live */
+    RSetLive(0);
+    RSetLive(1);
+    RSetLive(3);
+    if (FramePtr)
+        RSetLive(4);
+}
+
+/* Flush the state after a call. R0-R7 are modified (R3/R4 will in fact be
+   saved), R0-R1 are live with the return code. As we did a CrytalizeCall before
+   we called we know the fast writes over 0-7 are ok */
+static void RFlushCall(void)
+{
+    unsigned i;
+    struct regalias *r = alias;
+    for (i = 0; i < REGALLOC_BASE; i++)
+        r++->type = ALIAS_UNKNOWN;
+    /* Working registers magically set live */
+    RSetLive(0);
+    RSetLive(1);
+    RSetLive(3);
+    if (FramePtr)
+        RSetLive(4);
+}
+
+static void RCrystalize(void)
+{
+    unsigned int i;
+    for (i = 0; i < 16; i++)
+        RReplace(i, 2);
+}
+
+static void RCrystalizeMovable(void)
+{
+    unsigned int i;
+    for (i = 0; i < 16; i++)
+            RReplace(i, 2);
+    RFlushCall();
+}
+
+/* Only deal with registers that need to be correctly assigned on entry. That
+   is R8-R15. R1 may be needed but is handled in g_call for indirect */
+static void RCrystalizeCall(void)
+{
+    unsigned int i;
+    for (i = REGALLOC_BASE; i < 16; i++)
+            RReplace(i, 2);
+}
+
+static int RIsConstant(unsigned int reg)
+{
+    while(alias[reg].type == ALIAS_REGISTER)
+        reg = alias[reg].val;
+    if (alias[reg].type == ALIAS_CONST)
+        return 1;
+    return 0;
+}
+
+static uint16_t RGetConstant(unsigned int reg)
+{
+    while(alias[reg].type == ALIAS_REGISTER)
+        reg = alias[reg].val;
+    if (!RIsConstant(reg))
+        Internal("RGC");
+    return alias[reg].val;
+}
+
+/* Resolve a register. We return the actual register to use in order to
+   access this aliased register. We may generate code to crystalize
+   constants or aliases to constants */
+static int RResolve(unsigned int r)
+{
+    switch(alias[r].type) {
+    case ALIAS_LIVE:
+        return r;
+    case ALIAS_CONST:
+        RUse(r);
+        return r;
+    case ALIAS_UNKNOWN:
+        Internal("RResUnk");
+    case ALIAS_REGISTER:
+        while(alias[r].type == ALIAS_REGISTER)
+            r = alias[r].val;
+        return RResolve(r);
+    }
+    Internal("RResT");
+}
+
+
+static void MoveReg(unsigned int s, unsigned int d)
+{
+    /* Just mark d as a clone of s, the register handler will figure the
+       rest out */
+    fprintf(stderr, "MoveReg %d %d\n", s, d);
+    RSetRegister(d, s);
+}
 /*****************************************************************************/
 /*                                   Code                                    */
 /*****************************************************************************/
-
-
 
 unsigned sizeofarg (unsigned flags)
 /* Return the size of a function argument type that is encoded in flags */
@@ -329,8 +606,6 @@ int pop (unsigned flags)
     return StackPtr += s;
 }
 
-
-
 int push (unsigned flags)
 /* Push an argument of the given size */
 {
@@ -347,30 +622,56 @@ static int WordsSame(unsigned int x)
    TMS9995 is for 0 */
 static void Assign(unsigned reg, uint16_t val)
 {
-    if (val)
-        AddCodeLine("LI R%d, %d", reg, val);
-    else
-        AddCodeLine("CLR R%d");
+    RSetConstant(reg, val);
 }
 
 static void Assign32(unsigned rh, unsigned rl, unsigned int val)
 {
     if (val && WordsSame(val)) {
         Assign(rh, val);
-        AddCodeLine("MOV R%d,R%d", rh, rl);
+        RSetRegister(rl, rh);
     } else {
-        Assign(rh, val >> 16;
+        Assign(rh, val >> 16);
         Assign(rl, val & 0xFFFF);
+    }
+}
+
+static void AddImmediate(unsigned reg, uint16_t val)
+{
+    if (RIsConstant(reg)) {
+        RSetConstant(reg, RGetConstant(reg) + val);
+        return;
+    }
+    RUse(reg);
+    switch(val) {
+    case 0:
+        break;
+    case 1:
+        AddCodeLine("INC R%d", reg);
+        break;
+    case 2:
+        AddCodeLine("INCT R%d", reg);
+        break;
+    case 0xFFFF:
+        AddCodeLine("DEC R%d", reg);
+        break;
+    case 0xFFFE:
+        AddCodeLine("DECT R%d", reg);
+        break;
+    default:
+        AddCodeLine("AI R%d, %d", reg, val);
     }
 }
 
 /* Turn a register and offset into the correct form depending upon whether
    the offset is 0 */
-static char *Indirect(unsigned int r, unsigned int offset)
+static char *IndirectForm(unsigned int r, unsigned int offset)
 {
     static char ibuf[64];
+    /* Materialize the pointer */
+    r = RResolve(r);
     if (offset)
-        sprintf(ibuf, "@%d(R%d)", r, offset);
+        sprintf(ibuf, "@%d(R%d)", offset, r);
     else
         sprintf(ibuf, "*R%d", r);
     return ibuf;
@@ -398,22 +699,44 @@ static char *Indirect(unsigned int r, unsigned int offset)
 static void FetchByteIndirect(unsigned int r, unsigned int Offs, unsigned Flags)
 {
     unsigned int d = 1;
-    if (Flags & CF_USINGR2)
-        d = 2;
+    unsigned int nr;
 
-    if (r == d)
-        Internal("FBInd")
-    
+    /* If we are doing D into D then we can flush X */
+    if (Flags & CF_USINGX)
+        d = 2;
+    else
+        RSetUnknown(2);
+
+    AddCodeLine(";FBI %d %d", r, d);
+
+    nr = RResolve(r);
+
+    AddCodeLine(";FBI ->%d", nr);
+    /* We will commonly find that nr is 1 and d is 1. For now tackle
+       this case by using a different code pattern. We could in theory
+       just use R2 as the target and MoveReg so the following code uses
+       R2, but most stuff will force it into R1 anyway */
+
     /* Character sized */
     if (Flags & CF_UNSIGNED) {
-        AddCodeLine("CLR R%", d);
-        /* FIXME: can any of these be zero (ie *Rn) */
-        AddCodeLine("MOVB %s,R%d", Indirect(r, Offs), d);
-        AddCodeLine("SWPB R%d", d);
+        if (nr != d) {
+            RSetLive(d);
+            AddCodeLine("CLR R%d", d);
+            AddCodeLine("MOVB %s,R%d", IndirectForm(nr, Offs), d);
+            AddCodeLine("SWPB R%d", d);
+        } else {
+            RSetLive(d);
+            AddCodeLine("MOVB %s,R%d", IndirectForm(nr, Offs), d);
+            AddCodeLine("SRL R%d, 8", d);
+        }
     } else {
-        AddCodeLine("MOVB %s,R%d", Indirect(r, Offs), d);
+        RSetLive(d);
+        AddCodeLine("MOVB %s,R%d", IndirectForm(nr, Offs), d);
         AddCodeLine("SRA R%d, 8", d);
     }
+    AddCodeLine(";fbi");
+    flagsvalid = 1;
+    flagstype = Flags;
 }
 
 /*
@@ -422,17 +745,22 @@ static void FetchByteIndirect(unsigned int r, unsigned int Offs, unsigned Flags)
 static void FetchByteStatic(const char *lbuf, unsigned Flags)
 {
     unsigned int d = 1;
-    if (Flags & CF_USINGR2)
+    unsigned int r;
+
+    if (Flags & CF_USINGX)
         d = 2;
+
+    r = RResolve(d);
     
     if (Flags & CF_UNSIGNED) {
         AddCodeLine("CLR R%d", d);
-        AddCodeLine("MOVB @%s, R%d", lbuf, d);
+        AddCodeLine("MOVB %s, R%d", lbuf, d);
         AddCodeLine("SWPB R%d", d);
     } else {
-        AddCodeLine("MOVB @%s, R%d", lbuf, d);
+        AddCodeLine("MOVB %s, R%d", lbuf, d);
         AddCodeLine("SRA R%d,8", d);
     }
+    MoveReg(r, d);
 }
 
 /*
@@ -441,10 +769,11 @@ static void FetchByteStatic(const char *lbuf, unsigned Flags)
 static void PutByteStatic(const char *lbuf, unsigned Flags)
 {
     unsigned r = 1;
-    if (Flags & CF_USINGR2)
+    if (Flags & CF_USINGX)
         r = 2;
+    r = RResolve(r);
     AddCodeLine("SWPB R%d", r);
-    AddCodeLine("MOVB R%d, @%s", r, lbuf);
+    AddCodeLine("MOVB R%d, %s", r, lbuf);
     AddCodeLine("SWPB R%d", r);
 }
 
@@ -455,15 +784,30 @@ static void PutByteStatic(const char *lbuf, unsigned Flags)
 static void PutByteIndirect(unsigned int r, unsigned int Offs, unsigned int Flags)
 {
     unsigned int d = 1;
-    if (Flags & CF_USINGR2)
+    unsigned int nr, nd;
+    if (Flags & CF_USINGX)
         d = 2;
     
     if (r == d)
-        Internal("PInd")
+        Internal("PInd");
 
-    AddCodeLine("SWPB R%d", d);
-    AddCodeLine("MOVB R%d, %s", d, Indirect(r, Offs));
-    AddCodeLine("SWPB R%d", d);
+    nd = RResolve(d);
+    nr = RResolve(r);
+
+    /* We may have a register collision */
+    if (nr == nd) {
+        if (nr != d) {
+            RUse(d);
+            nd = d;
+        } else {
+            RUse(r);
+            nr = r;
+        }
+    }
+                
+    AddCodeLine("SWPB R%d", nd);
+    AddCodeLine("MOVB R%d, %s", nd, IndirectForm(nr, Offs));
+    AddCodeLine("SWPB R%d", nd);
 }
 
 /*
@@ -471,6 +815,7 @@ static void PutByteIndirect(unsigned int r, unsigned int Offs, unsigned int Flag
  * an indirect form but not an immediate one.
  *
  * TODO: nicer way to merge common literals.
+ * Spot "literals" that are consts in a register at that moment ?
  */
 
 unsigned MakeLiteral(uint16_t val)
@@ -479,6 +824,245 @@ unsigned MakeLiteral(uint16_t val)
     L = GetLocalLabel();
     g_defdatalabel(L);
     AddDataLine(".word %d", val);
+    return L;
+}
+
+/*****************************************************************************/
+/*              Virtual register stack pool                                  */
+/*****************************************************************************/
+
+static unsigned int nreg = 0;
+static unsigned int regbase = 0;
+static unsigned int regdisable;
+
+#define REG_STACK	0xFFFF
+#define REG_OFFSET	8
+#define REG_MASK	3
+
+/* The interaction here with the aliasing is decidedly non optimal but allows
+   for worst case crystalization of values. */
+static unsigned int RegPush(void)
+{
+    if (nreg == 4) {
+        AddImmediate(3, -2);
+        RUse(3);
+        AddCodeLine("MOV R%d, *R3", regbase + REG_OFFSET);
+        push(CF_INT);
+        flagsvalid = 0;
+        regbase++;
+        if (regbase == 4)
+            regbase = 0;
+    } else {
+        nreg++;
+    }
+    return (regbase + nreg - 1) & REG_MASK;
+}
+
+static unsigned int RegPop(void)
+{
+    /* We have popped off into real stack territory */
+    if (regdisable)
+        return REG_STACK;
+
+    if (nreg == 0) {
+        regbase--;
+        return REG_STACK;
+    }
+    /* Register */
+    return (regbase + --nreg) & REG_MASK;
+}
+
+static void RegPoolEmpty(const char *p)
+{
+    if (nreg)
+        Internal("RegPool %s", p);
+}
+
+static void PopReg(unsigned int r)
+{
+    unsigned int sr = RegPop();
+    if (sr == REG_STACK) {
+        pop(CF_INT);
+        AddCodeLine("MOV *R3+, R%d", r);
+    } else
+        MoveReg(sr + REG_OFFSET, r);
+}
+
+static char *PopRegName(void)
+{
+    static char buf[32];
+    unsigned int sr = RegPop();
+    if (sr == REG_STACK) {
+        pop(CF_INT);
+        return("*R3+");
+    }
+    sprintf(buf, "R%d", sr + REG_OFFSET);
+    return buf;
+}
+  
+static unsigned int PopRegNumber(void)
+{
+    unsigned int sr = RegPop();
+    if (sr == REG_STACK) {
+        Internal("PRN");
+    }
+    return sr + REG_OFFSET;
+}
+  
+static void DropRegStack(void)
+{
+    unsigned int sr = RegPop();
+    if (sr == REG_STACK) {
+        pop(CF_INT);
+        RUse(3);
+        AddCodeLine("INCT R3");
+    }
+}
+
+static char *PushRegName(void)
+{
+    static char buf[32];
+    unsigned int sr = RegPush();
+    sprintf(buf, "R%d", sr + REG_OFFSET);
+    return buf;
+}
+  
+static unsigned PushRegNumber(void)
+{
+    return RegPush() + REG_OFFSET;
+}
+  
+static char *TopRegName(void)
+{
+    static char buf[32];
+    if (nreg == 0) {
+        RUse(3);
+        return("*R3");
+    }
+    sprintf(buf, "R%d", RResolve(((regbase + nreg) & REG_MASK) + REG_OFFSET));
+    return buf;
+}
+
+static char *StkRegName(uint16_t offset)
+{
+    static char buf[32];
+    uint16_t nr = offset / 2;
+
+    /* Asking for the word at the top of real stack */
+    if (nreg == nr) {
+        RUse(3);
+        return("*R3");
+    }
+    if (nreg > nr) 	/* Word on virtual stack */
+        sprintf(buf, "R%d", RResolve(((regbase + nreg - nr) & REG_MASK) + REG_OFFSET));
+    /* Up the real stack */
+    else {
+        /* Allow for registerised stack */
+        offset -= 2 * nr;
+        RUse(3);
+        sprintf(buf, "@%d(R3)", offset);
+    }
+    return buf;
+}
+
+static void PushReg(unsigned int r)
+{
+    unsigned int rs = RegPush();
+    MoveReg(r, rs + REG_OFFSET);
+}
+
+static void PushConst(uint16_t val)
+{
+    unsigned int rs = RegPush();
+    RSetConstant(rs + REG_OFFSET, val);
+}
+
+static void PopReg32(unsigned int rh, unsigned int rl)
+{
+    PopReg(rh);
+    PopReg(rl);
+}
+
+static void PushReg32(unsigned int rh, unsigned int rl)
+{
+    PushReg(rl);
+    PushReg(rh);
+}
+
+static void PushConst32(uint32_t val)
+{
+    unsigned int rs = RegPush();
+    RSetConstant(rs + REG_OFFSET, val);
+    rs = RegPush();
+    RSetConstant(rs + REG_OFFSET, val >> 16);
+}
+
+/* Adjusts the SP tracking itself */
+static void GrowStack(int val)
+{
+    if (val < 0)
+        Internal("GrowStack %d", val);
+    /* FIXME: we should optimise this to do a single AI if we will spill
+       and then use offsets ?? */
+    /* Spill registers and make space */
+    while(nreg && (val -= 2))
+        RegPush();
+    /* And just adjust for the remainder */
+    AddImmediate(3, -val);
+    StackPtr -= val;
+}
+
+static void ShrinkStack(int val)
+{
+    int nr = val / 2;	/* Number of reg slots we lose */
+    if (nreg >= nr) {
+        nreg -= nr;
+        return;
+    }
+    if (val < 0)
+        Internal("ShrinkStack %d", val);
+    val -= 2 * nreg;	/* Virtual registers */
+    /* We are shrinking real stack too */
+    AddImmediate(3, val);
+    StackPtr += val;
+}
+
+/* We may have a bunch of stuff in registers that will become arguments
+   or locals. Turn it into a real stack so we can take addresses of it
+   and pass it around */
+static void ResolveStack(void)
+{
+    unsigned n = 0;
+    RUse(3);
+    while(nreg) {
+        unsigned rv = ((regbase + n) % REG_MASK) + REG_OFFSET;
+        AddCodeLine("DECT R3");
+        AddCodeLine("MOV R%d, *R3", RResolve(rv));
+        RSetUnknown(rv);
+        push(CF_INT);
+        nreg--;
+        flagsvalid = 0;
+    }
+    regbase = 0;
+}
+
+static void FlushStack(void)
+{
+    regbase = 0;
+    nreg = 0;
+}
+
+static void DisableRegStack(void)
+{
+    ResolveStack();
+    regdisable = 1;
+}
+
+static void EnableRegStack(void)
+{
+    if (regdisable == 0)
+        Internal("ERS");
+    regdisable = 0;
 }
 
 /*****************************************************************************/
@@ -488,7 +1072,6 @@ unsigned MakeLiteral(uint16_t val)
 void g_defcodelabel (unsigned label)
 /* Define a local code label */
 {
-    AddCodeLine("\t.even");
     AddCodeLine("%s:", LocalLabelName(label));
     /* Overly pessimistic but we don't know what our branch will come from */
     //InvalidateRegCache();
@@ -570,30 +1153,42 @@ void g_importmainargs (void)
 /*                          Function entry and exit                          */
 /*****************************************************************************/
 
+
 void g_enter (const char *name, unsigned flags, unsigned argsize)
 /* Function prologue */
 {
     push (CF_INT);		/* Return address */
 
     AddCodeLine(".export _%s", name);
+    AddCodeLine(".even");
     AddCodeLine("_%s:",name);
+
+    FlushStack();
+    RFlush();
 
     /* Uglies from the L->R stack handling for varargs */
     if ((flags & CF_FIXARGC) == 0) {
         /* Frame pointer is required for varargs mode. We could avoid
            it otherwise */
-        AddCodeLine("ai R3, -8");
-        AddCodeLine("mov R11,*R3");
-        AddCodeLine("mov R4,@2(R3)");
-        AddCodeLine("mov R3, R4");	/* R4 is FP */
-        AddCodeLine("a R0, R4");	/* Adjust FP for arguments */
+        push(CF_INT);
+        AddImmediate(3, -2);
+        AddCodeLine("MOV R11,*R3");
+        push(CF_INT);
+        AddImmediate(3, -2);
+        AddCodeLine("MOV R4,*R3");
+        AddCodeLine("MOV R3, R4");	/* R4 is FP */
+        AddCodeLine("A R0, R4");	/* Adjust FP for arguments */
+        RSetLive(3);
+        RSetLive(4);
         FramePtr = 1;
     } else { 
         FramePtr = 0;
         /* Save the return address: FIXME we really want to merge all of this
            and the local setup nicely */
-        AddCodeLine("ai R3, -4");
-        AddCodeLine("mov R11,*R3");
+        RSetLive(3);
+        push(CF_INT);
+        AddImmediate(3, -2);
+        AddCodeLine("MOV R11,*R3");
 
     }
     //InvalidateRegCache();
@@ -608,16 +1203,23 @@ void g_leave(int voidfunc, unsigned flags, unsigned argsize)
        a C level error as that may be the real cause. Only valid code failing
        this check is a problem */
 
+    /* The bits we will undo */
+    pop(CF_PTR);
+    pop(CF_PTR);
+    if (FramePtr)
+        pop(CF_PTR);
+
     if (StackPtr && !ErrorCount)
         Internal("g_leave: stack unbalanced by %d", StackPtr);
 
     /* Recover the previous frame pointer if we were vararg */
     if (FramePtr) {
-        AddCodeLine("mov *R3+,R4");
+        AddCodeLine("MOV *R3+,R4");
     }
-    AddCodeLine("mov *R3+,R11");
-    AddCodeLine("rt");
+    AddCodeLine("MOV *R3+,R11");
+    AddCodeLine("RT");
 }
+
 
 
 
@@ -640,7 +1242,7 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
 
             case CF_CHAR:
             case CF_INT:
-                if (Flags & CF_USINGR2)
+                if (Flags & CF_USINGX)
                     Assign(2, Val);
                 else
                     Assign(1, Val);
@@ -650,7 +1252,7 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                 /* Split the value into 4 bytes */
                 W1 = (unsigned short) (Val >> 0);
                 W2 = (unsigned short) (Val >> 16);
-                if (Flags & CF_USINGR2) {
+                if (Flags & CF_USINGX) {
                     Assign(2, W1);
                 } else {
                     /* Load the value */
@@ -658,7 +1260,7 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
                     if (W1 && W1 != W2)
                         Assign(1, W1);
                     else
-                        AddCodeLine("MOV R0,R1");
+                        MoveReg(0, 1);
                 }
                 break;
 
@@ -669,56 +1271,74 @@ void g_getimmed (unsigned Flags, unsigned long Val, long Offs)
         }
 
     } else {
-
         /* Some sort of label */
-        const char* Label = GetLabelName (Flags, Val, Offs, 1);
+        int r = GetRegVarOf(Flags, Val, Offs);
+        int dr = (Flags & CF_USINGX) ? 2 : 1;
+        const char* Label = GetLabelName (Flags, Val, Offs);
 
-        /* Load the address into the primary */
-        if (Flags & CF_USINGR2)
-            AddCodeLine("LI R2, %s", Label);
-        } else {
-            AddCodeLine ("LI R1, %s", Label);
+        /* Register case is different */
+        if (r)
+            MoveReg(r, dr);
+        else {
+            /* Load the address into the primary */
+            RSetLive(dr);
+            AddCodeLine("LI R%d, %s", dr, Label);
         }
     }
 }
-
-
 
 void g_getstatic (unsigned flags, uintptr_t label, long offs)
 /* Fetch an static memory cell into the primary register */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs, 0);
+    const char* lbuf = GetLabelName (flags, label, offs);
+    int r = GetRegVarOf(flags, label, offs);
+    int rd = (flags & CF_USINGX) ? 2 : 1;
 
     /* Check the size and generate the correct load operation */
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
+            if (r)
+                RUse(r);
             /* Byte ops are not pretty */
             if ((flags & CF_FORCECHAR) || (flags & CF_TEST)) {
-                AddCodeLine("MOVB @%s, R1", lbuf);   /* load A from the label */
+                RSetLive(1);
+                AddCodeLine("MOVB %s, R1", lbuf);   /* load A from the label */
                 AddCodeLine("SWPB R1");	/* Preserves flags */
+                flagsvalid = 1;
+                flagstype = flags;
             } else
-                FetchByteStatic(lbuf, flags)
+                FetchByteStatic(lbuf, flags);
             break;
 
         case CF_INT:
-            if (flags & CF_USINGR2)
-                    AddCodeLine ("MOV @%s, R2", lbuf);
-            else
-                    AddCodeLine ("MOV @%s, R1", lbuf);
+            if (r)
+                MoveReg(r, rd);
+            else {
+                RSetLive(rd);
+                AddCodeLine ("MOV %s, R%d", lbuf, rd);
+            }
+            /* Try and materialize it immediately */
+            if (flags & CF_TEST) {
+                RUse(rd);
+                flagsvalid = 1;
+                flagstype = flags;
+            }
             break;
 
         case CF_LONG:
             if (flags & CF_TEST) {
-                AddCodeLine("MOV @%s, R1", lbuf);
-                AddCodeLine("OR @%s, R1", lbuf + 2);
+                RSetLive(1);
+                AddCodeLine("MOV %s, R1", lbuf);
+                AddCodeLine("OR %s, R1", lbuf + 2);
+                flagsvalid = 1;
+                flagstype = CF_INT;	/* Folded */
             } else {
-                AddCodeLine("MOV @%s, R0", lbuf);
-                if (flags & CF_USINGR2)
-                    AddCodeLine("MOV @%s, R2", lbuf + 2);
-                else
-                    AddCodeLine("MOV @%s, R1", lbuf + 2);
+                RSetLive(0);
+                AddCodeLine("MOV %s, R0", lbuf);
+                RSetLive(rd);
+                AddCodeLine("MOV %s, R%d", lbuf + 2, rd);
             }
             break;
 
@@ -736,17 +1356,25 @@ void g_getstatic (unsigned flags, uintptr_t label, long offs)
 void g_getlocal (unsigned Flags, int Offs)
 /* Fetch specified local object (local var). */
 {
-    Offs = GenOffset(Offs);
+    unsigned int r;
 
+    Offs = GenOffset(Offs, &r);
+
+    /* FIXME: FramePointer forms for get/put local */
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("MOV %s, R1", Indirect(3,Offs));
+            RSetLive(1);
+            AddCodeLine("MOV %s, R1", IndirectForm(r, Offs));
+            flagsvalid = 1;
+            flagstype = Flags;
             break;
 
         case CF_LONG:
-            AddCodeLine("MOV %s, R0", Indirect(3, Offs));
-            AddCodeLine("MOV %s, R1", Indirect(3, Offs));
+            RSetLive(0);
+            RSetLive(1);
+            AddCodeLine("MOV %s, R0", IndirectForm(r, Offs));
+            AddCodeLine("MOV %s, R1", IndirectForm(r, Offs));
             /* FIXME - test inline */
             if (Flags & CF_TEST)
                 g_test (Flags);
@@ -757,20 +1385,26 @@ void g_getlocal (unsigned Flags, int Offs)
     }
 }
 
-void g_getlocal_r2 (unsigned Flags, int Offs)
+void g_getlocal_x (unsigned Flags, int Offs)
 /* Fetch specified local object (local var) into r2. */
 {
-    Offs = GenOffset(Offs);
+    unsigned int r;
+    Offs = GenOffset(Offs, &r);
 
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine ("MOV %s, R2", Indirect(3, Offs));
+            RSetLive(2);
+            AddCodeLine ("MOV %s, R2", IndirectForm(r, Offs));
+            flagsvalid = 1;
+            flagstype = Flags;
             break;
 
         case CF_LONG:
-            AddCodeLine ("MOV %s, R0", Indirect(3, Offs));
-            AddCodeLine ("MOV %s, R2", Indirect(3, Offs + 2));
+            RSetLive(0);
+            AddCodeLine ("MOV %s, R0", IndirectForm(r, Offs));
+            RSetLive(2);
+            AddCodeLine ("MOV %s, R2", IndirectForm(r, Offs + 2));
             break;
 
         default:
@@ -781,12 +1415,12 @@ void g_getlocal_r2 (unsigned Flags, int Offs)
 
 void g_primary_to_x(void)
 {
-    AddCodeLine("MOV R1,R2");
+    MoveReg(1, 2);
 }
 
 void g_x_to_primary(void)
 {
-    AddCodeLine("MOV R2,R1");
+    MoveReg(2, 1);
 }
 
 /* Get a variable into R1 or R0/R1 through the pointer in R1 */
@@ -795,30 +1429,32 @@ void g_getind (unsigned Flags, unsigned Offs)
 ** into the primary register
 */
 {
-    Offs = GenOffset (Offs);
-
     /* FIXME */
-    NotViaR2();
+    NotViaX();
 
     /* Handle the indirect fetch */
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
             /* Character sized */
-            AddCodeLine("MOV R1,R2");
+            MoveReg(1, 2);
             FetchByteIndirect(2, Offs, Flags);
             break;
 
         case CF_INT:
-            AddCodeLine("MOV %s, R1", Indirect(1, Offs));
+            AddCodeLine("MOV %s, R1", IndirectForm(1, Offs));
+            RSetLive(1);
+            flagsvalid = 1;
+            flagstype = Flags;
             break;
 
         case CF_LONG:
-            AddCodeLine("MOV %s, R0", Indirect(1, Offs));
-            AddCodeLine("MOV %s, R1", Indirect(1, Offs + 2));
+            AddCodeLine("MOV %s, R0", IndirectForm(1, Offs));
+            AddCodeLine("MOV %s, R1", IndirectForm(1, Offs + 2));
+            RSetLive(0);
+            RSetLive(1);
             /* FIXME: inline test ? */
-            if (Flags & CF_TEST) {
+            if (Flags & CF_TEST)
                 g_test (Flags);
-            }
             break;
 
         default:
@@ -838,8 +1474,8 @@ void g_leasp (unsigned Flags, int Offs)
         Offs += 2;
         /* FIXME: is there an R1 use of this, and is there a D use of it in
            6800 or does 6800 have a bug here ?? */
-        AddCodeLine("MOV R4, R2");
-        AddCodeLine("AI %d, R2", Offs);
+        MoveReg(4, 2);
+        AddImmediate(2, Offs);
         return;
     }
     Offs = -Offs;
@@ -848,13 +1484,13 @@ void g_leasp (unsigned Flags, int Offs)
 
     AddCodeLine(";+leasp %d %d\n", FramePtr, Offs);
 
-    if (!(Flags & CF_USINGR2)) {
-        AddCodeLine("MOV R3, R1");
-        AddCodeLine("AI R1, %d", Offs);
+    if (!(Flags & CF_USINGX)) {
+        MoveReg(3, 1);
+        AddImmediate(1, Offs);
         return;
     }
-    AddCodeLine("MOV R3, R2");
-    AddCodeLine("AI R2, %d", Offs);
+    MoveReg(3, 2);
+    AddImmediate(2, Offs);
 }
 
 /*****************************************************************************/
@@ -865,29 +1501,35 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
 /* Store the primary register into the specified static memory cell */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs, 0);
+    const char* lbuf = GetLabelName (flags, label, offs);
+    unsigned int r = 1;
+    unsigned int rd = GetRegVarOf(flags, label, offs);
+    if (flags & CF_USINGX)
+        r = 2;
+
+    r = RResolve(r);
 
     /* Check the size and generate the correct store operation */
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            /* FIXME: Truely horrible due to the byte in high thing */
-            PutByteStatic(label, flags);
+            if (rd)
+                MoveReg(r, rd);
+            else
+                PutByteStatic(lbuf, flags);
             break;
 
         case CF_INT:
-            if (flags & CF_USINGR2)
-                AddCodeLine("MOV R2, @%s", lbuf);
+            if (rd)
+                MoveReg(r, rd);
             else
-                AddCodeLine("MOV R1, @%s", lbuf);
+                AddCodeLine("MOV R%d, %s", r, lbuf);
             break;
 
         case CF_LONG:
-            AddCodeLine("MOV R0, @%s", lbuf);
-            if (flags & CF_USINGR2)
-                AddCodeLine("MOV R2, @%s + 2", lbuf);
-            else
-                AddCodeLine("MOV R1, @%s + 2", lbuf);
+            AddCodeLine("MOV R%d, %s + 2", r, lbuf);
+            r = RResolve(0);
+            AddCodeLine("MOV R%d, %s", r, lbuf);
             break;
 
         default:
@@ -903,9 +1545,12 @@ void g_putstatic (unsigned flags, uintptr_t label, long offs)
 void g_putlocal (unsigned Flags, int Offs, long Val)
 /* Put data into local object. */
 {
-    Offs = GenOffset (Offs);
+    unsigned int r;
+    unsigned int d;
+    Offs = GenOffset (Offs, &r);
 
-    NotViaR2();
+    NotViaX();
+    /* Need to deal with frame ptr form FIXME */
 
     /* FIXME: Offset 0 generate *Rn+ ?? , or fix up in assembler ? */
     switch (Flags & CF_TYPEMASK) {
@@ -913,18 +1558,23 @@ void g_putlocal (unsigned Flags, int Offs, long Val)
         case CF_INT:
             if (Flags & CF_CONST)
                 Assign(1, Val);
-            AddCodeLine("MOV R1, @%d(R2)", Offs);
+            d = RResolve(1);
+            AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs));
             break;
         case CF_LONG:
             if (Flags & CF_CONST) {
                 Assign(1, Val >> 16);
-                AddCodeLine("MOV R0, %d(R2)", Offs);
-                if ((Val >> 16) != (Val & 0xFFFF))
+                d = RResolve(0);
+                AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs));
+                d = RResolve(1);
+                if (WordsSame(Val))
                     Assign(1, Val);
-                AddCodeLine("MOV R1, %d(R2)", Offs + 2);
+                AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs + 2));
             } else {
-                AddCodeLine("MOV R0, %d(R2)", Offs);
-                AddCodeLine("MOV R1, %d(R2)", Offs + 2);
+                d = RResolve(0);
+                AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs));
+                d = RResolve(1);
+                AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs + 2));
             }
             break;
 
@@ -939,31 +1589,32 @@ void g_putind (unsigned Flags, unsigned Offs)
 ** on the top of the stack
 */
 {
-    AddCodeLine("MOV *R3+,R2");
-    /* R2 now points into the object, and Offs is the remaining offset to
-       allow for. D holds the stuff to store */                
+    unsigned r = PopRegNumber();
+    unsigned d;
+
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
             /* FIXME: we need to track if R1 is reversed and then we can
                minimise this nonsense all over */
-            PutByteIndirect(2, Offs, Flags);
+            PutByteIndirect(r, Offs, Flags);
             break;
 
         case CF_INT:
-            AddCodeLine("MOV R1, @%d(R2)", Offs);
+            d = RResolve(1);
+            AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs));
             break;
 
         case CF_LONG:
-            AddCodeLine("MOV R0, @%d(R2)", Offs);
-            AddCodeLine("MOV R1, @%d(R2)", Offs + 2);
+            d = RResolve(0);
+            AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs));
+            d = RResolve(1);
+            AddCodeLine("MOV R%d, %s", d, IndirectForm(r, Offs + 2));
             break;
 
         default:
             typeerror (Flags);
 
     }
-    /* Pop the argument which is always a pointer */
-    pop (CF_PTR);
 }
 
 
@@ -981,21 +1632,21 @@ void g_toslong (unsigned flags)
 
         case CF_CHAR:
         case CF_INT:
-            NotViaR2();	/* For now */
+            NotViaX();	/* For now */
             if (flags & CF_UNSIGNED) {
                 /* Push a new upper 16bits of zero */
-                AddCodeLine("CLR R2"):
+                PushConst(0);
             } else {
+                /* Copy the tos into the new tos and then fix the sign */
+                char *t = TopRegName();
+                char *n = PushRegName();
                 L = GetLocalLabel();
-                AddCodeLine("MOV *R3, R2");
-                AddCodeLine("CLR R2");	/* Flags not affected */
+                AddCodeLine("MOV %s, %s", t, n);
+                AddCodeLine("CLR %s", n);	/* Flags not affected */
                 AddCodeLine("JGE %s", LocalLabelName(L));
-                AddCodeLine("DEC R2");	/* 0xFFFF */
+                AddCodeLine("DEC %s", n);	/* 0xFFFF */
                 g_defcodelabel(L);
             }
-            AddCodeLine("AI R3,-4");
-            AddCodeLine("MOV R2,*R3");
-            push (CF_INT);
             break;
 
         case CF_LONG:
@@ -1015,10 +1666,8 @@ void g_tosint (unsigned flags)
         case CF_INT:
             break;
         case CF_LONG:
-            /* We have a big endian long at s+4,3,2,1 so we just need to
-               throw out the top. */
-            AddCodeLine("INCT R3");
-            pop (CF_INT);
+            /* We have a big endian long so just throw out the top */
+            DropRegStack();
             break;
         default:
             typeerror (flags);
@@ -1028,11 +1677,12 @@ void g_tosint (unsigned flags)
 static void g_regchar (unsigned Flags)
 /* Make sure, the value in the primary register is in the range of char. Truncate if necessary */
 {
+    RUse(1);
     if (Flags & CF_UNSIGNED)
         AddCodeLine("ANDI R1, 0xFF");
     else {
         AddCodeLine("SWPB R1");
-        AddCodeLIne("ASR R1,8");
+        AddCodeLine("ASR R1,8");
     }
 }
 
@@ -1061,7 +1711,8 @@ void g_reglong (unsigned Flags)
     switch (Flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            NotViaR2();
+            NotViaX();
+            RUse(1);
             if (Flags & CF_FORCECHAR) {
                 if (Flags & CF_UNSIGNED)
                     AddCodeLine("ANDI R1, 0xFF");
@@ -1072,8 +1723,11 @@ void g_reglong (unsigned Flags)
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine("CLR R0");
+            Assign(0, 0);
             if ((Flags & CF_UNSIGNED)  == 0) {
+                /* Crystalize it so we don't mess up flags etc */
+                RUse(0);
+                RUse(1);
                 L = GetLocalLabel();
                 AddCodeLine ("CI R1, 0x8000");
                 AddCodeLine ("JLT %s", LocalLabelName (L));
@@ -1193,8 +1847,10 @@ void g_scale (unsigned flags, long val)
 {
     int p2;
 
-    NotViaR2();
+    NotViaX();
+
     /* Value may not be zero */
+    RUse(1);
     if (val == 0) {
         Internal ("Data type has no size");
     } else if (val > 0) {
@@ -1216,6 +1872,8 @@ void g_scale (unsigned flags, long val)
                     break;
 
                 case CF_LONG:
+                    /* Helper for calls ? */
+                    RUse(0);
                     AddCodeLine ("BL shleax%d", p2);
                     break;
 
@@ -1228,9 +1886,11 @@ void g_scale (unsigned flags, long val)
             switch (flags & CF_TYPEMASK) {
                 case CF_CHAR:
                 case CF_INT:
-                    AddCodeLine("LI R0, %d", val);
+                    Assign(0, (uint16_t)val);
+                    RSetLive(0);
+                    RSetLive(1);
                     /* Use a multiplication instead */
-                    AddCodeLine("MPY R1, R0", val);
+                    AddCodeLine("MPY R1, R0");
                     break;
                 default:
                     /* Use a helper multiply instead (should never be needed) */
@@ -1243,6 +1903,7 @@ void g_scale (unsigned flags, long val)
         val = -val;
         if ((p2 = PowerOf2 (val)) > 0 && p2 <= 4) {
 
+            RUse(1);
             /* Factor is 2, 4, 8 and 16 use special function */
             switch (flags & CF_TYPEMASK) {
 
@@ -1250,7 +1911,7 @@ void g_scale (unsigned flags, long val)
                 case CF_CHAR:
                     /* Byte is a pain */
                     AddCodeLine("SWPB");
-                    if (flags & CF_UNSIGNED) {
+                    if (flags & CF_UNSIGNED)
                         AddCodeLine("SRL R1,%d", p2);
                     else
                         AddCodeLine ("SRA R1,%d", p2);
@@ -1258,13 +1919,14 @@ void g_scale (unsigned flags, long val)
                     /* FIXME: Do we need to mask ? */
                     break;
                 case CF_INT:
-                    if (flags & CF_UNSIGNED) {
+                    if (flags & CF_UNSIGNED)
                         AddCodeLine("SRL R1,%d", p2);
                     else
                         AddCodeLine ("SRA R1,%d", p2);
                     break;
 
                 case CF_LONG:
+                    RUse(0);
                     if (flags & CF_UNSIGNED)
                         AddCodeLine ("BL lsreax%d", p2);
                     else
@@ -1295,24 +1957,28 @@ void g_addlocal (unsigned flags, int offs)
 /* Add a local variable to d */
 {
     unsigned L;
+    unsigned int r;
+
+    offs = GenOffset(offs, &r);
+
+    RUse(1);
 
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             /* We keep locals in word format so we can just use word
                operations on them */
         case CF_INT:
-            offs = GenOffset(offs);
-            AddCodeLine ("A @%d(R3), R1", offs);
+            AddCodeLine ("A %s, R1", IndirectForm(r, offs));
             break;
 
         case CF_LONG:
+            RUse(0);
             L = GetLocalLabel();
-            offs = GenOffset(offs);
-            AddCodeLine ("A @%d(R3), R1", offs + 2);
-            AddCodeLine ("JOC %s", LocalLabelName(L);
+            AddCodeLine ("A %s, R1", IndirectForm(r, offs + 2));
+            AddCodeLine ("JOC %s", LocalLabelName(L));
             AddCodeLine ("INC R0");
-            g_defcodeLabel(L);
-            AddCodeLine ("A @%d(R3), R0", offs);
+            g_defcodelabel(L);
+            AddCodeLine ("A %s, R0", IndirectForm(r, offs));
             break;
 
         default:
@@ -1321,37 +1987,49 @@ void g_addlocal (unsigned flags, int offs)
     }
 }
 
-
-
 void g_addstatic (unsigned flags, uintptr_t label, long offs)
 /* Add a static variable to ax */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs, 0);
+    const char* lbuf = GetLabelName (flags, label, offs);
+    unsigned int r = GetRegVarOf(flags, label, offs);
     unsigned L;
 
-    NotViaR2();
+    NotViaX();
 
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            /* FIXME: Horrible */
-            FetchByteIndirect(2, lbuf, Flags);
+            if (r == 0) {
+                FetchByteStatic(lbuf, flags | CF_USINGX);
+                AddCodeLine("A R2, R1");
+                AddCodeLine("ANDI R1, 0xFF");
+            } else {
+                MoveReg(r, 1);
+                RUse(1);
+            }
             AddCodeLine("A R2, R1");
             AddCodeLine("ANDI R1, 0xFF");
             break;
 
         case CF_INT:
-            AddCodeLine("A @%s, R1", lbuf);
+            RUse(1);
+            if (r == 0)
+                AddCodeLine("A %s, R1", lbuf);
+            else
+                AddCodeLine("A R%d, R1", RResolve(r));
             break;
 
         case CF_LONG:
+            /* No long register type */
+            RUse(0);
+            RUse(1);
             L = GetLocalLabel();
-            AddCodeLine ("A @%s+2, R1", lbuf);
-            AddCodeLine ("JOC %s", LocalLabelName(L);
+            AddCodeLine ("A %s+2, R1", lbuf);
+            AddCodeLine ("JOC %s", LocalLabelName(L));
             AddCodeLine ("INC R0");
-            g_defcodeLabel(L);
-            AddCodeLine ("A @%s, R0", lbuf);
+            g_defcodelabel(L);
+            AddCodeLine ("A %s, R0", lbuf);
             break;
 
         default:
@@ -1373,16 +2051,23 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
 /* Emit += for a static variable */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs, 0);
-
+    const char* lbuf = GetLabelName (flags, label, offs);
+    unsigned int r = GetRegVarOf(flags, label, offs);
+    uint16_t v16 = val;
 
     /* Check the size and determine operation */
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            NotViaR2();
+            NotViaX();
             if (flags & CF_FORCECHAR) {
-                FetchByteStatic(lbuf, flags);
+                if (r == 0) {
+                    FetchByteStatic(lbuf, flags);
+                    RUse(1);	/* Resolve ? FIXME */
+                } else { 
+                    MoveReg(r, 1);
+                    RUse(1);
+                }
                 if (flags & CF_CONST) {
                     switch(val) {
                         case 1:
@@ -1392,13 +2077,13 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                             AddCodeLine("INCT R1");
                             break;
                         default:
-                            AddCodeLine("AI R1, %d", val & 0xFF);
+                            AddImmediate(1, (uint8_t) val);
                             break;
                     }
-                } else {
-                    AddCodeLine("A @%s, R1", lbuf);
+                } else
+                    AddCodeLine("A %s, R1", lbuf);
                 PutByteStatic(lbuf, flags);
-                AddCodeLine("AI R1, 0xFF");
+                AddCodeLine("ANDI R1, 0xFF");
                 break;
             }
             /* FALLTHROUGH */
@@ -1406,27 +2091,63 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
         case CF_INT:
             /* So we keep the result in R1 as well */
             if (flags & CF_CONST) {
-                if (val == 1)
-                    AddCodeLine("INC @%s", lbuf);
-                else if (val == 2)
-                    AddCodeLine("INCT @%s", lbuf);
+                switch(v16) {
+                case 1:
+                    if (r)
+                        RUse(r);
+                    AddCodeLine("INC %s", lbuf);
+                    break;
+                case 2:
+                    if (r)
+                        RUse(r);
+                    AddCodeLine("INCT %s", lbuf);
+                    break;
+                case 0xFFFF:
+                    if (r)
+                        RUse(r);
+                    AddCodeLine("DEC %s", lbuf);
+                    break;
+                case 0xFFFE:
+                    if (r)
+                        RUse(r);
+                    AddCodeLine("DECT %s", lbuf);
+                    break;
+                default:
+                    if (r)
+                        MoveReg(r, 1);
+                    else
+                        AddCodeLine ("MOV %s, R1", lbuf);
+                    AddImmediate(1, val);
+                    if (r)
+                        MoveReg(1, r);
+                    else
+                        AddCodeLine ("MOV R1, %s", lbuf);
+                }
+                if (r == 0)
+                    AddCodeLine("MOV %s, R1", lbuf);
                 else
-                    AddCodeLine("AI @%s, %d", val);
-                AddCodeLine("MOV @%s, R1");
+                    MoveReg(r, 1);
             } else {
-                AddCodeLine("A R1, @%s", lbuf);
-                AddCodeLine("MOV @%s, R1", lbuf);
+                if (r) { 
+                    RUse(r);
+                    AddCodeLine("A R1, R%d", r);
+                } else
+                    AddCodeLine("A R1, %s", lbuf);
+                RSetLive(1);
+                AddCodeLine("MOV %s, R1", lbuf);
                 /* Peephole opportunity */
             }
             break;
 
         case CF_LONG:
-            NotViaR2();
-            lbuf = GetLabelName (flags, label, offs, 1);
+            NotViaX();
+            lbuf = GetLabelName (flags, label, offs);
             if (flags & CF_CONST) {
                 if (val < 0x10000) {
+                    RSetLive(1);
+                    RSetLive(2);
                     AddCodeLine("LI R2, %s", lbuf);
-                    AddCodeLine("LI R1, %d", val);
+                    AddCodeLine("LI R1, %d", (uint32_t)val);
                     AddCodeLine("BL laddeqstatic16");
                 } else {
                     g_getstatic (flags, label, offs);
@@ -1435,6 +2156,9 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
                 }
             } else {
                 /* Might be worth inlining ? */
+                RSetLive(2);
+                RSetLive(0);
+                RSetLive(1);
                 AddCodeLine ("LI R2,%s", lbuf);
                 AddCodeLine ("BL laddeq");
             }
@@ -1449,33 +2173,37 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
 /* Emit += for a local variable */
 {
     unsigned L;
-    NotViaR2();
+    unsigned int r;
+    NotViaX();
     
+    Offs = GenOffset(Offs, &r);
+
     /* Check the size and determine operation */
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             /* Our local is word sized so we are fine */
         case CF_INT:
-            Offs = GenOffset(Offs);
             if (flags & CF_CONST)
-                AddCodeLine("LI R1, %d", val);
-            AddCodeLine("A %s, R1", Indirect(3, Offs));
-            AddCodeLine("MOV R1, %s", Indirect(3, Offs));
+                Assign(1, val);
+            RUse(1);
+            AddCodeLine("A %s, R1", IndirectForm(r, Offs));
+            AddCodeLine("MOV R1, %s", IndirectForm(r, Offs));
             break;
 
         case CF_LONG:
             if (flags & CF_CONST)
                 Assign32(0, 1, val);
-            Offs = GenOffset(Offs);
+            RUse(0);
+            RUse(1);
             L = GetLocalLabel();
-            AddCodeLine("A %s, R1", Indirect(3, Offs + 2));
+            AddCodeLine("A %s, R1", IndirectForm(r, Offs + 2));
             AddCodeLine("JNC %s", LocalLabelName(L));
             AddCodeLine("INC R0");
             g_defcodelabel(L);
-            AddCodeLine("A %s, R0", Indirect(3, Offs));
+            AddCodeLine("A %s, R0", IndirectForm(r, Offs));
             /* Hopefully we can trim this with the peepholer */
-            AddCodeLine("MOV R1", Indirect(3, Offs + 2));
-            AddCodeLine("MOV R0", Indirect(3, Offs));
+            AddCodeLine("MOV R1, %s", IndirectForm(r, Offs + 2));
+            AddCodeLine("MOV R0, %s", IndirectForm(r, Offs));
             break;
 
         default:
@@ -1487,55 +2215,47 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
 void g_addeqind (unsigned flags, unsigned offs, unsigned long val)
 /* Emit += for the location with address in R1 */
 {
-
+    unsigned L;
+    unsigned r;
     /* Check the size and determine operation */
-    NotViaR2();
+    NotViaX();
+
+    r = RResolve(1);
 
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
-            AddCodeLine("MOV R1, R0");
+            MoveReg(r, 0);
             FetchByteIndirect(0, offs, flags);
-            switch(val) {
-            case 1:
-                AddCodeLine("INC R1");
-                break;
-            case 2:
-                AddCodeLine("INC R1");
-                break;
-            case 0xFFFF:
-                AddCodeLine("DEC R1");
-                break;
-            case 0xFFFE:
-                AddCodeLine("DECT R1");
-                break;
-            default:
-                AddCodeLine("AI R1, %d", val);
-            }
+            AddImmediate(1, val & 0xFF);
             PutByteIndirect(0, offs, flags);
             break;
 
         case CF_INT:
-            AddCodeLine("MOV R1, R0");
-            AddCodeLine("MOV @%d(R0), R1", offs);
-            AddCodeLine("AI R1, %d", val);
-            AddCodeLine("MOV R1, @%d(R0)", offs);
+            MoveReg(r, 0);
+            RUse(0);	/* For now FIXME */
+            RSetLive(1);
+            AddCodeLine("MOV %s, R1", IndirectForm(0, offs));
+            AddImmediate(1, val);
+            RUse(1);
+            AddCodeLine("MOV R1, %s", IndirectForm(0, offs));
             break;
             
         case CF_LONG:
             if (flags & CF_CONST)
                 Assign32(0, 1, val);
-            Offs = GenOffset(Offs);
             L = GetLocalLabel();
-            AddCodeLine("MOV R1, R2");
-            AddCodeLine("A %s, R1", Indirect(2, Offs + 2));
+            MoveReg(1, 2);
+            RSetLive(1);
+            RSetLive(0);
+            AddCodeLine("A %s, R1", IndirectForm(2, offs + 2));
             AddCodeLine("JNC %s", LocalLabelName(L));
             AddCodeLine("INC R0");
             g_defcodelabel(L);
-            AddCodeLine("A %s, R0", Indirect(2, Offs));
+            AddCodeLine("A %s, R0", IndirectForm(2, offs));
             /* Hopefully we can trim this with the peepholer */
-            AddCodeLine("MOV R1", Indirect(2, Offs + 2));
-            AddCodeLine("MOV R0", Indirect(2, Offs));
+            AddCodeLine("MOV R1, %s", IndirectForm(2, offs + 2));
+            AddCodeLine("MOV R0, %s", IndirectForm(2, offs));
             break;
 
 
@@ -1574,31 +2294,38 @@ void g_addaddr_local (unsigned flags attribute ((unused)), int offs)
 /* Add the address of a local variable to R1 */
 {
     /* Add the offset */
-    NotViaR2();
+    NotViaX();
     
     if (offs > 0 && FramePtr) {
+        RUse(1);
         AddCodeLine("A R4, R1");
         offs += 2;
-        if (offs != 0)
-            AddCodeLine("AI R1, %d", offs);
+        AddImmediate(1, offs);
     } else {
         offs -= StackPtr;
-        if (offs != 0)
-            AddCodeLine("AI R1, %d", offs);
+        AddImmediate(1, offs);
+        RUse(3);
         AddCodeLine("A R3, R1");
     }
+    RSetLive(1);
 }
 
 void g_addaddr_static (unsigned flags, uintptr_t label, long offs)
 /* Add the address of a static variable to d */
 {
     /* Create the correct label name */
-    const char* lbuf = GetLabelName (flags, label, offs, 1);
+    const char* lbuf = GetLabelName (flags, label, offs);
+    unsigned int r = GetRegVarOf(flags, label, offs);
 
-    if (flags & CF_USINGR2)
-        AddCodeLine ("AI R2, %s", lbuf);
-    else
-        AddCodeLine ("AI R1, %s", lbuf);
+    if (r)
+        RUse(r);
+    if (flags & CF_USINGX) {
+        RUse(2); 
+        AddCodeLine ("A %s, R2", lbuf);
+    }  else {
+        RUse(1);
+        AddCodeLine ("A %s, R1", lbuf);
+    }
 }
 
 /*****************************************************************************/
@@ -1611,21 +2338,27 @@ void g_addaddr_static (unsigned flags, uintptr_t label, long offs)
  *	We should look for a free registers and borrow them if possible
  *	instead, with some kind of memory of what we are up to.
  */
+ 
 void g_save (unsigned flags)
 /* Copy primary register to hold register. */
 {
-    NotViaR2 ();
+    unsigned int r;
+    NotViaX ();
+
     /* Check the size and determine operation */
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("MOV R1, @tmp1");
+            r = RResolve(1);
+            AddCodeLine("MOV R%d, tmp1", r);
             break;
 
         case CF_LONG:
-            AddCodeLine("MOV R0, @tmp1");
-            AddCodeLine("MOV R1, @tmp1 + 2");
+            r = RResolve(0);
+            AddCodeLine("MOV R%d, tmp1", r);
+            r = RResolve(1);
+            AddCodeLine("MOV R%d, tmp1 + 2", r);
             break;
 
         default:
@@ -1636,18 +2369,20 @@ void g_save (unsigned flags)
 void g_restore (unsigned flags)
 /* Copy hold register to primary. */
 {
-    NotViaR2();
+    NotViaX();
     /* Check the size and determine operation */
+    RSetLive(1);
     switch (flags & CF_TYPEMASK) {
 
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("MOV @tmp1, R1");
+            AddCodeLine("MOV tmp1, R1");
             break;
 
         case CF_LONG:
-            AddCodeLine ("MOV @tmp1, R0");
-            AddCodeLine ("MOV @tmp1 + 2, R1");
+            RSetLive(0);
+            AddCodeLine ("MOV tmp1, R0");
+            AddCodeLine ("MOV tmp1 + 2, R1");
             break;
 
         default:
@@ -1660,10 +2395,9 @@ void g_cmp (unsigned flags, unsigned long val)
 ** will be set.
 */
 {
-    unsigned L;
+    NotViaX();
 
-    NotViaR2();
-
+    RUse(1);
     /* Check the size and determine operation */
     switch (flags & CF_TYPEMASK) {
 
@@ -1678,7 +2412,7 @@ void g_cmp (unsigned flags, unsigned long val)
             /* FALLTHROUGH */
 
         case CF_INT:
-            AddCodeLine("CI R1, %d", val);
+            AddCodeLine("CI R1, %d", (uint16_t)val);
             break;
 
         case CF_LONG:
@@ -1690,6 +2424,8 @@ void g_cmp (unsigned flags, unsigned long val)
     }
 }
 
+/* FIXME: Audit to ensure no flags setting based methods go via this as it
+   destroys the flags */
 static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
 /* Encode a binary operation. subs is a pointer to four strings:
 **      0       --> Operate on ints
@@ -1700,6 +2436,7 @@ static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
 **  Sets up X for accesses. Don't use oper for magic via X code
 */
 {
+    ResolveStack();
     /* Determine the offset into the array */
     if (Flags & CF_UNSIGNED) {
         ++Subs;
@@ -1715,7 +2452,12 @@ static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
         g_getimmed (Flags, Val, 0);
     }
 
+    RSetUnknown(2);
+    RCrystalize();
     AddCodeLine ("BL %s", *Subs);
+    RFlushCall();
+    RSetLive(0);
+    RSetLive(1);
 
     /* The operation will pop it's argument */
     pop (Flags);
@@ -1724,24 +2466,69 @@ static void oper (unsigned Flags, unsigned long Val, const char* const* Subs)
 void g_test (unsigned flags)
 /* Test the value in the primary and set the condition codes */
 {
-    NotViaR2();
+    NotViaX();
+    RUse(1);
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
             if (flags & CF_FORCECHAR) {
                 AddCodeLine ("ANDI R1, 0xFF");
+                flagsvalid = 1;
+                flagstype = flags;
                 break;
             }
             /* FALLTHROUGH */
         case CF_INT:
             AddCodeLine ("CI R1,0");
+            flagsvalid = 1;
+            flagstype = flags;
             break;
 
         case CF_LONG:
+            RUse(0);
             if (flags & CF_UNSIGNED) {
                 AddCodeLine ("BL utsteax");
             } else {
                 AddCodeLine ("BL tsteax");
             }
+            flagsvalid = 1;
+            flagstype = flags;
+            break;
+
+        default:
+            typeerror (flags);
+
+    }
+}
+
+void g_test_eq(unsigned flags)
+/* Test the value in the primary and set the condition codes */
+{
+    NotViaX();
+    RUse(1);
+    switch (flags & CF_TYPEMASK) {
+        case CF_CHAR:
+            if (flags & CF_FORCECHAR) {
+                AddCodeLine ("ANDI R1, 0xFF");
+                flagsvalid = 1;
+                flagstype = flags;
+                break;
+            }
+            /* FALLTHROUGH */
+        case CF_INT:
+            AddCodeLine ("MOV R1,R1");
+            flagsvalid = 1;
+            flagstype = flags;
+            break;
+
+        case CF_LONG:
+            RUse(0);
+            if (flags & CF_UNSIGNED) {
+                AddCodeLine ("BL utsteax");
+            } else {
+                AddCodeLine ("BL tsteax");
+            }
+            flagsvalid = 1;
+            flagstype = flags;
             break;
 
         default:
@@ -1755,71 +2542,102 @@ void g_test (unsigned flags)
 void g_push (unsigned flags, unsigned long val)
 /* Push the primary register or a constant value onto the stack */
 {
-    if ((flags & CF_CONST) && (flags & CF_TYPEMASK) != CF_LONG) {
-    
-        /* We always push 16bit values for temporaries */
-        /* We need to try and optimize these as well as use the register
-           spares for a virtual stack top */
-        AddCodeLine ("LI R1, %d", val);
-        AddCodeLine("AI R3,-2");
-        AddCodeLine("MOV R1,*R3");
+    unsigned int r;
+    if ((flags & CF_TYPEMASK) != CF_LONG) {
+        if (flags & CF_CONST)
+            Assign(PushRegNumber(), val);
+        else {
+            r = RResolve(1);
+            PushReg(r);
+        }
+        return;
+    }
+    /* FIXME: do 32bit nicer versions to match 16 */
+    if (flags & CF_CONST) {
+        if (WordsSame(val)) {
+            Assign(1, val);
+            r = RResolve(1);
+            PushReg(r);
+            PushReg(r);
+        } else {
+            Assign32(0, 1, val);
+            r = RResolve(1);
+            PushReg32(RResolve(0), r);
+        }
     } else {
-        /* Value is not 16 bit or not constant */
+        r = RResolve(1);
+        PushReg32(RResolve(0), r);
+    }
+}
+
+/* Sometimes it's better to push as we go */
+void g_push_now(unsigned flags, unsigned long val)
+{
+    /* Should usually be a no-op */
+    ResolveStack();
+
+    if (flags & CF_CONST)
+        fprintf(stderr, "Push const %ld", val);
+    if ((flags & CF_TYPEMASK) != CF_LONG) {
+        AddCodeLine("DECT R3");
         if (flags & CF_CONST) {
-            /* We need to kill 8bit wide push/pop, expand char args etc */
-            g_getimmed (flags | CF_USINGR2, val, 0);
-            switch(flags & CF_TYPEMASK) {
-                case CF_CHAR:
-                case CF_INT:
-                    AddCodeLine("AI R3, -2");
-                    AddCodeLine("LI R1, %d", val);
-                    AddCodeLine("MOV R1,*R3");
-                    break;
-                case CF_LONG:
-                    AddCodeLine("AI R3, -4");
-                    if (WordsSame(val)) {
-                        Assign32(0, 1, val);
-                        AddCodeLine("MOV R1,@2(R3)");
-                        AddCodeLine("MOV R0,*R3");
-                    } else {
-                        Assign(1, val);
-                        AddCodeLine("MOV R1,@2(R3)");
-                        AddCodeLine("MOV R1,*R3");
-                    }
-                    break;
-                default:
-                    typeerror (flags);
-                }
-                push (flags);
-                return;
+            if (val == 0)
+                AddCodeLine("CLR *R3");
+            else {
+                Assign(1, val);
+                RUse(1);
+                AddCodeLine("MOV R1,*R3");
+            }
+        } else
+            AddCodeLine("MOV R1,*R3");
+        push(flags);
+        return;
+    }
+    if (flags & CF_CONST) {
+        if (WordsSame(val)) {
+            if (val == 0) {
+                AddCodeLine("DECT R3");
+                AddCodeLine("CLR *R3");
+                AddCodeLine("DECT R3");
+                AddCodeLine("CLR *R3");
+            } else {
+                Assign(1, val);
+                RUse(1);
+                AddCodeLine("DECT R3");
+                AddCodeLine("MOV R1,*R3");
+                AddCodeLine("DECT R3");
+                AddCodeLine("MOV R1,*R3");
+            }
+        } else {
+            if ((val & 0xFFFF) == 0) {
+                AddCodeLine("DECT R3");
+                AddCodeLine("CLR *R3");
+            } else {
+                Assign(1, val);
+                RUse(1);
+                AddCodeLine("DECT R3");
+                AddCodeLine("MOV R1,*R3");
+            }
+            val >>= 16;
+            if ((val & 0xFFFF) == 0) {
+                AddCodeLine("DECT R3");
+                AddCodeLine("CLR *R3");
+            } else {
+                Assign(1, val);
+                RUse(1);
+                AddCodeLine("DECT R3");
+                AddCodeLine("MOV R1,*R3");
             }
         }
-
-        /* Push the primary register */
-        switch (flags & CF_TYPEMASK) {
-            case CF_CHAR:
-            case CF_INT:
-                AddCodeLine("AI R3, -2");
-                if (flags & CF_USINGR2)
-                    AddCodeLine("MOV R2,*R3");
-                else
-                    AddCodeLine("MOV R1,*R3");
-                break;
-            case CF_LONG:
-                AddCodeLine("AI R3, -4");
-                if (flags & CF_USINGR2)
-                    AddCodeLine("MOV R2,@2(R3)");
-                else
-                    AddCodeLine("MOV R1,@2(R3)");
-                AddCodeLine("MOV R0,*R3");
-                break;
-            default:
-                typeerror (flags);
-
-        }
+    } else {
+        RUse(0);
+        RUse(1);
+        AddCodeLine("DECT R3");
+        AddCodeLine("MOV R1,*R3");
+        AddCodeLine("DECT R3");
+        AddCodeLine("MOV R0,*R3");
     }
-    /* Adjust the stack offset */
-    push (flags);
+    push(flags);
 }
 
 void g_swap (unsigned flags)
@@ -1827,21 +2645,27 @@ void g_swap (unsigned flags)
 ** of *both* values (must have same size).
 */
 {
-    NotViaR2();
+    NotViaX();
+    unsigned int rh;
+    unsigned int rl = RResolve(1);
+    
+    RSetLive(2);
+
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("MOV *R3, R2");
-            AddCodeLine("MOV R1, *R3");
-            AddCodeLine("MOV R2, R1");
+            AddCodeLine("MOV %s, R2", TopRegName());
+            AddCodeLine("MOV R%d, %s", rl, TopRegName());
+            MoveReg(2, 1);
             break;
         case CF_LONG:
-            AddCodeLine("MOV *R3, R2");
-            AddCodeLine("MOV R0, *R3");
-            AddCodeLine("MOV R2, R0");
-            AddCodeLine("MOV @2(R3), R2");
-            AddCodeLine("MOV R1, @2(R3)");
-            AddCodeLine("MOV R2, R1");
+            rh = RResolve(0);
+            AddCodeLine("MOV %s, R2", TopRegName());
+            AddCodeLine("MOV R%d, %s", rh, TopRegName());
+            MoveReg(2, 0);
+            AddCodeLine("MOV %s, R2", StkRegName(2));
+            AddCodeLine("MOV R%d, %s", rl, StkRegName(2));
+            MoveReg(2, 1);
             break;
         default:
             typeerror (flags);
@@ -1854,9 +2678,11 @@ void g_swap (unsigned flags)
 void g_call (unsigned Flags, const char* Label, int ArgSize)
 /* Call the specified subroutine name */
 {
+    RCrystalizeCall();
+    ResolveStack();
     if ((Flags & CF_FIXARGC) == 0)
         Assign(0, ArgSize);
-    AddCodeLine("BL @_%s", Label);
+    AddCodeLine("BL _%s", Label);
 }
 
 /* Flags tells us if it is varargs, ArgSize is the number of *extra* bytes
@@ -1864,16 +2690,21 @@ void g_call (unsigned Flags, const char* Label, int ArgSize)
 void g_callind (unsigned Flags, int Offs, int ArgSize)
 /* Call subroutine indirect */
 {
+    RCrystalizeCall();
+    ResolveStack();
     if ((Flags & CF_LOCAL) == 0) {
         /* Address is in R1 */
+        RUse(1);
         if ((Flags & CF_FIXARGC) == 0)
             Assign(0, ArgSize);
         AddCodeLine ("BL R1");
     } else {
-        Offs = GenOffset(Offs);
+        unsigned int r;
+        Offs = GenOffset(Offs, &r);
         if ((Flags & CF_FIXARGC) == 0)
             Assign(0, ArgSize);
-        AddCodeLine("MOV @%d(R3), R2", Offs);
+        /* FIXME: func call from vararg function - and check 680x is correct */
+        AddCodeLine("MOV %s, R2", IndirectForm(r, Offs));
         AddCodeLine("BL R2");
     }
 }
@@ -1881,37 +2712,76 @@ void g_callind (unsigned Flags, int Offs, int ArgSize)
 void g_jump (unsigned Label)
 /* Jump to specified internal label number */
 {
-    AddCodeLine ("B %s", LocalLabelName (Label));
+    RSetUnknown(2);
+    RCrystalize();
+    ResolveStack();
+    AddCodeLine ("B @%s", LocalLabelName (Label));
 }
+
+/* Used for jumping to the function end on a return. It's the one case we
+   know we can flush the pipes */
+void g_jump_nofix (unsigned Label)
+/* Jump to specified internal label number */
+{
+    /* Return value */
+    RUse(0);
+    RUse(1);
+    FlushStack();
+    AddCodeLine ("B @%s", LocalLabelName (Label));
+}
+
+/* FIXME: we may want a version that is half and half - dump unstacked
+   temporaries but not globals. We can then use that for loop logic */
 
 void g_truejump (unsigned flags attribute ((unused)), unsigned label)
 /* Jump to label if zero flag clear */
 {
+    /* Think we can avoid crystalizing 2 ? */
+    RSetUnknown(2);
+    RCrystalize();
+    ResolveStack();
+    /* We may have destroyed the status flag in resolving and the like */
+    if (flagsvalid == 0)
+        g_test_eq(flagstype);
     AddCodeLine ("LJNE %s", LocalLabelName (label));
 }
 
 void g_falsejump (unsigned flags attribute ((unused)), unsigned label)
 /* Jump to label if zero flag set */
 {
+    /* Think we can avoid crystalizing 2 ? */
+    RSetUnknown(2);
+    RCrystalize();
+    ResolveStack();
+    /* We may have destroyed the status flag in resolving and the like */
+    if (flagsvalid == 0)
+        g_test_eq(flagstype);
     AddCodeLine ("LJEQ %s", LocalLabelName (label));
 }
 
 void g_lateadjustSP (unsigned label)
 /* Adjust stack based on non-immediate data */
 {
+    /* Think we can avoid crystalizing 2 (maybe 0 and 1) ? */
+    RSetUnknown(2);
+    RCrystalize();
+    ResolveStack();	/* Ick */
     AddCodeLine("A @%s,R3", LocalLabelName(label));
 }
 
 void g_drop (unsigned Space)
 /* Drop space allocated on the stack */
 {
-    AddCodeLine("AI R3, %d", Space);
+    ShrinkStack(Space);
 }
 
 void g_space (int Space)
 /* Create or drop space on the stack */
 {
-    AddCodeLine("AI R3, %d", -Space);
+    if (Space < 0)
+        g_drop(-Space);
+    else
+        GrowStack(Space);
 }
 
 void g_cstackcheck (void)
@@ -1930,59 +2800,55 @@ void g_add (unsigned flags, unsigned long val)
 /* Primary = TOS + Primary */
 {
     unsigned L;
+    unsigned r;
     /* This will work much better once we add the virtual reg stack */
     static const char* const ops[4] = {
         "tosaddax", "tosaddax", "tosaddeax", "tosaddeax"
     };
 
+    r = (flags & CF_USINGX) ? 2 : 1;
+
     if (flags & CF_CONST) {
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                if (flags & CF_USINGR2)
-                    AddCodeLine("AI %d, R2", val & 0xFFFF);
-                else
-                    AddCodeLine("AI %d, R1", val & 0xFFFF);
+                if (RIsConstant(r))
+                    RSetConstant(r, RGetConstant(r) + val);
+                else {
+                    RUse(r);
+                    AddCodeLine("AI R%d, %d", r, (uint16_t)val);
+                }
                 break;
             case CF_LONG:
+                RUse(0);
+                RUse(r);
                 if (val & 0xFFFF) {
                     L = GetLocalLabel();
-                    if (flags & CF_USINGR2)
-                        AddCodeLine("AI R2, %d", val & 0xFFFF);
-                    else
-                        AddCodeLine("AI R1, %d", val & 0xFFFF);
+                    AddCodeLine("AI R%d, %d", r, (uint16_t)val);
                     AddCodeLine("JNC %s", LocalLabelName(L));
                     AddCodeLine("INC R0");
                     g_defcodelabel(L);
                 }
                 if (val >> 16)
-                    AddCodeLine("AI R0, %d", val >> 16);
+                    AddCodeLine("AI R0, %d", (uint16_t)(val >> 16));
                 break;
         }
     } else {
-        int offs;
         /* We can optimize some of these in terms of ,x */
+        RUse(r);
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                if (flags & CF_USINGR2)
-                    AddCodeLine("A *R3+, R2");
-                else
-                    AddCodeLine("A *R3+, R1");
-                pop(flags);
+                AddCodeLine("A %s, R%d", PopRegName(), r);
                 return;
             case CF_LONG:
+                RUse(0);
                 L = GetLocalLabel();
-                if (flags & CF_USINGR2)
-                    AddCodeLine("A @2(R3), R2");
-                else
-                    AddCodeLine("A @2(R3), R1");
+                AddCodeLine("A %s, R%d", StkRegName(2), r);
                 AddCodeLine("JNC %s", LocalLabelName(L));
                 AddCodeLine("INC R0");
                 g_defcodelabel(L);
-                AddCodeLine("A *R3+, R0");
-                AddCodeLine("INCT R3");
-                pop(flags);
+                AddCodeLine("A %s, R0", PopRegName());
                 return;
                 
         }
@@ -1997,7 +2863,7 @@ void g_sub (unsigned flags, unsigned long val)
         "tossubax", "tossubax", "tossubeax", "tossubeax"
     };
 
-    NotViaR2();
+    NotViaX();
     if (flags & CF_CONST) {
         /* This shouldn't ever happen as the compiler will turn constant
            subtracts in this form into something else */
@@ -2006,11 +2872,12 @@ void g_sub (unsigned flags, unsigned long val)
     }
     /* It would be nice to spot these higher up and turn them from TOS - Primary
        into negate and add */
+    RUse(1);
     switch(flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("S R1, *R3");
-            AddCodeLine("MOV *R3+, R1");
+            AddCodeLine("S R1, %s", TopRegName());
+            AddCodeLine("MOV %s, R1", PopRegName());
             return;
         /* Long subtract is hard because of the carry weirdness */
     }
@@ -2023,17 +2890,17 @@ void g_rsub (unsigned flags, unsigned long val)
     static const char* const ops[4] = {
         "tosrsubax", "tosrsubax", "tosrsubeax", "tosrsubeax"
     };
+    unsigned int r = (flags & CF_USINGX) ? 2 : 1;
+
+    RUse(r);
     if (flags & CF_CONST) {
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                if (flags & CF_USINGR2)
-                    AddCodeLine("AI R2, %d", (-val) & 0xFFFF);
-                else
-                    AddCodeLine("AI R1, %d", (-val) & 0xFFFF);
+                AddImmediate(r, -val);
                 break;
             case CF_LONG:
-                NotViaR2();
+                NotViaX();
                 flags &= CF_CONST;
                 g_push(flags & ~CF_CONST, 0);
                 oper(flags, val, ops);
@@ -2043,10 +2910,10 @@ void g_rsub (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                AddCodeLine("S @R3+, R1");
+                AddCodeLine("S %s, R%d", PopRegName(), r);
                 return;
         }
-        NotViaR2();
+        NotViaX();
         oper (flags, val, ops);
     }
 }
@@ -2060,7 +2927,7 @@ void g_mul (unsigned flags, unsigned long val)
 
     int p2;
 
-    NotViaR2();
+    NotViaX();
     /* Do strength reduction if the value is constant and a power of two */
     if (flags & CF_CONST && (p2 = PowerOf2 (val)) >= 0) {
         /* Generate a shift instead */
@@ -2076,7 +2943,9 @@ void g_mul (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                AddCodeLine("LI R0, %d", val & 0xFFFF);
+                Assign(0, val);
+                RUse(0);
+                RUse(1);
                 AddCodeLine("MPY R1, R0");	/* Result ends up in R0/R1 */
                 return;
 
@@ -2093,8 +2962,20 @@ void g_mul (unsigned flags, unsigned long val)
         flags &= ~CF_FORCECHAR; /* Handle chars as ints */
         g_push (flags & ~CF_CONST, 0);
 
+    } else {
+            NotViaX();
+            /* TOS / Primary */
+            switch(flags & CF_TYPEMASK) {
+            case CF_CHAR:
+            case CF_INT:
+                RUse(0);
+                RUse(1);
+                /* R0 x R1 into R0/R1 */
+                AddCodeLine("MOV %s, R0", PopRegName());
+                AddCodeLine("MPY R1, R0");
+                return;
+           }
     }
-
     /* Use long way over the stack */
     oper (flags, val, ops);
 }
@@ -2123,14 +3004,16 @@ void g_div (unsigned flags, unsigned long val)
             case CF_CHAR:
             case CF_INT:
                 L = MakeLiteral(val);
-                AddCodeLine("CLR R0");
+                Assign(0, 0);
+                RUse(0);
+                RUse(1);
                 if ((flags & CF_UNSIGNED) == 0)
                     /* We have to use a literal for this */
                     AddCodeLine("DIVS @%s", LocalLabelName(L));
                 else
                     AddCodeLine("DIV @%s, R0", LocalLabelName(L));
                /* Quotient is the bit we want */
-                AddCodeLine("MOV R0,R1");
+                MoveReg(0, 1);
                 return;
             default:
                 /* lhs is not on stack */
@@ -2138,21 +3021,24 @@ void g_div (unsigned flags, unsigned long val)
                 g_push (flags & ~CF_CONST, 0);
             }
         } else {
-            NotViaR2();
+            NotViaX();
             /* TOS / Primary */
             switch(flags & CF_TYPEMASK) {
             case CF_CHAR:
-            case CF__INT:
+            case CF_INT:
                 /* Some shuffling needed. We need R0/R1 to be the base value
                    and we need the existing R1 somewhere */
-                AddCodeLine("MOV R1, R2");
-                AddCodeLine("MOV *R3+, R1");
-                AddCodeLine("CLR R0");
-                if (flags & CF_UNSIGNED) == 0)
+                MoveReg(1, 2);
+                AddCodeLine("MOV %s, R1", PopRegName());
+                Assign(0, 0);
+                RUse(0);
+                RUse(1);
+                RUse(2);
+                if ((flags & CF_UNSIGNED) == 0)
                     AddCodeLine("DIVS R2");
                 else
                     AddCodeLine("DIV R0, R2");
-                AddCodeLine("MOV R0, R1");
+                MoveReg(0, 1);
                 return;
             }
         }
@@ -2167,8 +3053,9 @@ void g_mod (unsigned flags, unsigned long val)
         "tosmodax", "tosumodax", "tosmodeax", "tosumodeax"
     };
     int p2;
+    unsigned L;
 
-    NotViaR2();
+    NotViaX();
     /* Check if we can do some cost reduction */
     if ((flags & CF_CONST) && (flags & CF_UNSIGNED) && val != 0xFFFFFFFF && (p2 = PowerOf2 (val)) >= 0) {
         /* We can do that with an AND operation */
@@ -2180,7 +3067,9 @@ void g_mod (unsigned flags, unsigned long val)
             case CF_CHAR:
             case CF_INT:
                 L = MakeLiteral(val);
-                AddCodeLine("CLR R0");
+                Assign(0, 0);
+                RUse(0);
+                RUse(1);
                 if ((flags & CF_UNSIGNED) == 0)
                     /* We have to use a literal for this */
                     AddCodeLine("DIVS @%s", LocalLabelName(L));
@@ -2195,17 +3084,20 @@ void g_mod (unsigned flags, unsigned long val)
                 g_push (flags & ~CF_CONST, 0);
             }
         } else {
-            NotViaR2();
+            NotViaX();
             /* TOS / Primary */
             switch(flags & CF_TYPEMASK) {
             case CF_CHAR:
-            case CF__INT:
+            case CF_INT:
                 /* Some shuffling needed. We need R0/R1 to be the base value
                    and we need the existing R1 somewhere */
-                AddCodeLine("MOV R1, R2");
-                AddCodeLine("MOV *R3+, R1");
-                AddCodeLine("CLR R0");
-                if (flags & CF_UNSIGNED) == 0)
+                MoveReg(1, 2);
+                Assign(0, 0);
+                RUse(2);
+                RUse(0);
+                RUse(1);
+                AddCodeLine("MOV %s, R1", PopRegName());
+                if ((flags & CF_UNSIGNED) == 0)
                     AddCodeLine("DIVS R2");
                 else
                     AddCodeLine("DIV R0, R2");
@@ -2220,7 +3112,7 @@ void g_mod (unsigned flags, unsigned long val)
 void g_or (unsigned flags, unsigned long val)
 /* Primary = TOS | Primary */
 {
-    NotViaR2();	/* FIXME */
+    NotViaX();	/* FIXME */
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -2231,10 +3123,14 @@ void g_or (unsigned flags, unsigned long val)
             case CF_INT:
                 val &= 0xFFFF;
             case CF_LONG:
-                if (val & 0xFFFF)
-                    AddCodeLine("ORI R1, %d", val & 0xFFFF);
-                if (val >> 16)
-                    AddCodeLine("ORI R0, %d", val >> 16);
+                if (val & 0xFFFF) {
+                    RUse(1); 
+                    AddCodeLine("ORI R1, %d", (uint16_t)val);
+                }
+                if (val >> 16) {
+                    RUse(0);
+                    AddCodeLine("ORI R0, %d", (uint16_t)(val >> 16));
+                }
                 break;
 
             default:
@@ -2246,13 +3142,14 @@ void g_or (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("OR *R3+, R1");
-            pop(flags);
+            RUse(1);
+            AddCodeLine("OR %s, R1", PopRegName());
             return;
         case CF_LONG:
-            AddCodeLine("OR *R3+, R0");
-            AddCodeLine("OR *R3+, R1");
-            pop(flags);
+            RUse(0);
+            RUse(1);
+            AddCodeLine("OR %s, R0", PopRegName());
+            AddCodeLine("OR %s, R1", PopRegName());
             return;
     }
 }
@@ -2263,7 +3160,7 @@ void g_or (unsigned flags, unsigned long val)
 void g_xor (unsigned flags, unsigned long val)
 /* Primary = TOS ^ Primary */
 {
-    NotViaR2();
+    NotViaX();
 
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -2275,7 +3172,9 @@ void g_xor (unsigned flags, unsigned long val)
             case CF_CHAR:
             case CF_INT:
                 if (val & 0xFFFF) {
-                    AddCodeLine("LI R2,%d", val);
+                    Assign(2, val);
+                    RUse(1);
+                    RUse(2);
                     AddCodeLine("XOR R2, R1");
                 }
                 return;
@@ -2283,16 +3182,23 @@ void g_xor (unsigned flags, unsigned long val)
                 /* There are optimisations on these for near values using
                    INC/DEC/INCT/DECT - needs a helper for OR/XOR/AND etc */
                 if (WordsSame(val)) {
-                    AddCodeLine("LI R2,%d", val);
+                    Assign(2, val);
+                    RUse(2);
+                    RUse(0);
+                    RUse(1);
                     AddCodeLine("XOR R2, R1");
                     AddCodeLine("XOR R2, R0");
                 } else {
                     if (val & 0xFFFF) {
-                        AddCodeLine("LI R2,%d", val);
+                        Assign(2, val);
+                        RUse(2);
+                        RUse(1);
                         AddCodeLine("XOR R2, R1");
                     }
                     if (val >> 16) {
-                        AddCodeLine("LI R2,%d", val >> 16);
+                        RUse(2);
+                        RUse(0);
+                        Assign(2, val >> 16);
                         AddCodeLine("XOR R2, R0");
                     }
                 }
@@ -2306,13 +3212,14 @@ void g_xor (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("XOR *R3+, R1");
-            pop(flags);
+            RUse(1);
+            AddCodeLine("XOR %s, R1", PopRegName());
             return;
         case CF_LONG:
-            AddCodeLine("XOR *R3+, R0");
-            AddCodeLine("XOR *R3+, R1");
-            pop(flags);
+            RUse(0);
+            RUse(1);
+            AddCodeLine("XOR %s, R0", PopRegName());
+            AddCodeLine("XOR %s, R1", PopRegName());
             return;
     }
 }
@@ -2320,7 +3227,7 @@ void g_xor (unsigned flags, unsigned long val)
 void g_and (unsigned Flags, unsigned long Val)
 /* Primary = TOS & Primary */
 {
-    NotViaR2();
+    NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -2329,21 +3236,33 @@ void g_and (unsigned Flags, unsigned long Val)
         switch (Flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                AddCodeLine("ANDI R1, %d", val & 0xFFFF);
+                if (Val == 0)
+                    Assign(1, 0);
+                else {
+                    RUse(1);                    
+                    AddCodeLine("ANDI R1, %d", (uint16_t)Val);
+                }
                 return;
             case CF_LONG:
                 /* Trap the many common easy 32bit cases we can do inline */
                 if (Val <= 0xFFFF) {
-                    AddCodeLine("CLR R0");
-                    AddCodeLine("ANDI R1, %d", val & 0xFFFF);
+                    Assign(0, 0);
+                    RUse(1);
+                    AddCodeLine("ANDI R1, %d", (uint16_t)Val);
                     return;
                 } else if (Val >= 0xFFFF0000UL) {
-                    AddCodeLine("ANDI R1, %d", val & 0xFFFF);
+                    RUse(1);
+                    AddCodeLine("ANDI R1, %d", (uint16_t)(Val >> 16));
                     return;
                 } else if (!(Val & 0xFFFF)) {
-                    AddCodeLine("ANDI R0, %d", val >> 16);
+                    AddCodeLine("ANDI R0, %d", (uint16_t)(Val >> 16));
                     AddCodeLine("CLR R1");
                     return;
+                } else {
+                    RUse(0);
+                    RUse(1);
+                    AddCodeLine("ANDI R0, %d", (uint16_t)(Val >> 16));
+                    AddCodeLine("ANDI R1, %d", (uint16_t)Val);
                 }
                 break;
             default:
@@ -2353,13 +3272,14 @@ void g_and (unsigned Flags, unsigned long Val)
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("AND *R3+,R1");
-            pop(Flags);
+            RUse(1);
+            AddCodeLine("AND %s, R1", PopRegName());
             return;
         case CF_LONG:
-            AddCodeLine("AND *R3+,R0");
-            AddCodeLine("AND *R3+,R1");
-            pop(Flags);
+            RUse(0);
+            RUse(1);
+            AddCodeLine("AND %s, R0", PopRegName());
+            AddCodeLine("AND %s, R1", PopRegName());
             return;
     }
 }
@@ -2372,7 +3292,7 @@ void g_asr (unsigned flags, unsigned long val)
         "tosasrax", "tosshrax", "tosasreax", "tosshreax"
     };
 
-    NotViaR2();
+    NotViaX();
 
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -2383,35 +3303,43 @@ void g_asr (unsigned flags, unsigned long val)
             case CF_INT:
                 /* C lets us do this however we like - be nice */
                 if (val > 15)
-                    AddCodeLine("CLR R1");
-                else if (flags & CF_UNSIGNED)
-                    AddCodeLine("SRL R1, %d", val & 15);
-                else
-                    AddCodeLine("SRA R1, %d", val & 15);
+                    Assign(1, 0);
+                else if (flags & CF_UNSIGNED) {
+                    RUse(1);
+                    AddCodeLine("SRL R1, %d", (int)(val & 15)); 
+                } else {
+                    RUse(1);
+                    AddCodeLine("SRA R1, %d", (int)(val & 15));
+                }
                 return;
             case CF_LONG:
                 if (val == 16 && (flags & CF_UNSIGNED)) {
-                    AddCodeLine("MOV R0,R1");
-                    AddCodeLine("CLR R0");
+                    MoveReg(0, 1);
+                    Assign(0, 0);
                     return;
                 }
                 if (val > 16 && (flags & CF_UNSIGNED)) {
-                    AddCodeLine("MOV R0,R1");
-                    AddCodeLine("LI R0, %d", val - 16);
+                    MoveReg(0, 1);
+                    Assign(0, val - 16);
+                    RUse(0);
+                    RUse(1);
                     AddCodeLine("SRL R1, R0");
-                    AddCodeLine("CLR R0");
+                    Assign(0, 0);
                     return;
                 }
                 /* Need to be sure we can use R2 here.. */
                 L = GetLocalLabel();
                 L2 = GetLocalLabel();
                 L3 = GetLocalLabel();
-                AddCodeLine("LI R2, %d", val & 31);
+                Assign(2, val & 31);
+                RUse(0);
+                RUse(1);
+                RUse(2);
                 g_defcodelabel(L);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine("SRL R0");
                 else
-                    AddCodeLine("SRA R0")
+                    AddCodeLine("SRA R0");
                 AddCodeLine("JOC %s", LocalLabelName(L2));
                 AddCodeLine("SRL R1");
                 AddCodeLine("JMP %s", LocalLabelName(L3));
@@ -2420,7 +3348,7 @@ void g_asr (unsigned flags, unsigned long val)
                 AddCodeLine("ORI R1,0x8000");
                 g_defcodelabel(L3);
                 AddCodeLine("DEC R2");
-                AddCodeLine("JNE %s", LocalLabelName(L);
+                AddCodeLine("JNE %s", LocalLabelName(L));
                 return;
 
             default:
@@ -2437,13 +3365,14 @@ void g_asr (unsigned flags, unsigned long val)
         switch(flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                AddCodeLine("MOV R1, R0");	/* For shifts */
-                AddCodeLine("MOV *R3+, R1");
+                MoveReg(1, 0);
+                RSetLive(1);
+                AddCodeLine("MOV %s, R1", PopRegName());
+                RUse(0);
                 if (flags & CF_UNSIGNED)
-                    AddCodeLine("SRL R3, R0");
+                    AddCodeLine("SRL R1, R0");
                 else
-                    AddCodeLine("SRA R3, R0");
-                pop(Flags);
+                    AddCodeLine("SRA R1, R0");
                 return;
         }
     }
@@ -2459,7 +3388,7 @@ void g_asl (unsigned flags, unsigned long val)
         "tosaslax", "tosshlax", "tosasleax", "tosshleax"
     };
 
-    NotViaR2();
+    NotViaX();
 
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -2470,22 +3399,26 @@ void g_asl (unsigned flags, unsigned long val)
             case CF_INT:
                 /* C lets us do this however we like - be nice */
                 if (val > 15)
-                    AddCodeLine("CLR R1");
-                else
-                    AddCodeLine("SLA R1, %d", val);
+                    Assign(1, 0);
+                else {
+                    RUse(1);
+                    AddCodeLine("SLA R1, %d", (uint16_t)val);
+                }
                 return;
 
             case CF_LONG:
                 if (val == 16) {
-                    AddCodeLine("MOV R1, R0");
-                    AddCodeLine("CLR R1");
+                    MoveReg(1, 0);
+                    Assign(1, 0);
                     return;
                 }
                 if (val > 16) {
-                    AddCodeLine("LI R0,%d", val - 16);
+                    Assign(0, val - 16);
+                    RUse(0);
+                    RUse(1);
                     AddCodeLine("SLA R1, R0");
                     AddCodeLine("MOV R1, R0");
-                    AddCodeLine("CLR R1");
+                    Assign(1, 0);
                     return;
                 }
                 /* The hard way */
@@ -2493,8 +3426,11 @@ void g_asl (unsigned flags, unsigned long val)
                 L = GetLocalLabel();
                 L2 = GetLocalLabel();
                 L3 = GetLocalLabel();
-                AddCodeLine("LI R2, %d", val & 31);
+                Assign(2, val & 31);
                 g_defcodelabel(L);
+                RUse(2);
+                RUse(0);
+                RUse(1);
                 AddCodeLine("SLA R1");
                 AddCodeLine("JOC %s", LocalLabelName(L2));
                 AddCodeLine("SLA R0");
@@ -2504,7 +3440,7 @@ void g_asl (unsigned flags, unsigned long val)
                 AddCodeLine("INC R0");
                 g_defcodelabel(L3);
                 AddCodeLine("DEC R2");
-                AddCodeLine("JNE %s", LocalLabelName(L);
+                AddCodeLine("JNE %s", LocalLabelName(L));
                 return;
 
             default:
@@ -2521,10 +3457,11 @@ void g_asl (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                AddCodeLine("MOV R1, R0");	/* shift size */
-                AddCodeLine("MOV *R3+, R1");
+                MoveReg(1, 0);
+                RSetLive(1);
+                AddCodeLine("MOV %s, R1", PopRegName());
+                RUse(0);
                 AddCodeLine("SLA R1, R0");
-                pop(Flags);
                 return;
         }
     }
@@ -2538,18 +3475,22 @@ void g_neg (unsigned Flags)
 {
     unsigned L;
 
-    NotViaR2();
+    NotViaX();
 
     switch (Flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
+            RUse(1);
             AddCodeLine("NEG R1");
             break;
         case CF_LONG:
+            RUse(0);
+            RUse(1);
+            L = GetLocalLabel();
             AddCodeLine ("INV R0");
             AddCodeLine ("INV R1");
             AddCodeLine ("INC R1");
-            AddCodeLine ("JNC %s", LocalLabelName(L));
+            AddCodeLine ("JNC @%s", LocalLabelName(L));
             AddCodeLine ("INC R0");
             g_defcodelabel(L);
             break;
@@ -2567,9 +3508,10 @@ void g_bneg (unsigned flags)
 {
     unsigned L;
 
-    NotViaR2();
+    NotViaX();
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
+            RUse(1);
             L = GetLocalLabel();
             /* FIXME: is this needed */
             AddCodeLine ("ANDI R1,0xFF"); /* Test for zero, short way */
@@ -2580,6 +3522,7 @@ void g_bneg (unsigned flags)
             break;
 
         case CF_INT:
+            RUse(1);
             L = GetLocalLabel();
             AddCodeLine ("OR R1,R1");	/* Test for zero, short way */
             AddCodeLine ("CLR R1");	/* Doesn't touch flags */
@@ -2589,6 +3532,8 @@ void g_bneg (unsigned flags)
             break;
 
         case CF_LONG:
+            RUse(0);
+            RUse(1);
             L = GetLocalLabel();
             AddCodeLine ("OR R0,R1");	/* Test for zero, short way */
             AddCodeLine ("CLR R1");	/* Doesn't touch flags */
@@ -2605,15 +3550,18 @@ void g_bneg (unsigned flags)
 void g_com (unsigned Flags)
 /* Primary = ~Primary */
 {
-    NotViaR2();
+    NotViaX();
     switch (Flags & CF_TYPEMASK) {
 
         case CF_CHAR:
         case CF_INT:
+            RUse(1);
             AddCodeLine("INV R1");
             break;
 
         case CF_LONG:
+            RUse(0);
+            RUse(1);
             AddCodeLine("INV R0");
             AddCodeLine("INV R1");
             break;
@@ -2626,7 +3574,6 @@ void g_com (unsigned Flags)
 void g_inc (unsigned flags, unsigned long val)
 /* Increment the primary register by a given number */
 {
-    unsigned Label;
     int r;
 
     /* Don't inc by zero */
@@ -2634,35 +3581,17 @@ void g_inc (unsigned flags, unsigned long val)
         return;
 
     r = 1;
-    if (flags & CF_USINGR2)
+    if (flags & CF_USINGX)
         r = 2;
     /* Generate code for the supported types */
     flags &= ~CF_CONST;
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            val &= 0xFFFF;
-            switch (val) {
-            case 1:
-                AddCodeLine("INC R%d", r);
-                break;
-            case 2:
-                AddCodeLine("INCT R%d", r);
-                break;
-            case 0xFFFF:
-                AddCodeLine("DEC R%d", r);
-                break;
-            case 0xFFFE:
-                AddCodeLine("DECT R%d", r);
-                break;
-            default:
-                AddCodeLine("AI R%d, %d", r);
-                break;
-            }
+            AddImmediate(r, val);
             break;
-
         case CF_LONG:
-            NotViaR2();
+            NotViaX();
             g_add (flags | CF_CONST, val);
             break;
 
@@ -2692,7 +3621,7 @@ void g_eq (unsigned flags, unsigned long val)
 {
     unsigned L;
 
-    NotViaR2();
+    NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -2700,15 +3629,18 @@ void g_eq (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
             case CF_INT:
-                AddCodeLine("CI R1, %d", val);
+                RUse(1);
+                AddCodeLine("CI R1, %d", (uint16_t)val);
                 AddCodeLine ("BL booleq");
                 return;
 
             case CF_LONG:
+                RUse(1);
+                RUse(0);
                 L = GetLocalLabel();
-                AddCodeLine("CI R1, %d", val & 0xFFFF);
+                AddCodeLine("CI R1, %d", (uint16_t)val);
                 AddCodeLine("JNE %s", LocalLabelName(L));
-                AddCodeLine("CI R0, %d", val >> 16);
+                AddCodeLine("CI R0, %d", (uint16_t)(val >> 16));
                 g_defcodelabel(L);
                 AddCodeLine("BL booleq");
                 return;
@@ -2728,26 +3660,25 @@ void g_eq (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("C R1, *R3+");
+            RUse(1);
+            AddCodeLine("C R1, %s", PopRegName());
             AddCodeLine ("BL booleq");
-            pop(flags);
             return;
         case CF_LONG:
+            RUse(0);
+            RUse(1);
             L = GetLocalLabel();
-            AddCodeLine("CI *R3+,R0");
+            AddCodeLine("CI %s,R0", PopRegName());
             AddCodeLine("JNE %s", LocalLabelName(L));
-            AddCodeLine("CI *R3, R1");
+            AddCodeLine("CI %s, R1", TopRegName());
             g_defcodelabel(L);
             AddCodeLine("BL booleq");
-            AddCodeLine("INCT R3");
-            pop(flags);
+            DropRegStack();
             return;
         default:
             typeerror (flags);
     }
 }
-
-
 
 void g_ne (unsigned flags, unsigned long val)
 /* Test for not equal */
@@ -2755,7 +3686,7 @@ void g_ne (unsigned flags, unsigned long val)
     unsigned L;
 
     /* OPTIMIZE look at x for NULL case only */
-    NotViaR2();
+    NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -2765,15 +3696,18 @@ void g_ne (unsigned flags, unsigned long val)
 
             case CF_CHAR:
             case CF_INT:
-                AddCodeLine("CI R1, %d", val);
+                RUse(1);
+                AddCodeLine("CI R1, %d", (uint16_t)val);
                 AddCodeLine ("BL boolne");
                 return;
 
             case CF_LONG:
+                RUse(0);
+                RUse(1);
                 L = GetLocalLabel();
-                AddCodeLine("CI R1, %d", val & 0xFFFF);
+                AddCodeLine("CI R1, %d", (uint16_t)val);
                 AddCodeLine("JNE %s", LocalLabelName(L));
-                AddCodeLine("CI R0, %d", val >> 16);
+                AddCodeLine("CI R0, %d", (uint16_t)(val >> 16));
                 g_defcodelabel(L);
                 AddCodeLine("BL boolne");
                 return;
@@ -2787,19 +3721,20 @@ void g_ne (unsigned flags, unsigned long val)
     switch (flags & CF_TYPEMASK) {
         case CF_CHAR:
         case CF_INT:
-            AddCodeLine("C *R3+, R1");
+            RUse(1);
+            AddCodeLine("C %s, R1", PopRegName());
             AddCodeLine ("BL boolne");
-            pop(flags);
             return;
         case CF_LONG:
+            RUse(0);
+            RUse(1);
             L = GetLocalLabel();
-            AddCodeLine("CI *R3+,R0");
+            AddCodeLine("CI %s, R0", PopRegName());
             AddCodeLine("JNE %s", LocalLabelName(L));
-            AddCodeLine("CI *R3, R1");
+            AddCodeLine("CI %s, R1", TopRegName());
             g_defcodelabel(L);
             AddCodeLine("BL boolne");
-            AddCodeLine("INCT R3");
-            pop(flags);
+            DropRegStack();
             return;
         default:
             typeerror (flags);
@@ -2812,7 +3747,7 @@ void g_lt (unsigned flags, unsigned long val)
     char *f = "boolult";
     unsigned L;
 
-    NotViaR2();
+    NotViaX();
     
     if (flags & CF_UNSIGNED)
         f = "boollt";
@@ -2830,19 +3765,21 @@ void g_lt (unsigned flags, unsigned long val)
         }
 
         /* Look at the type */
+        RUse(1);
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR)
                     AddCodeLine ("ANDI R1,0xFF");
             case CF_INT:
-                AddCodeLine("CI R1, %d", val);
+                AddCodeLine("CI R1, %d", (uint16_t)val);
                 AddCodeLine ("BL %s", f);
                 return;
             case CF_LONG:
+                RUse(0);
                 L = GetLocalLabel();
-                AddCodeLine ("CI R0, %d", val >> 16);
+                AddCodeLine ("CI R0, %d", (uint16_t)(val >> 16));
                 AddCodeLine ("JNE %s", LocalLabelName(L));
-                AddCodeLine ("CI R1, %d", val & 0xFFFF);
+                AddCodeLine ("CI R1, %d", (uint16_t)val);
                 g_defcodelabel(L);
                 AddCodeLine ("BL %s", f);
                 return;
@@ -2850,25 +3787,24 @@ void g_lt (unsigned flags, unsigned long val)
                 typeerror (flags);
         }
     } else {
-        int offs;
+        RUse(1);
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR)
                     AddCodeLine ("ANDI R1,0xFF");
             case CF_INT:
-                AddCodeLine("C @R3+, R1");
+                AddCodeLine("C %s, R1", PopRegName());
                 AddCodeLine ("BL %s", f);
-                pop (flags);
                 return;
             case CF_LONG:
+                RUse(0);
                 L = GetLocalLabel();
-                AddCodeLine("C @R3+, R0");
+                AddCodeLine("C %s, R0", PopRegName());
                 AddCodeLine("JNE %s", LocalLabelName(L));
-                AddCodeLine("C @R3, R1");
-                g_defcodelabel(L):
+                AddCodeLine("C %s, R1", TopRegName());
+                g_defcodelabel(L);
                 AddCodeLine("BL %s", f);
-                AddCodeLine("INCT R3");
-                pop (flags);
+                DropRegStack();
                 return;
         }
     }
@@ -2879,7 +3815,7 @@ void g_le (unsigned flags, unsigned long val)
 {
     unsigned L;
 
-    NotViaR2();
+    NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -2889,11 +3825,12 @@ void g_le (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
 
             case CF_CHAR:
-                if (val > 0xFF)
+                if (val > 0xFF) {
                     Warning("Condition is always true");
-                    AddCodeLine("BL return1");
+                    Assign(1, 1);
                     return;
                 } 
+                RUse(1);
                 if (flags & CF_FORCECHAR)
                     AddCodeLine("ANDI R1, 0xFF");
             case CF_INT:
@@ -2957,30 +3894,30 @@ void g_le (unsigned flags, unsigned long val)
         */
         flags &= ~CF_FORCECHAR;
         g_push (flags & ~CF_CONST, 0);
-    }
-    else {
+    } else {
+        RUse(1);
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 AddCodeLine("ANDI R1, 0xFF");
             case CF_INT:
-                AddCodeLine("C @R3+, R1", val);
+                AddCodeLine("C %s, R1", PopRegName());
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL boolule");
                 else
                     AddCodeLine ("BL boolle");
                 return;
             case CF_LONG:
+                RUse(0);
                 L = GetLocalLabel();
-                AddCodeLine("C @R3+, R0");
+                AddCodeLine("C %s, R0", PopRegName());
                 AddCodeLine("JNE %s", LocalLabelName(L));
-                AddCodeLine("C @R3, R1");
-                g_defcodelabel(L):
+                AddCodeLine("C %s, R1", TopRegName());
+                g_defcodelabel(L);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL boolule");
                 else
                     AddCodeLine ("BL boolle");
-                AddCodeLine("INCT R3");
-                pop (flags);
+                DropRegStack();
                 return;
         }
     }
@@ -2990,7 +3927,7 @@ void g_gt (unsigned flags, unsigned long val)
 /* Test for greater than */
 {
     unsigned L;
-    NotViaR2();
+    NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
     */
@@ -3000,6 +3937,7 @@ void g_gt (unsigned flags, unsigned long val)
         switch (flags & CF_TYPEMASK) {
 
             case CF_CHAR:
+                RUse(1);
                 if (flags & CF_FORCECHAR)
                     AddCodeLine("ANDI R1,0xFF");
                 /* FALLTHROUGH */
@@ -3071,28 +4009,30 @@ void g_gt (unsigned flags, unsigned long val)
     } else {
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
-                if (flags & CF_FORCECHAR)
+                if (flags & CF_FORCECHAR) {
+                    RUse(1);
                     AddCodeLine("AND R1, 0xFF");
+                }
             case CF_INT:
-                AddCodeLine("C @R3+, R1");
+                RUse(1);
+                AddCodeLine("C %s, R1", PopRegName());
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL boolugt");
                 else
                     AddCodeLine ("BL boolgt");
-                pop (flags);
                 return;
             case CF_LONG:
+                RUse(0);
                 L = GetLocalLabel();
-                AddCodeLine("C @R3+, R0");
+                AddCodeLine("C %s, R0", PopRegName());
                 AddCodeLine("JNE %s", LocalLabelName(L));
-                AddCodeLine("C @R3, R1");
-                g_defcodelabel(L):
+                AddCodeLine("C %s, R1", TopRegName());
+                g_defcodelabel(L);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL boolugt");
                 else
                     AddCodeLine ("BL boolgt");
-                AddCodeLine("INCT R3");
-                pop (flags);
+                DropRegStack();
                 return;
             default:
                 typeerror (flags);
@@ -3104,7 +4044,7 @@ void g_ge (unsigned flags, unsigned long val)
 /* Test for greater than or equal to */
 {
     unsigned L;
-    NotViaR2();
+    NotViaX();
 
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.
@@ -3120,20 +4060,23 @@ void g_ge (unsigned flags, unsigned long val)
         /* Look at the type */
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
+                RUse(1);
                 if (flags & CF_FORCECHAR)
                     AddCodeLine("ANDI R1, 0xFF");
             case CF_INT:
-                AddCodeLine("CI R1, %d", val);
+                RUse(1);
+                AddCodeLine("CI R1, %d", (uint16_t)val);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL booluge");
                 else
                     AddCodeLine ("BL boolge");
                 return;
             case CF_LONG:
+                RUse(0);
                 L = GetLocalLabel();
-                AddCodeLine ("CI R0, %d", val >> 16);
+                AddCodeLine ("CI R0, %d", (uint16_t)val >> 16);
                 AddCodeLine ("JNE %s", LocalLabelName(L));
-                AddCodeLine ("CI R1, %d", val & 0xFFFF);
+                AddCodeLine ("CI R1, %d", (uint16_t)val);
                 g_defcodelabel(L);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL booluge");
@@ -3144,32 +4087,31 @@ void g_ge (unsigned flags, unsigned long val)
                 typeerror (flags);
         }
     } else {
-        int offs;
+        RUse(1);
         switch (flags & CF_TYPEMASK) {
             case CF_CHAR:
                 if (flags & CF_FORCECHAR)
                     /* FIXME probably should do this to both sides ? */
                     AddCodeLine("ANDI R1, 0xFF");
             case CF_INT:
-                AddCodeLine("C @R3+,R1");
+                AddCodeLine("C %s,R1", PopRegName());
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL booluge");
                 else
                     AddCodeLine ("BL boolge");
-                pop (flags);
                 return;
             case CF_LONG:
+                RUse(0);
                 L = GetLocalLabel();
-                AddCodeLine("C @R3+, R0");
+                AddCodeLine("C %s, R0", PopRegName());
                 AddCodeLine("JNE %s", LocalLabelName(L));
-                AddCodeLine("C @R3, R1");
-                g_defcodelabel(L):
+                AddCodeLine("C %s, R1", TopRegName());
+                g_defcodelabel(L);
                 if (flags & CF_UNSIGNED)
                     AddCodeLine ("BL booluge");
                 else
                     AddCodeLine ("BL boolge");
-                AddCodeLine("INCT R3");
-                pop (flags);
+                DropRegStack();
                 return;
             default:
                 typeerror (flags);
@@ -3216,7 +4158,7 @@ void g_defdata (unsigned flags, unsigned long val, long offs)
 
     } else {
         /* Create the correct label name */
-        const char* Label = GetLabelName (flags, val, offs, 1);
+        const char* Label = GetLabelName (flags, val, offs);
         /* Labels are always 16 bit */
         AddDataLine ("\t.word\t%s", Label);
     }
@@ -3267,9 +4209,8 @@ void g_zerobytes (unsigned Count)
 void g_initregister (unsigned Label, unsigned Reg, unsigned Size)
 /* Initialize a register variable from static initialization data */
 {
-    /* TODO */
+    AddCodeLine("FIXME");
 }
-
 
 /*
  *	Make the stack space and fill it. As we keep any variable on
@@ -3280,14 +4221,18 @@ void g_initauto (unsigned Label, unsigned Size)
     unsigned CodeLabel = GetLocalLabel ();
 
     /* FIXME: for short blocks inline ? */
-    AddCodeLine("LI R2, %s", GetLabelName (CF_STATIC, Label, 0, 1));
-    AddCodeLine("LI R1, %d", Size / 2);
-    AddCodeLine("AI R3, %d", -Size);
-    AddCodeLine("LI R0, R3");
+    RSetLive(2);
+    AddCodeLine("LI R2, %s", GetLabelName (CF_STATIC, Label, 0));
+    Assign(1, Size / 2);
+    AddImmediate(3, -Size);
+    MoveReg(3, 0);
+    RUse(2);
+    RUse(0);
+    RUse(1);
     g_defcodelabel(CodeLabel);
     AddCodeLine("MOV *R2+,*R0+");
-    AddCodeLine("DEC R1"):
-    AddCodeLine("JNE %s", LocalLabelName(CodeLabel)
+    AddCodeLine("DEC R1");
+    AddCodeLine("JNE %s", LocalLabelName(CodeLabel));
     
     if (Size & 1)
         AddCodeLine("MOVB *R2+,*R0+");
@@ -3297,60 +4242,83 @@ void g_initauto (unsigned Label, unsigned Size)
 void g_initstatic (unsigned InitLabel, unsigned VarLabel, unsigned Size)
 /* Initialize a static local variable from static initialization data */
 {
+    unsigned int n;
     if (Size <= 8) {
         while(Size > 1) {
             Size -= 2;
-            AddCodeLine("MOV @%s+%d, @%s+%d",
-                GetLabelName(CF_STATIC, InitLabel, Size, 0));
-                GetLabelName(CF_STATIC, VarLabel, Size, 0));
+            AddCodeLine("MOV %s+%d, %s+%d",
+                GetLabelName(CF_STATIC, InitLabel, Size), n,
+                GetLabelName(CF_STATIC, VarLabel, Size), n);
+                n += 2;
         }
-        if (Size)
-            AddCodeLine("MOVB @%s+%d, @%s+%d",
-                GetLabelName(CF_STATIC, InitLabel, 0, 0));
-                GetLabelName(CF_STATIC, VarLabel, 0, 0));
+        if (Size) {
+            AddCodeLine("MOVB %s+%d, %s+%d",
+                GetLabelName(CF_STATIC, InitLabel, 0), n,
+                GetLabelName(CF_STATIC, VarLabel, 0), n);
         }
     } else {
         /* Use the easy way here: memcpy() */
-        AddCodeLine("AI R3,-6");
+        AddImmediate(3, -6);
         g_getimmed (CF_STATIC, VarLabel, 0);
         AddCodeLine ("MOV R1, *R3");
         g_getimmed (CF_STATIC, InitLabel, 0);
         AddCodeLine ("MOV R1, @2(R3)");
         g_getimmed (CF_INT | CF_UNSIGNED | CF_CONST, Size, 0);
         AddCodeLine ("MOV R1, @4(R3)");
-        AddCodeLine ("BL %s", GetLabelName (CF_EXTERNAL, (uintptr_t) "memcpy", 0, 0));
-        AddCodeLine ("AI R3, 6");
+        ResolveStack();
+        RCrystalizeCall();
+        AddCodeLine ("BL %s", GetLabelName (CF_EXTERNAL, (uintptr_t) "memcpy", 0));
+        AddImmediate(3, 6);
     }
 }
 
+/* The code that follows may be moved around */
+void g_moveable (void)
+{
+    /* I think this is sufficient */
+    ResolveStack();	/* Ouch ?? needed ?? */
+    RCrystalizeMovable();
+}
 
 /* For one byte registers we end up saving an extra byte. It avoids having
    to touch D so who cares. We don't allow long registers */
 
 void g_save_regvar(int Offset, int Reg, unsigned Size)
 {
-    if (CPU == CPU_6800) {
-        AddCodeLine("ldaa @reg+%u", Reg);
-        AddCodeLine("ldab @reg+%u", Reg + 1);
-        AddCodeLine("pshb");
-        AddCodeLine("psha");
-    } else {
-        AddCodeLine("ldx @reg+%u", Reg);
-        AddCodeLine("pshx");
-    }
+    /* We may need to resolve this ? */
+    Reg += REGALLOC_BASE;
+    AddImmediate(3, -2);
+    RUse(3);
+    RUse(Reg);
+    AddCodeLine("MOV R%d,@R3", Reg);
     push(CF_INT);
-    NotViaR2();
+}
+
+void g_swap_regvars(int offs, int reg, unsigned size)
+{
+    unsigned int r;
+    /* Always 2 bytes, R2 is always free */
+    offs = GenOffset(offs, &r);
+    RSetLive(2);
+    reg += REGALLOC_BASE;
+    RSetLive(reg);
+    AddCodeLine("MOV %s, R2", IndirectForm(r, offs));
+    AddCodeLine("MOV R%d, %s", reg, IndirectForm(r, offs));
+    MoveReg(2, reg);
 }
 
 void g_restore_regvar(int Offset, int Reg, unsigned Size)
 {
-    AddCodeLine(";offset %d\n", Offset);
-    PullX(1);
-    AddCodeLine("stx @reg+%u", Reg);
-    pop(CF_INT);
-    NotViaR2();
+    unsigned int r;
+    if (Offset >= 0) {
+        Offset = GenOffset(Offset, &r);
+        AddCodeLine("MOV %s, R%d", IndirectForm(r, Offset), Reg + REGALLOC_BASE);
+    }
+    else
+        PopReg(Reg + REGALLOC_BASE);
 }
 
+    
 /*****************************************************************************/
 /*                             Switch statement                              */
 /*****************************************************************************/
@@ -3367,7 +4335,7 @@ void g_switch (Collection* Nodes, unsigned DefaultLabel, unsigned Depth)
     unsigned NextLabel = 0;
     unsigned I;
 
-    NotViaR2();
+    NotViaX();
 
     /* Setup registers and determine which compare insn to use */
     const char* Compare;
@@ -3445,6 +4413,15 @@ void g_switch (Collection* Nodes, unsigned DefaultLabel, unsigned Depth)
 
 void g_statement(void)
 {
+    /* FIXME: need to sort out how to spot the end of func return to deal
+       with the 0/1 valid case.. no g_statement somehere?? */
+    ResolveStack();
+//    RSetUnknown(0);
+//    RSetUnknown(1);
+    RSetUnknown(2);
+    /* Eventually we want to resolvestack where we expect it to be needed
+       post local declarations and instead check here */
+//    RegPoolEmpty("stmt");	/* Check for a register stack misalignment */
     AddCodeLine(";statement");
 }
 

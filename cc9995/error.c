@@ -165,9 +165,8 @@ void Internal (const char* Format, ...)
     if (Line) {
         fprintf (stderr, "\nInput: %.*s\n", (int) SB_GetLen (Line), SB_GetConstBuf (Line));
     }
-
     /* Use abort to create a core dump */
-    abort ();
+//FIXME    abort ();
 }
 
 

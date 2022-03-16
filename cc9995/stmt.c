@@ -235,6 +235,7 @@ static void DoStatement (void)
 
     /* Parse the loop body */
     Statement (0);
+    g_statement();
 
     /* Output the label for a continue */
     g_defcodelabel (ContinueLabel);
@@ -293,6 +294,7 @@ static void WhileStatement (void)
 
     /* Loop body */
     Statement (&PendingToken);
+    g_statement();
 
     /* Emit the while condition label */
     g_defcodelabel (CondLabel);
@@ -348,10 +350,10 @@ static void ReturnStatement (void)
     F_ReturnFound (CurrentFunc);
 
     /* Cleanup the stack in case we're inside a block with locals */
-    g_space (StackPtr - F_GetTopLevelSP (CurrentFunc), 1);
+    g_space (StackPtr - F_GetTopLevelSP (CurrentFunc));
 
     /* Output a jump to the function exit code */
-    g_jump (F_GetRetLab (CurrentFunc));
+    g_jump_nofix (F_GetRetLab (CurrentFunc));
 }
 
 
@@ -375,7 +377,7 @@ static void BreakStatement (void)
     }
 
     /* Correct the stack pointer if needed */
-    g_space (StackPtr - L->StackPtr, 1);
+    g_space (StackPtr - L->StackPtr);
 
     /* Jump to the exit label of the loop */
     g_jump (L->BreakLabel);
@@ -410,7 +412,7 @@ static void ContinueStatement (void)
     }
 
     /* Correct the stackpointer if needed */
-    g_space (StackPtr - L->StackPtr, 1);
+    g_space (StackPtr - L->StackPtr);
 
     /* Jump to next loop iteration */
     g_jump (L->ContinueLabel);
@@ -547,7 +549,7 @@ static int CompoundStatement (void)
 
     /* Clean up the stack. */
     if (!GotBreak) {
-        g_space (StackPtr - OldStack, 1);
+        g_space (StackPtr - OldStack);
     }
 
     /* If the segment had autoinited variables, let's pop it of a stack

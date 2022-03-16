@@ -838,6 +838,11 @@ static SymEntry* ParseStructDecl (const char* Name)
                     BitOffs = 0;
                 }
             } else {
+                /* Word align all but byte fields */
+                if (StructSize & 1) {
+                    if (CheckedSizeOf (Decl.Type) != 1)
+                        StructSize++;
+                }
                 AddLocalSym (Decl.Ident, Decl.Type, SC_STRUCTFIELD, StructSize);
                 if (!FlexibleMember) {
                     StructSize += CheckedSizeOf (Decl.Type);
@@ -1363,10 +1368,13 @@ static FuncDesc* ParseFuncDecl (void)
     /* Assign offsets. If the function has a variable parameter list,
     ** there's one additional byte (the arg size).
     */
-    Offs = 2;		/* Because of the return */
+    Offs = 0;		/* Return is callee pushed due to BL */
     Sym = F->LastParam;
     while (Sym) {
         unsigned Size = CheckedSizeOf (Sym->Type);
+        /* We push char as words to keep the stack aligned */
+        if (Size == SIZEOF_CHAR)
+            Size++;
         Sym->V.Offs = Offs;
         Offs += Size;
         F->ParamSize += Size;

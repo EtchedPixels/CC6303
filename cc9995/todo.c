@@ -123,17 +123,15 @@ void GetCodePos(CodeMark *m)
 {
     m->Text = CodeHead.prev;
     m->SP = StackPtr;
-    m->X = XState;
     m->Movable = 0;
 }
 
 void GetCodePosMovable(CodeMark *m)
 {
+    g_moveable();
     m->Text = CodeHead.prev;
     m->SP = StackPtr;
-    m->X = XState;
     m->Movable = 1;
-    g_moveable();
 }
 
 /* Turn a mark into the right text pointer remembering that the mark
@@ -148,7 +146,6 @@ void RemoveCode(const CodeMark *m)
 {
     TextListRemoveTail(&CodeHead, MarkToText(m)->prev);
     StackPtr = m->SP;
-    XState = m->X;
 }
 
 /* Move the code between Start (inclusive) and End (exclusive) to
@@ -163,6 +160,7 @@ void MoveCode(const CodeMark *start,  const CodeMark *end, const CodeMark *targe
 
 void AppendCode(const char *txt)
 {
+    fprintf(stderr, "|%d %s\n", StackPtr, txt);
     TextListAppend(&CodeHead, txt);
 }
 
