@@ -4,15 +4,37 @@
  */
 #include	"as.h"
 
+static int cputype;
+/* FIXME: we should malloc/realloc this on non 8bit machines */
+static uint8_t reltab[1024];
+static unsigned int nextrel;
+
 /*
  *	Set up for the start of each pass
  */
 int passbegin(int pass)
 {
 	segment = 1;		/* Default to code */
+	if (pass == 3)
+		nextrel = 0;
 	return 1;
 }
 
+static void setnextrel(int flag)
+{
+	if (nextrel == 8 * sizeof(reltab))
+		aerr(TOOMANYJCC);
+	if (flag)
+		reltab[nextrel >> 3] |= (1 << (nextrel & 7));
+	nextrel++;
+}
+
+static unsigned int getnextrel(void)
+{
+	unsigned int n = reltab[nextrel >> 3] & (1 << (nextrel & 7));
+	nextrel++;
+	return n;
+}
 
 /*
  * Read in an address
@@ -55,6 +77,10 @@ static unsigned int gen4bit(void)
 {
 	ADDR ap;
 
+	ap.a_type = 0;
+	ap.a_flags = 0;
+	ap.a_sym = NULL;
+
 	expr1(&ap, LOPRI, 0);
 	istuser(&ap);
 	constify(&ap);
@@ -66,6 +92,10 @@ static unsigned int gen4bit(void)
 static int gensigned8(void)
 {
 	ADDR ap;
+
+	ap.a_type = 0;
+	ap.a_flags = 0;
+	ap.a_sym = NULL;
 
 	expr1(&ap, LOPRI, 0);
 	istuser(&ap);
@@ -108,6 +138,10 @@ static uint16_t genshift(void)
 	ADDR ap;
 	int has_r = 0;
 	int c;
+
+	ap.a_type = 0;
+	ap.a_flags = 0;
+	ap.a_sym = NULL;
 
 	c = getnb();
 	if (c == 'r')
@@ -179,6 +213,25 @@ static uint16_t genregaddr(int *immw, ADDR *addr)
 	}
 	return tmp;
 }
+
+/*
+ *	A value for a jump instruction. This is an odd case
+ *	JMP n is an offset, JMP @n is an address
+ */
+
+void getaddr_jmp(ADDR *ap, int *rel)
+{
+	int c = getnb();
+	if (c != '@')
+		unget(c);
+	getaddr(ap);
+	if (c != '@') {
+		istuser(ap);
+		*rel = 1;
+	} else
+		*rel = 0;
+}
+
 /* You can't relative branch between segments */
 static int segment_incompatible(ADDR *ap)
 {
@@ -241,6 +294,14 @@ loop:
 			sp->s_type |= TUSER;
 			sp->s_value = dot[segment];
 			sp->s_segment = segment;
+		} else if (pass !=3) {
+			/* Don't check for duplicates, we did it already
+			   and we will confuse ourselves with the pass
+			   before. Instead blindly update the values */
+			sp->s_type &= ~TMMODE;
+			sp->s_type |= TUSER;
+			sp->s_value = dot[segment];
+			sp->s_segment = segment;
 		} else {
 			if ((sp->s_type&TMMDF) != 0)
 				err('m', MULTIPLE_DEFS);
@@ -278,6 +339,7 @@ loop:
 		goto loop;
 	}
 	unget(c);
+
 	opcode = sp->s_value;
 	switch (sp->s_type&TMMODE) {
 	case TORG:
@@ -407,15 +469,130 @@ loop:
 		outaw(opcode);
 		break;
 	case TJUMP:
-		getaddr(&a1);
-		disp = a1.a_value - dot[segment] - 2;
-		/* Disp is in words */
+		getaddr_jmp(&a1, &imm1);
+		if (imm1)
+			disp = a1.a_value;
+		else
+			disp = a1.a_value - dot[segment] - 2;
+			/* Disp is in words */
 		disp >>= 1;
-		if (pass == 3 && (disp < -128 || disp > 127 || segment_incompatible(&a1)))
+		if (pass == 3 && (disp < -128 || disp > 127 || (!imm1 && segment_incompatible(&a1))))
 			aerr(BRA_RANGE);
 		opcode |= (uint8_t)disp;
 		outaw(opcode);
 		break;
+	/* There is no JNP or JOO nor JGE/JLE signed comparison */
+	/* For these LJxx always synthesizes the reversed form over a B @n */
+	case TLJONLY:	/* Synthetic branches that must always be in skip form */
+		getaddr_jmp(&a1, &imm1);
+		/* An immediate in this case wants turning into a true addr */
+		if (imm1)
+			disp = a1.a_value + dot[segment] - 2;
+		outaw(opcode | 2);	/* The reversed branch */
+		outaw(0x0460);		/* BRA @n */
+		if (imm1)
+			outaw(disp);
+		else
+			outraw(&a1);
+		break;
+	case TLJUMP:	/* Relative branch or reverse and jump for range */
+		/* Algorithm:
+			Pass 0: generate worst case code. We then know things
+				that can safely be turned short because more
+				shortening will only reduce gap
+			Pass 1: generate code case based upon pass 0 but now
+				using short branch conditionals
+			Pass 2: repeat this because pass 1 causes a lot of
+				collapses. Pin down the choices we made.
+			Pass 3: generate code. We don't "fix" any further
+				possible shortenings because we need the
+				addresses in pass 3 to exactly match pass 2
+		*/
+		getaddr_jmp(&a1, &imm1);
+		if (imm1)	/* User specified as displacement */
+			disp = a1.a_value;
+		else		/* User specified symbolic */
+			disp = a1.a_value - dot[segment] - 2;
+		/* disp may change between pass1 and pass2 but we know it won't
+		   get bigger so we can be sure that we still fit the 8bit disp
+		   in pass 2 if we did in pass 1 */
+		disp >>= 1;
+		/* For pass 0 assume the worst case. Then we optimize on
+		   pass 1 when we know what may be possible */
+		if (pass == 3)
+			c = getnextrel();
+		else {
+			c = 0;
+			/* Cases we know it goes big */
+			if (pass == 0 || (!imm1 && segment_incompatible(&a1)) || disp < -128 || disp > 127)
+				c = 1;
+			/* On pass 2 we lock down our choices in the table */
+			if (pass == 2)
+				setnextrel(c);
+		}
+		/* This is harder than many other processors because we may
+		   have a branch that has no single conditional form in
+		   reverse. We encode those in the two bytes ands write a short
+		   essay - so for example LGJT x inverts to
+
+				JEQ 3
+				JLT 2
+				B @x
+		*/
+		if (c) {
+			static uint16_t brarev[16] = {
+				/* JMP */ 	0xFFFF, /* special case */
+				/* JLT: */	0x1513,
+				/* JLE: JH */ 	0x1B00,
+				/* JEQ: JNE */	0x1600,
+
+				/* JHE: JL */	0x1A00,
+				/* JGT: */	0x1113,
+				/* JNE: JEQ */	0x1300,
+				/* JNC: JOC */	0x1800,
+
+				/* JOC: JNC */	0x1700,
+				/* JNO: ??? */	0x0000,
+				/* JL : JHE */	0x1400,
+				/* JH : JLE */  0x1200,
+
+				/* JOP : ?? */	0x0000,
+				/* Not used */	0x0000,
+				/* Not used */	0x0000,
+				/* Not used */	0x0000,
+			};
+
+			opcode = brarev[(opcode & 0x0F00) >> 8];
+			if (opcode == 0)
+				qerr(BRA_BAD);
+			if (opcode != 0xFFFF) {
+				if (opcode & 0xFF) {
+					/* Write the needed JEQ 3 */
+					outab(opcode >> 8);
+					outab(3);
+				}
+				/* Write the reversed JCC 2 */
+				outab(opcode >> 8);	/* Inverted branch */
+				outab(2);		/* Skip over the jump */
+			}
+			/* Write the B @n form */
+			outaw(0x0460);
+			/* If the user used an immediate form then they wrote
+			   Jxx nn where n is relative to the PC after the Jxx
+			   opcode and is not relocatable */
+			if (imm1) {
+				outaw(a1.a_value + dot[segment]);
+			} else
+				outraw(&a1);
+		} else {
+			outab(opcode);
+			/* Should never happen */
+			if (disp < -128 || disp > 127)
+				aerr(BRA_RANGE);
+			outab(disp);
+		}
+		break;
+
 	case TSHIFT:
 		opcode |= wreg();
 		comma();

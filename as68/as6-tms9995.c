@@ -197,6 +197,24 @@ SYM	sym[] = {
         /* Pseudo instructions some assemblers allow */
         /* RT = BR *R11 */
         {	0,	"rt",		TIMPL,		0x045B	},
+
+        /* Self extending branches */
+        {	0,	"ljeq",		TLJUMP,		0x1300	},
+        {	0,	"ljgt",		TLJUMP,		0x1500	},
+        {	0,	"ljh", 		TLJUMP,		0x1B00	},
+        {	0,	"ljhe",		TLJUMP,		0x1400	},
+        {	0,	"ljl",		TLJUMP,		0x1A00	},
+        {	0,	"ljle",		TLJUMP,		0x1200	},
+        {	0,	"ljlt",		TLJUMP,		0x1100	},
+        /* ljmp is kind of special and just allows jmp to b @n when needed */
+        {	0,	"ljmp",		TLJUMP,		0x1000	},
+        {	0,	"ljnc",		TLJUMP,		0x1700	},
+        {	0,	"ljne",		TLJUMP,		0x1600	},
+        {	0,	"ljoc",		TLJUMP,		0x1800	},
+        /* Those always done as a reversed long form */
+        {	0,	"ljgte",	TLJONLY,	0x1100	},
+        {	0,	"ljlte",	TLJONLY,	0x1500	},
+
 };
 
         
@@ -243,7 +261,8 @@ char *etext[] = {
 	"R0 or constant"		/* 28 */
 	"too many Jcc",			/* 29 */
 	"cannot index with R0",		/* 30 */
-	"alignment error"		/* 31 */
+	"alignment error",		/* 31 */
+	"invalid branch form"		/* 32 */
 };
 
 /*

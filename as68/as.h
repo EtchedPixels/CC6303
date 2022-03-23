@@ -889,6 +889,8 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TIRL	0x1B00			/* addr */
 #define TIRLS	0x1C00			/* reg */
 #define TEVEN	0x1D00			/* even macro op */
+#define TLJUMP	0x1E00			/* jcc/bra expansions */
+#define TLJONLY	0x1F00			/* branches always done with jcc bra */
 
 /*
  *	Error message numbers
@@ -920,6 +922,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TOOMANYJCC	29
 #define REG_NOTZERO	30
 #define ALIGNMENT	31
+#define BRA_BAD		32
 
 #else
 #error "Unknown target"
