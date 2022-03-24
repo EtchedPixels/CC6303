@@ -466,8 +466,13 @@ restart:
 		fread(name, NAMELEN, 1, fp);
 		name[NAMELEN] = 0;
 		value = fgetc(fp) + (fgetc(fp) << 8);
-		if (!(type & S_UNKNOWN) && (type & S_SEGMENT) >= OSEG)
-			error("bad symbol");
+		if (!(type & S_UNKNOWN) && (type & S_SEGMENT) >= OSEG) {
+			fprintf(stderr, "Symbol %s\n", name);
+			if ((type & S_SEGMENT) == UNKNOWN)
+				error("exported but undefined");
+			else
+				error("bad symbol");
+		}
 		/* In library mode we look for a symbol that means we will load
 		   this object - and then restart wih lib = 0 */
 		if (lib) {
@@ -1080,7 +1085,7 @@ int main(int argc, char *argv[])
 			strip = 1;
 			break;
 		case 'v':
-			printf("FuzixLD 0.2.0\n");
+			printf("FuzixLD 0.2.1\n");
 			break;
 		case 't':
 			verbose = 1;
