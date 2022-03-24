@@ -224,12 +224,19 @@ void getaddr_jmp(ADDR *ap, int *rel)
 	int c = getnb();
 	if (c != '@')
 		unget(c);
+
 	getaddr(ap);
+
 	if (c != '@') {
 		istuser(ap);
+		/* JMP label without @ is nonsense unless its an absolute
+		   value (ie a .equ) */
+		if (ap->a_sym || ap->a_segment != ABSOLUTE)
+			qerr(MUST_BE_ABSOLUTE);
 		*rel = 1;
-	} else
+	} else {
 		*rel = 0;
+	}
 }
 
 /* You can't relative branch between segments */
@@ -430,9 +437,9 @@ loop:
 			outarg(&a2);
 		break;
 	case TDOMAW:
-		opcode |= wreg() << 6;
-		comma();
 		opcode |= genregaddr(&imm1, &a1);
+		comma();
+		opcode |= wreg() << 6;
 		outaw(opcode);
 		if (imm1)
 			outarg(&a1);

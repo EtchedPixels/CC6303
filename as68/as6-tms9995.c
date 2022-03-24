@@ -87,7 +87,8 @@ SYM	sym[] = {
         
         /* 4.5.3 signed multiply and divide */
 
-        /* 10 bits of opcodee and a mode/reg pair */        
+        /* 10 bits of opcode and a mode/reg pair */
+        /* TMS9900/9995 TMS990/12 and later only */
         {	0,	"mpys",		TSMD,		0x08C0	},
         {	0,	"divs",		TSMD,		0x0880	},
         
@@ -214,6 +215,32 @@ SYM	sym[] = {
         /* Those always done as a reversed long form */
         {	0,	"ljgte",	TLJONLY,	0x1100	},
         {	0,	"ljlte",	TLJONLY,	0x1500	},
+
+        /* TMS 990/12 floating point - here as a subset is used for FP emu
+           by cc9995 */
+        {	0,	"ad",		TSOP,		0x0E40	},
+        {	0,	"ar",		TSOP,		0x0C40	},
+        {	0,	"cde",		TIMPL,		0x0C05	},
+        {	0,	"cdi",		TIMPL,		0x0C01	},
+        {	0,	"ced",		TIMPL,		0x0C07	},
+        {	0,	"cer",		TIMPL,		0x0C06	},
+        {	0,	"cid",		TSOP,		0x0E80	},
+        {	0,	"cir",		TSOP,		0x0C80	},
+        {	0,	"cre",		TIMPL,		0x0C04	},
+        {	0,	"cri",		TIMPL,		0x0C00	},
+        {	0,	"dd",		TSOP,		0x0F40	},
+        {	0,	"dr",		TSOP,		0x0D40	},
+        {	0,	"ld",		TSOP,		0x0F80	},
+        {	0,	"lr",		TSOP,		0x0D80	},
+        {	0,	"md",		TSOP,		0x0F00	},
+        {	0,	"mr",		TSOP,		0x0D00	},
+        {	0,	"negd",		TIMPL,		0x0C03	},
+        {	0,	"negr",		TIMPL,		0x0C02	},
+        {	0,	"sd",		TSOP,		0x0EC0	},
+        {	0,	"sr",		TSOP,		0x0CC0	},
+        {	0,	"std",		TSOP,		0x0FC0	},
+        {	0,	"str",		TSOP,		0x0DC0	},
+        {	0,	"xit",		TIMPL,		0x0C0E	},
 
 };
 
