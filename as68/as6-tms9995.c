@@ -285,7 +285,7 @@ char *etext[] = {
 	"segment overflow",		/* 25 */
 	"register required",		/* 26 */
 	"segment conflict",		/* 27 */
-	"R0 or constant"		/* 28 */
+	"R0 or constant",		/* 28 */
 	"too many Jcc",			/* 29 */
 	"cannot index with R0",		/* 30 */
 	"alignment error",		/* 31 */
