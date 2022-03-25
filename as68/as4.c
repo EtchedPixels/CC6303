@@ -141,10 +141,15 @@ static void outreloc(ADDR *a, int bytes)
 	if (a->a_segment != ABSOLUTE || a->a_sym) {
 		outbyte(REL_ESC);
 		check_store_allowed(segment, 1);
+#ifdef TARGET_RELOC_OVERFLOW_OK
+		outbyte(REL_OVERFLOW);
+#endif
 		/* low bits of 16 bit is an 8bit relocation with
 		   overflow suppressed */
 		if (a->a_flags & A_LOW) {
+#ifndef TARGET_RELOC_OVERFLOW_OK
 			outbyte(REL_OVERFLOW);
+#endif
 			s = 0 << 4;
 			a->a_value &= 0xFF;
 		}

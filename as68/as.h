@@ -838,6 +838,8 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define ARCH_CPUFLAGS OA_TMS9900_9995		/* For now until CPU type properly settable */
 
 #define TARGET_BIGENDIAN
+/* We generate intentionally wrapping 16bit maths for relocations */
+#define TARGET_RELOC_OVERFLOW_OK
 
 /*
  * Types. These are used
