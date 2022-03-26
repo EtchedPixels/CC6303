@@ -45,6 +45,8 @@ SYM	sym[] = {
 	{	0,	".code",	TSEGMENT,	CODE	},
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
+	{	0,	".discard",	TSEGMENT,	DISCARD	},
+	{	0,	".common",	TSEGMENT,	COMMON	},
 
 	/* We don't have a direct page or such things but we do have a
 	   small fast RAM area on the TMS9995 which serves the same
@@ -216,7 +218,7 @@ SYM	sym[] = {
         {	0,	"ljgte",	TLJONLY,	0x1100	},
         {	0,	"ljlte",	TLJONLY,	0x1500	},
 
-        /* TMS 990/12 floating point - here as a subset is used for FP emu
+        /* TI990/12 floating point - here as a subset is used for FP emu
            by cc9995 */
         {	0,	"ad",		TSOP,		0x0E40	},
         {	0,	"ar",		TSOP,		0x0C40	},
@@ -241,7 +243,38 @@ SYM	sym[] = {
         {	0,	"std",		TSOP,		0x0FC0	},
         {	0,	"str",		TSOP,		0x0DC0	},
         {	0,	"xit",		TIMPL,		0x0C0E	},
+#if 0
+        /* TI990/12 AM multi precision - format 11 */
 
+        {	0,	"am",		TMPRES,		0x002A	},
+        {	0,	"andm",		TMPRES,		0x0028	},
+        {	0,	"bdc",		TMPRES,		0x0023	},
+        {	0,	"cnto",		TMPRES,		0x0020	},
+        {	0,	"dbc",		TMPRES,		0x0024	},
+        {	0.	"lto",		TMPRES,		0x001F	},
+        {	0,	"nrm",		TMPRES,		0x0C08	},
+        {	0,	"orm",		TMPRES,		0x0027	},
+        {	0,	"rto",		TMPRES,		0x001E	},
+        {	0,	"sm",		TMPRES,		0x0029	},
+        {	0,	"swpm",		TMPRES,		0x0025	},
+        {	0,	"xorm",		TMPRES,		0x0026	},
+
+        {	0,	"crc",		TSTRING,	0x0E20	},
+        {	0,	"cs",		TSTRING,	0x0040	},
+        {	0,	"movs",		TSTRING,	0x0060	},
+        {	0,	"mvsk",		TSTRING,	0x00D0	},
+        {	0,	"mvsr",		TSTRING,	0x00C0	},
+        {	0,	"pops",		TSTRING,	0x00E0	},
+        {	0,	"pshs",		TSTRING,	0x00F0	},
+        {	0,	"seqb",		TSTRING,	0x0050	},
+        {	0,	"sneb", /* yn becso dam */, TSTRING,	0x0E10	},
+        {	0,	"ts",		TSTRING,	0x0E30 },
+
+        /* Shifts multi-precision */
+        {	0,	"slam",		TMSHIFT,	0x001D },
+        {	0,	"sram",		TMSHIFT,	0x001C },
+
+#endif
 };
 
         
