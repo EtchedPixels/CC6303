@@ -6,8 +6,8 @@
 tosasrax:
 	tsx
 asraxsh:
-	asr ,x
-	ror 1,x
+	asr 2,x
+	ror 3,x
 	decb
 	bne asraxsh
 	jmp pop2get

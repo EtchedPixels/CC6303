@@ -13,8 +13,8 @@ tosshrax:
 loop:
 	tstb
 	beq retdone
-	lsr 3,x
-	ror 4,x
+	lsr 2,x
+	ror 3,x
 	decb
 	bra loop
 ret0:
