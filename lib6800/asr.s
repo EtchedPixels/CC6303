@@ -10,4 +10,5 @@ asraxsh:
 	ror 1,x
 	decb
 	bne asraxsh
-	rts
+	jmp pop2get
+
