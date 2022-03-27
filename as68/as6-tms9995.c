@@ -167,7 +167,7 @@ SYM	sym[] = {
         {	0,	"andi",		TIMM,		0x0240	},
         {	0,	"ci",		TIMM,		0x0280	},
         {	0,	"li",		TIMM,		0x0200	},
-        {	0,	"ori",		TIMM,		0x02C0	},
+        {	0,	"ori",		TIMM,		0x0260	},
 
         /* 4.5.11 Internal register load immediate */
         

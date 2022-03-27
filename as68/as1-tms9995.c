@@ -575,7 +575,7 @@ loop:
 			if (opcode != 0xFFFF) {
 				if (opcode & 0xFF) {
 					/* Write the needed JEQ 3 */
-					outab(opcode >> 8);
+					outab(opcode);
 					outab(3);
 				}
 				/* Write the reversed JCC 2 */
@@ -592,11 +592,11 @@ loop:
 			} else
 				outraw(&a1);
 		} else {
-			outab(opcode);
 			/* Should never happen */
 			if (disp < -128 || disp > 127)
 				aerr(BRA_RANGE);
-			outab(disp);
+			opcode |= (uint8_t)disp;
+			outaw(opcode);
 		}
 		break;
 
