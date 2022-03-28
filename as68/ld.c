@@ -562,7 +562,7 @@ static void set_segment_bases(void)
 		}
 		/* BSS after data */
 		if (!baseset[3]) {
-			base[3] = base[2] + size[2];
+			base[3] = ((base[2] + size[2] + align - 1)/align) * align;
 			if (base[3] < base[2])
 				error("image too large");
 		}
