@@ -26,6 +26,7 @@ struct objhdr
 #define OA_Z8		5
 #define OA_1802		6
 #define OA_TMS9900	7
+#define OA_8008		8
     uint8_t o_flags;
 #define OF_BIGENDIAN	1
 #define OF_WORDMACHINE	2	/* 16bit word addressed */
