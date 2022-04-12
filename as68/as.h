@@ -931,10 +931,8 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 typedef	uint16_t	VALUE;		/* For symbol values */
 
 #define ARCH OA_8008
-#define ARCH_FLAGS OF_BIGENDIAN
+#define ARCH_FLAGS 0
 #define ARCH_CPUFLAGS 0
-
-#define TARGET_BIGENDIAN
 
 /*
  * Types. These are used
@@ -976,6 +974,86 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TIMM8	0x1100			/* 8bit immediate */
 #define TBRA	0x1200			/* Branch */
 #define TRST	0x1300			/* RST */
+/*
+ *	Error message numbers
+ */
+
+#define BRACKET_EXPECTED 1
+#define MISSING_COMMA	2
+#define SQUARE_EXPECTED 3
+#define PERCENT_EXPECTED 4
+#define UNEXPECTED_CHR	10
+#define PHASE_ERROR	11
+#define MULTIPLE_DEFS	12
+#define SYNTAX_ERROR	13
+#define MUST_BE_ABSOLUTE	14
+#define MISSING_DELIMITER 15
+#define INVALID_CONST	16
+#define ADDR_REQUIRED	17
+#define INVALID_ID	18
+#define BADMODE		19
+#define CONSTANT_RANGE  20
+#define DATA_IN_BSS	21
+#define SEGMENT_OVERFLOW 22
+#define	SEGMENT_CLASH	23
+#define DIVIDE_BY_ZERO	24
+
+#elif TARGET_SCMP
+
+typedef	uint16_t	VALUE;		/* For symbol values */
+
+#define ARCH OA_INS8060
+#define ARCH_FLAGS 0
+#define ARCH_CPUFLAGS 0
+
+/*
+ * Types. These are used
+ * in both symbols and in address
+ * descriptions. Observe the way the
+ * symbol flags hide in the register
+ * field of the address.
+ */
+#define	TMREG	0x000F			/* Register code */
+#define	TMMDF	0x0001			/* Multidef */
+#define	TMASG	0x0002			/* Defined by "=" */
+#define	TMMODE	0xFF00			/* Mode */
+#define	TMINDIR	0x8000			/* Indirect flag in mode */
+#define TPUBLIC	0x0080			/* Exported symbol */
+#define TMADDR	0x00F0			/* Addressing mode bits */
+
+#define TINDEX	0x0010			/* Indexed */
+#define TIMMED	0x0020			/* Immediate */
+
+#define	TNEW	0x0000			/* Virgin */
+#define	TUSER	0x0100			/* User name */
+#define	TBR	0x0200			/* Byte register */
+#define	TWR	0x0300			/* Word register */
+#define	TSR	0x0400			/* Special register */
+#define	TDEFB	0x0500			/* defb */
+#define	TDEFW	0x0600			/* defw */
+#define	TDEFS	0x0700			/* defs */
+#define	TDEFM	0x0800			/* defm */
+#define	TORG	0x0900			/* org */
+#define	TEQU	0x0A00			/* equ */
+#define	TCOND	0x0B00			/* conditional */
+#define	TENDC	0x0C00			/* end conditional */
+#define TSEGMENT 0x0D00			/* segments by number */
+#define TEXPORT 0x0E00			/* symbol export */
+#define TCC	0x0F00
+/* CPU specific codes */
+#define TIMPL	0x1000			/* Implicit */
+#define TMPD	0x1100			/* pointer/offset/autoinc */
+#define TPD	0x1200			/* pointer/offset */
+#define TIMM8	0x1300			/* 8bit signed */
+#define	TREL8	0x1400			/* 8bit relative */
+#define TPTR	0x1500			/* pointer */
+#define TJS	0x1600			/* special */
+
+#define	P0	0
+#define P1	1
+#define P2	2
+#define P3	3
+
 
 /*
  *	Error message numbers
@@ -1000,6 +1078,11 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define SEGMENT_OVERFLOW 22
 #define	SEGMENT_CLASH	23
 #define DIVIDE_BY_ZERO	24
+#define NO_AUTOINDEX	25
+#define BRA_RANGE	26
+#define RANGE		27
+#define INVALIDAMODE	28
+#define POINTER_REQ	29
 
 #else
 #error "Unknown target"
