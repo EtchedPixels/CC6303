@@ -3171,23 +3171,52 @@ void g_push (unsigned flags, unsigned long val)
             /* Take big values via X or D:X */
             if ((flags & CF_TYPEMASK) != CF_CHAR || (flags & CF_FORCECHAR) == 0) {
                 if (CPU == CPU_6800) {
-                    g_getimmed (flags , val, 0);
                     switch(flags & CF_TYPEMASK) {
                     case CF_INT:
+                        AssignD(val, 0);
                         AddCodeLine("pshb");
                         AddCodeLine("psha");
                         break;
                     case CF_LONG:
-                        /* This is ugly OPTIMIZE: for 6800 make g_getimmed
-                           put the other bits not in X but a reg ? */
-                        AddCodeLine("pshb");
-                        AddCodeLine("psha");
-                        AddCodeLine("stx @tmp");
-                        AddCodeLine("ldab @tmp+1");
-                        AddCodeLine("pshb");
-                        AddCodeLine("ldaa @tmp");
-                        AddCodeLine("psha");
+                        /* TODO: general byte wide optimized load/push */
+                        /* Optimize some common cases */
+                        switch(val) {
+                        case 0xFFFFFFFF:	/* aka -1 */
+                            AddCodeLine("lda #0xFF");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            break;
+                        case 0:
+                            AddCodeLine("clra");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            break;
+                        case 1:
+                            AddCodeLine("ldaa #1");
+                            AddCodeLine("psha");
+                            AddCodeLine("deca");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            AddCodeLine("psha");
+                            break;
+                        default:
+                            AssignD(val, 0);
+                            AddCodeLine("pshb");
+                            AddCodeLine("psha");
+                            if ((val & 0xFFFF) != val >> 16)
+                                AssignD(val >> 16, 0);
+                            AddCodeLine("pshb");
+                            AddCodeLine("psha");
+                            break;
+                        }
+                        break;
                     }
+                    push (flags);
+                    return;
                 } else {
                     g_getimmed (flags | CF_USINGX, val, 0);
                     InvalidateX();
@@ -5468,15 +5497,17 @@ void g_zerobytes (unsigned Count)
 void g_initregister (unsigned Label, unsigned Reg, unsigned Size)
 /* Initialize a register variable from static initialization data */
 {
+    int offs = 0;
     /* Register variables do always have less than 128 bytes */
     while(Size > 1) {
         Size -= 2;
-        LoadD(GetLabelName(CF_STATIC, Label, 0, 0), Size);
-        StoreD(GetLabelName(CF_REGVAR, Reg, 0, 0), Size);
+        LoadD(GetLabelName(CF_STATIC, Label, offs, 0), Size);
+        StoreD(GetLabelName(CF_REGVAR, Reg, offs, 0), Size);
+        offs += 2;
     }
     if (Size) {
-        AddCodeLine("ldab %s", GetLabelName(CF_STATIC, Label, 0, 0));
-        AddCodeLine("stab %s", GetLabelName(CF_REGVAR, Reg, 0, 0));
+        AddCodeLine("ldab %s", GetLabelName(CF_STATIC, Label, offs, 0));
+        AddCodeLine("stab %s", GetLabelName(CF_REGVAR, Reg, offs, 0));
     }
 }
 
