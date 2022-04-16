@@ -1991,6 +1991,7 @@ L%3
 =
 	pshb
 	psha
+	tsx
 
 #
 #	Save to top of stack
@@ -2372,6 +2373,7 @@ L%3
 	staa %3,x
 	stab %3+1,x
 =
+	tsx
 	ldx ,x
 	ldaa #%1
 	ldab #%2
@@ -2387,6 +2389,7 @@ L%3
 	staa %2,x
 	stab %2+1,x
 =
+	tsx
 	ldx ,x
 	ldaa #%1
 	tab
@@ -2402,6 +2405,7 @@ L%3
 	staa %2,x
 	stab %2+1,x
 =
+	tsx
 	ldx ,x
 	clra
 	ldab #%1
@@ -2417,6 +2421,7 @@ L%3
 	staa %2,x
 	stab %2+1,x
 =
+	tsx
 	ldx ,x
 	clra
 	ldab #%1
@@ -2432,6 +2437,7 @@ L%3
 	staa %2,x
 	stab %2+1,x
 =
+	tsx
 	ldx ,x
 	clra
 	clrb
@@ -2453,7 +2459,6 @@ L%3
 #	FIXME: earlier up match cases ending with a store on the dopulx then
 #	invalidating so that we can avoid going via X versu ext address
 #
-#	FIXME: why is this rule failing (one below is fine)
 	ldaa _%1
 	ldab _%1+1
 	pshb
@@ -2464,9 +2469,9 @@ L%3
 =
 	tsx
 	ldab %2-2,x
-	stab _%1
+	ldx _%1
+	stab ,x
 
-# FIXME why is this failing
 	ldaa _%1
 	ldab _%1+1
 	pshb
@@ -2475,7 +2480,8 @@ L%3
 	jsr dopulxstb
 =
 	ldab #%2
-	stab _%1
+	ldx  _%1
+	stab ,x
 
 	ldaa _%1
 	ldab _%1+1
