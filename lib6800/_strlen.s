@@ -3,6 +3,7 @@
 	.code
 	.export _strlen
 
+	.setcpu 6800
 
 _strlen:
 	tsx
@@ -12,7 +13,8 @@ _strlen:
 cl:	tst ,x
 	beq to_rts
 	inx
-	addd @one
+	addb #1
+	adca #0
 	bra cl
 to_rts:
 	jmp ret2

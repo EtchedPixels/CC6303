@@ -21,16 +21,16 @@ tosumulax:
 
 		; Rotate through the number
 nextbit:
-		ror ,x
+		lsr ,x
 		ror 1,x
 		bcc noadd
-		addb 4,x
-		adca 3,x
-noadd:		rola
-		rolb
+		addb 5,x
+		adca 4,x
+noadd:		lsl  5,x
+		rol  4,x
 		dec @tmp
 		bne nextbit
 		; For a 16x16 to 32bit just store 3-4,x into sreg
 		ins
 		ins
-		jmp pop4
+		jmp pop2
