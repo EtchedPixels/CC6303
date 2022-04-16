@@ -4,6 +4,7 @@
 	.export pop4
 	.export tpop4
 	.export swap32pop4
+	.export pop4flags
 
 	.code
 
@@ -16,6 +17,7 @@ tpop4:
 pop4:
 	tsx		; Fake the missing pulx
 	ldx ,x
+pop4h:
 	ins
 	ins
 	ins
@@ -23,3 +25,8 @@ pop4:
 	ins
 	ins
 	jmp ,x
+pop4flags:
+	tsx
+	ldx ,x
+	tstb
+	bra pop4h

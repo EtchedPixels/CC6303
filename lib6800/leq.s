@@ -5,5 +5,4 @@
 toseqeax:
 	jsr toslcmp
 	jsr booleq
-	jmp pop4
-
+	jmp pop4flags

@@ -5,4 +5,4 @@
 tosneeax:
 	jsr toslcmp
 	jsr boolne
-	jmp pop4
+	jmp pop4flags
