@@ -2449,6 +2449,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
         case CF_CHAR:
             if (CPU == CPU_6800) {
                 lbuf = GetLabelName (flags, label, offs, 1);
+                InvalidateX();
                 AddCodeLine("ldx #%s", lbuf);
                 if (flags & CF_FORCECHAR) {
                     if (flags & CF_CONST) {
@@ -2503,6 +2504,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
         case CF_INT:
             if (CPU == CPU_6800) {
                 lbuf = GetLabelName (flags, label, offs, 1);
+                InvalidateX();
                 AddCodeLine("ldx #%s", lbuf);
                 if (flags & CF_CONST) {
                     if (val <= 4) {
@@ -2560,6 +2562,7 @@ void g_addeqstatic (unsigned flags, uintptr_t label, long offs,
             lbuf = GetLabelName (flags, label, offs, 1);
             if (flags & CF_CONST) {
                 if (val < 0x100 && CPU == CPU_6800) {
+                    InvalidateX();
                     AddCodeLine ("ldx #%s", lbuf);
                     AddCodeLine("ldab #%d", (int)val);
                     AddCodeLine("jsr laddeqstatic8");
