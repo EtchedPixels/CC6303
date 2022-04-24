@@ -1084,6 +1084,134 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define INVALIDAMODE	28
 #define POINTER_REQ	29
 
+#elif TARGET_WARREX
+
+typedef	uint16_t	VALUE;		/* For symbol values */
+
+#define ARCH OA_WARREX
+#define ARCH_FLAGS OF_BIGENDIAN
+#define ARCH_CPUFLAGS OA_WARREX_CPU6
+
+#define TARGET_BIGENDIAN
+
+/*
+ * Types. These are used
+ * in both symbols and in address
+ * descriptions. Observe the way the
+ * symbol flags hide in the register
+ * field of the address.
+ */
+#define	TMREG	0x000F			/* Register code */
+#define	TMMDF	0x0001			/* Multidef */
+#define	TMASG	0x0002			/* Defined by "=" */
+#define	TMMODE	0xFF00			/* Mode */
+#define	TMINDIR	0x8000			/* Indirect flag in mode */
+#define TPUBLIC	0x0080			/* Exported symbol */
+#define TMADDR	0x00F0			/* Addressing mode bits */
+
+#define TDIRECT	0x0010			/* Direct page */
+#define TINDEX	0x0020			/* Indexed */
+#define TIMMED	0x0030			/* Immediate */
+
+#define	TNEW	0x0000			/* Virgin */
+#define	TUSER	0x0100			/* User name */
+#define	TBR	0x0200			/* Byte register */
+#define	TWR	0x0300			/* Word register */
+#define	TSR	0x0400			/* Special register (I, R) */
+#define	TDEFB	0x0500			/* defb */
+#define	TDEFW	0x0600			/* defw */
+#define	TDEFS	0x0700			/* defs */
+#define	TDEFM	0x0800			/* defm */
+#define	TORG	0x0900			/* org */
+#define	TEQU	0x0A00			/* equ */
+#define	TCOND	0x0B00			/* conditional */
+#define	TENDC	0x0C00			/* end conditional */
+#define TSEGMENT 0x0D00			/* segments by number */
+#define TEXPORT 0x0E00			/* symbol export */
+#define TCC	0x0F00
+/* CPU specific codes */
+#define TIMPL	0x1000			/* Implicit */
+#define TREL8	0x1100			/* 8bit relative from . + 2 */
+/* Assembler extras for resolving branch ranges */
+#define TBRA16	0x1200			/* Jcc asm magic */
+#define TREGA	0x1300			/* Single accumulator, A short form */
+#define TREG	0x1400			/* Single accumulator */
+#define TMOVE	0x1500			/* Move.. special */
+#define TMMU	0x1600			/* MMU loads */
+#define TDMA	0x1700			/* DMA word register */
+#define TDMAM	0x1800			/* DMA mode */
+#define TREG2A	0x1900			/* Two reg with B,A short forms */
+#define TREG2ANWS 0x1A00		/* But without the BX,AX word short */
+#define TJUMP	0x1B00			/* Jump/call */
+#define TLOAD	0x1C00			/* Load */
+#define TSTORE	0x1D00			/* Store */
+
+/*
+ * Registers.
+ */
+#define	RA	0
+#define RB	2
+#define	RX	4
+#define	RY	6
+#define RZ	8
+#define RS	10
+#define RG	12
+#define	RH	14
+
+#define RAH	0
+#define RAL	1
+#define RBH	2
+#define RBL	3
+#define RXH	4
+#define RXL	5
+#define RYH	6
+#define RYL	7
+#define RZH	8
+#define RZL	9
+#define RSH	10
+#define RSL	11
+#define RGH	12
+#define RGL	13
+#define RHH	14
+#define RHL	15
+
+/*
+ *	Error message numbers
+ */
+
+#define BRACKET_EXPECTED 1
+#define MISSING_COMMA	2
+#define SQUARE_EXPECTED 3
+#define PERCENT_EXPECTED 4
+#define UNEXPECTED_CHR	10
+#define PHASE_ERROR	11
+#define MULTIPLE_DEFS	12
+#define SYNTAX_ERROR	13
+#define MUST_BE_ABSOLUTE	14
+#define MISSING_DELIMITER 15
+#define INVALID_CONST	16
+#define BRA_RANGE	17
+#define INDX_RANGE	18
+#define ADDR_REQUIRED	19
+#define INVALID_ID	20
+#define BADMODE		21
+#define DIVIDE_BY_ZERO	22
+#define CONSTANT_RANGE  23
+#define DATA_IN_BSS	24
+#define SEGMENT_OVERFLOW 25
+#define DATA_IN_ZP	26
+#define	SEGMENT_CLASH	27
+#define TOOMANYJCC	28
+#define REGONLY		29
+#define WREGONLY	30
+#define BREGONLY	31
+#define REGABBYTE	32
+#define REGABXWORD	33
+#define BADINDIR	34
+#define BADADDR		35
+#define RANGE		36
+#define AREGONLY	37
+
 #else
 #error "Unknown target"
 #endif
