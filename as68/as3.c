@@ -124,11 +124,21 @@ static void chksegment(ADDR *left, ADDR *right, int op)
 void expr1(ADDR *ap, int lpri, int paren)
 {
 	int c;
+	int c2;
 	int opri;
 	ADDR right;
 
 	expr2(ap);
 	while ((c=getnb())=='+' || c=='-' || c=='*' || c=='/') {
+		c2 = getnb();
+		/* Pass unary postifx back to the caller as some assembly
+		    syntaxes require we can handle stuff like (X-) for
+		    their own post dec notations */
+		if (c2 == ')') {
+			unget(c2);
+			break;
+		}
+		unget(c2);
 		opri = ADDPRI;
 		if (c=='*' || c=='/')
 			opri = MULPRI;
