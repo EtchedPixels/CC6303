@@ -30,6 +30,8 @@ SYM	sym[] = {
 	{	0,	"hl",		TBR,		RHL	},
 	{	0,	"hh",		TBR,		RHH	},
 
+	{	0,	"pc",		TSR,		RPC	},
+
 	{	0,	"defb",		TDEFB,		XXXX	},
 	{	0,	"defw",		TDEFW,		XXXX	},
 	{	0,	"defs",		TDEFS,		XXXX	},
@@ -40,6 +42,7 @@ SYM	sym[] = {
 	{	0,	".byte",	TDEFB,		XXXX	},
 	{	0,	".word",	TDEFW,		XXXX	},
 	{	0,	".blkb",	TDEFS,		XXXX	},
+	{	0,	".ds",		TDEFS,		XXXX	},
 	{	0,	".ascii",	TDEFM,		XXXX	},
 	{	0,	".org",		TORG,		XXXX	},
 	{	0,	".equ",		TEQU,		XXXX	},
