@@ -77,8 +77,10 @@ SYM	sym[] = {
 	{	0,	"lhld",		TI16,		0x002A  },
 	{	0,	"cma",		TIMPL,		0x002F  },
 	{	0,	"sim",		TI8_85,		0x0030  },
+	{	0,	"sta",		TI16,		0x0032	},
 	{	0,	"stc",		TIMPL,		0x0037  },
 	{	0,	"ldsi",		TI8_85,		0x0038  },
+	{	0,	"lda",		TI16,		0x003A	},
 	{	0,	"cmc",		TIMPL,		0x003F  },
 	/* Second quadrant, 2 bits 01 and a pair of 3 bit register encodes */
 	{	0,	"mov",		TMOV,		0x0040  },
