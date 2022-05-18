@@ -125,6 +125,7 @@ struct objhdr
 #define ZP		4		/* Relocated versus zero page */
 #define DISCARD		5		/* Discard for things like kernels */
 #define COMMON		6		/* Common for things like kernels */
+#define LITERAL		7		/* Literals (mostly a compiler helper) */
 /* Special cases 8+ don't exist as real segments */
 #define PCREL		14		/* assumed signed */
 /* and 15 is 'any' */

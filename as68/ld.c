@@ -506,6 +506,20 @@ restart:
 }
 
 /*
+ *	Helper for layout computation. Add one segment after another
+ *	ane ensure it fits. If a segment base is hand set don't touch it
+ */
+
+static void append_segment(int a, int b)
+{
+	if (baseset[b])
+		return;
+	base[b] = ((base[a] + size[a] + align - 1)/align) * align;
+	if (base[b] < base[a])
+		error("image too large");
+}
+
+/*
  *	Once all the objects are loaded this function walks the list and
  *	assigns each object file a base address for each segment. We do
  *	this by walking the list once to find the total size of code/data/bss
@@ -541,42 +555,30 @@ static void set_segment_bases(void)
 	/* We now know where to put the binary */
 	if (ldmode == LD_RELOC) {
 		/* Creating a binary - put the segments together */
-		if (split_id)
+		if (split_id && !baseset[2])
 			base[2] = 0;
 		else {
-			/* Single image. Check if we are aligning */
-			base[2] = ((base[1] + size[1] + align - 1)/align) * align;
-			if (base[2] < base[1])
-				error("image too large");
+			append_segment(4, 1);
+			append_segment(2, 4);
+			append_segment(3, 2);
 		}
-		base[3] = base[2] + size[2];
 	} else {
 		/* FIXME: some kind of link scripts one day ? */
 		/* Where to put stuff. Try and be helpful. This is a shade
 		   Fuzix oriented */
-		/* Default data after code */
-		if (!baseset[2]) {
-			base[2] = ((base[1] + size[1] + align - 1)/align) * align;
-			if (base[2] < base[1])
-				error("image too large");
-		}
-		/* BSS after data */
-		if (!baseset[3]) {
-			base[3] = ((base[2] + size[2] + align - 1)/align) * align;
-			if (base[3] < base[2])
-				error("image too large");
-		}
+		/* Default literals then data after code */
+		append_segment(4, 1);
+		append_segment(2, 4);
+		append_segment(3, 2);
 		/* ZP we leave alone */
 		/* Discard after BSS */
-		if (!baseset[5]) {
-			base[5] = base[3] + size[3];
-			if (base[5] < base[3])
-				error("image too large");
-		}
+		append_segment(5, 3);
 		/* Common we can't really do much to guess a layout */
 	}
 	if (ldmode != LD_RFLAG) {
 		/* ZP if any is assumed to be set on input */
+		/* FIXME: check the literals fit .. make this a more sensible
+		   overlap check loop ? */
 		if (base[3] < base[2] || base[3] + size[3] < base[3])
 			error("image too large");
 		/* Whoopee it fits */
@@ -585,6 +587,7 @@ static void set_segment_bases(void)
 		insert_internal_symbol("__code", CODE, 0);
 		insert_internal_symbol("__data", DATA, 0);
 		insert_internal_symbol("__bss", BSS, 0);
+		insert_internal_symbol("__literal", LITERAL, 0);
 		insert_internal_symbol("__end", BSS, size[3]);
 		insert_internal_symbol("__zp", ZP, 0);
 		insert_internal_symbol("__discard", DISCARD, 0);
@@ -592,6 +595,7 @@ static void set_segment_bases(void)
 		insert_internal_symbol("__code_size", ABSOLUTE, size[CODE]);
 		insert_internal_symbol("__data_size", ABSOLUTE, size[DATA]);
 		insert_internal_symbol("__bss_size", ABSOLUTE, size[BSS]);
+		insert_internal_symbol("__literal_size", ABSOLUTE, size[LITERAL]);
 		insert_internal_symbol("__zp_size", ABSOLUTE, size[ZP]);
 		insert_internal_symbol("__discard_size", ABSOLUTE, size[DISCARD]);
 		insert_internal_symbol("__common_size", ABSOLUTE, size[COMMON]);
@@ -1121,6 +1125,10 @@ int main(int argc, char *argv[])
 		case 'D':	/* DATA */
 			base[2] = xstrtoul(optarg);
 			baseset[2] = 1;
+			break;
+		case 'L':
+			base[4] = xstrtoul(optarg);
+			baseset[4] = 1;
 			break;
 		case 'S':	/* Shared/Common */
 			base[6] = xstrtoul(optarg);
