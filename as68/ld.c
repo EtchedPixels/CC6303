@@ -51,6 +51,7 @@
 
 static char *arg0;			/* Command name */
 static struct object *processing;	/* Object being processed */
+static const char *libentry;		/* Library entry name if relevant */
 static struct object *objects, *otail;	/* List of objects */
 static struct symbol *symhash[NHASH];	/* Symbol has tables */
 static uint16_t base[OSEG];		/* Base of each segment */
@@ -86,7 +87,10 @@ static uint8_t progress;		/* Did we make forward progress ?
 static void warning(const char *p)
 {
 	if (processing)
-		fprintf(stderr, "While processing: %s\n", processing->path);
+		fprintf(stderr, "While processing: %s", processing->path);
+	if (libentry)
+		fprintf(stderr, "(%.16s)", libentry);
+	fputc('\n', stderr);
 	fputs(p, stderr);
 	fputc('\n', stderr);
 	err |= 2;
@@ -772,8 +776,11 @@ static void relocate_stream(struct object *o, int segment, FILE * op, FILE * ip)
 		if (code & REL_SIMPLE) {
 			uint8_t seg = code & S_SEGMENT;
 			/* Check entry is valid */
-			if (seg == ABSOLUTE || seg >= OSEG || size > 2)
+			if (seg == ABSOLUTE || seg >= OSEG || size > 2) {
+				fprintf(stderr, "%s invalid reloc %d %d\n",
+					o->path, seg, size);
 				error("invalid reloc");
+			}
 			/* If we are not building an absolute then keep the tag */
 			if (!rawstream) {
 				fputc(REL_ESC, op);
@@ -1022,9 +1029,10 @@ static void process_library(const char *name, FILE *fp)
 			break;
 		size = atol(ah.ar_size);
 #if 0 /* TODO */
-		if (strncmp(ah.ar_name, ".RANLIB") == 0)
+		if (strncmp(ah.ar_name, ".RANLIB", 8) == 0)
 			process_ranlib();
 #endif
+		libentry = ah.ar_name;
 		pos += sizeof(ah);
 		if (!have_object(pos, name))
 			load_object(fp, pos, 1, name);
@@ -1032,6 +1040,7 @@ static void process_library(const char *name, FILE *fp)
 		if (pos & 1)
 			pos++;
 	}
+	libentry = NULL;
 }
 
 /*
