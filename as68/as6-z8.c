@@ -32,6 +32,7 @@ SYM	sym[] = {
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
 	{	0,	".zp",		TSEGMENT,	ZP	},
+	{	0,	".literal",	TSEGMENT,	LITERAL	},
 	
 	/* Condition codes */
 	

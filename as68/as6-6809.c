@@ -47,6 +47,10 @@ SYM	sym[] = {
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
 	{	0,	".dp",		TSEGMENT,	ZP	},
+	{	0,	".discard",	TSEGMENT,	DISCARD	},
+	{	0,	".common",	TSEGMENT,	COMMON	},
+	{	0,	".literal",	TSEGMENT,	LITERAL	},
+
 	{	0,	"adca",		THI,		0x89	},
 	{	0,	"adcb",		THI,		0xC9	},
 	{	0,	"adda",		THI,		0x8B	},

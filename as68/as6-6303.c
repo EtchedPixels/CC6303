@@ -44,6 +44,7 @@ SYM	sym[] = {
 	{	0,	".discard",	TSEGMENT,	DISCARD	},
 	{	0,	".common",	TSEGMENT,	COMMON	},
 	{	0,	".zp",		TSEGMENT,	ZP	},
+	{	0,	".literal",	TSEGMENT,	LITERAL	},
 	{	0,	".setcpu",	TSETCPU,	XXXX	},
 
 	/* 0x0X		:	Implicit */

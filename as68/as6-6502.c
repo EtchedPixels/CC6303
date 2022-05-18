@@ -33,6 +33,9 @@ SYM	sym[] = {
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
 	{	0,	".zp",		TSEGMENT,	ZP	},
+	{	0,	".discard",	TSEGMENT,	DISCARD	},
+	{	0,	".common",	TSEGMENT,	COMMON	},
+	{	0,	".literal",	TSEGMENT,	LITERAL	},
 	
 	/* Class zero instructions: Those ending 00 */
 	{	0,	"bit",		TCLASS0,	0x20	},

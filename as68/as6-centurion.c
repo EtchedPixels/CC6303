@@ -59,6 +59,7 @@ SYM	sym[] = {
 	{	0,	".bss",		TSEGMENT,	BSS	},
 	{	0,	".discard",	TSEGMENT,	DISCARD	},
 	{	0,	".common",	TSEGMENT,	COMMON	},
+	{	0,	".literal",	TSEGMENT,	LITERAL	},
 
 	/* 0x0X		:	Implicit */
 	{	0,	"halt",		TIMPL,		0x00	},

@@ -45,6 +45,7 @@ SYM	sym[] = {
 	{	0,	".bss",		TSEGMENT,	BSS	},
 	{	0,	".discard",	TSEGMENT,	DISCARD	},
 	{	0,	".common",	TSEGMENT,	COMMON	},
+	{	0,	".literal",	TSEGMENT,	LITERAL	},
 
 	/* Memory ref m/ptr/disp format */
 	{	0,	"ld",		TMPD,		0xC0	},
