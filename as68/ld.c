@@ -516,10 +516,10 @@ restart:
 
 static void append_segment(int a, int b)
 {
-	if (baseset[b])
+	if (baseset[a])
 		return;
-	base[b] = ((base[a] + size[a] + align - 1)/align) * align;
-	if (base[b] < base[a])
+	base[a] = ((base[b] + size[b] + align - 1)/align) * align;
+	if (base[a] < base[b])
 		error("image too large");
 }
 
