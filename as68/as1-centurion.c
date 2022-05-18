@@ -12,11 +12,13 @@
 
 /* FIXME: we should malloc/realloc this on non 8bit machines */
 static uint8_t reltab[1024];
-static unsigned int nextrel;
+static unsigned nextrel;
+static unsigned cpu_model;
 
 int passbegin(int pass)
 {
 	segment = 1;		/* Default to code */
+	cpu_model =  6;		/* Assume CPU-6 for now */
 	if (pass == 3)
 		nextrel = 0;
 	return 1;		/* All passes required */
@@ -78,22 +80,21 @@ void getaddr(ADDR *ap)
 	expr1(ap, LOPRI, 0);
 }
 
-
 /*
  *	Encode a full address description
  *
  *	constant
  *	(addr)
  *	@(addr)
- *	(PC + n)			TODO
- *	@(PC + n)			TODO
+ *	n(PC)
+ *	@n(PC)
  *	(regpair)
  *	offset(regpair)
  *	offset(-regpair)
  *	offset(regpair+)
  */
 
-void address_encoding(uint8_t opbase, unsigned type, unsigned store)
+void address_encoding(uint8_t opbase, unsigned type, unsigned store, unsigned size)
 {
 	int c = getnb();
 	unsigned indir = 0, predec = 0, postinc = 0, offset = 0;
@@ -111,13 +112,28 @@ void address_encoding(uint8_t opbase, unsigned type, unsigned store)
 		if (c != '(') {
 			unget(c);
 			/* Constant */
-			if (indir)
-				aerr(BADINDIR);
-			if (store)
+			switch(a1.a_type & TMMODE) {
+			case TUSER:
+				if (indir)
+					aerr(BADINDIR);
+				if (store)
+					aerr(BADADDR);
+				/* Jumps load the generated address into the PC so
+				   as written we need one more layer of indirection so
+				   the user can write jump foo or jump (xx) not jump (foo)
+				   and jump @(xx) */
+				if (type == 2)
+					outab(opbase | 1);
+				else
+					outab(opbase);
+				if (size == 1)
+					outrab(&a1);
+				else
+					outraw(&a1);
+				return;
+			default:
 				aerr(BADADDR);
-			outab(opbase);
-			outraw(&a1);
-			return;
+			}
 		}
 		istuser(&a1);
 		offset = 1;
@@ -146,7 +162,6 @@ void address_encoding(uint8_t opbase, unsigned type, unsigned store)
 	case TWR:
 		if (indir)
 			aerr(BADINDIR);
-		/* FIXME: rules for jump */
 		if (predec) {
 			if ((a2.a_type & TMMODE) != TWR)
 				aerr(WREGONLY);
@@ -171,12 +186,19 @@ void address_encoding(uint8_t opbase, unsigned type, unsigned store)
 			}
 			return;
 		}
+		/* Turn 0(x) into (x) */
+		if (offset && a1.a_value == 0)
+			offset = 0;
 		/* Simply an index pair */
 		switch(type) {
 		case 0:	/* Instructions with 4 mode bits */
-			outab(opbase | 0x08 | ((a2.a_type & TMREG) >> 1));
-			return;
+			if (!offset) {
+				outab(opbase | 0x08 | ((a2.a_type & TMREG) >> 1));
+				return;
+			}
+			/* Fall through */
 		case 1:	/* Instructions with 3 mode bits - use the longer form */
+		case 2: /* Branches */
 			outab(opbase | 5);
 			if (offset) {
 				outab(((a2.a_type & TMREG) << 4) | 8);
@@ -185,16 +207,17 @@ void address_encoding(uint8_t opbase, unsigned type, unsigned store)
 				outab(((a2.a_type & TMREG) << 4));
 			}
 			return;
-		case 2:	/* Jumps.. weird implicit use of A */
-			if ((a2.a_type & TMREG) != RA) {
-				aerr(AREGONLY);
-				return;
-			}
-			outab(opbase | 5);
-			/* Implicit 8 (A + offset) */
-			outab(a1.a_value);
-			return;
 		}
+		break;
+	case TSR:
+		/* PC relative forms */
+		if (predec || postinc)
+			aerr(BADADDR);
+		outab(opbase + 3 + indir);
+		if (offset)
+			outab(a1.a_value);
+		else
+			outab(0);
 		break;
 	case TUSER:
 		/* Can't pre-dec or post inc (nn) */
@@ -212,6 +235,10 @@ void address_encoding(uint8_t opbase, unsigned type, unsigned store)
 		aerr(SYNTAX_ERROR);
 	}			
 }
+
+static SYM branch_bl = {
+	0,	"bl",		TREL8,		0x10
+};
 
 /*
  * Assemble one line.
@@ -233,6 +260,7 @@ void asmline(void)
 	ADDR a1;
 	ADDR a2;
 	unsigned r1, r2;
+	unsigned force8 = 0;
 
 loop:
 	if ((c=getnb())=='\n' || c==';')
@@ -311,6 +339,10 @@ loop:
 		goto loop;
 	}
 	unget(c);
+	/* Fix up "bl" being ambiguous */
+	if ((sp->s_type & TMMODE) == TBR && sp->s_value == RBL)
+		sp = &branch_bl;
+
 	opcode = sp->s_value;
 	switch (sp->s_type&TMMODE) {
 	case TORG:
@@ -382,7 +414,26 @@ loop:
 			outab(0);
 		break;
 
+	case TSETCPU:
+		getaddr(&a1);
+		constify(&a1);
+		istuser(&a1);
+		switch(a1.a_value) {
+		case 4:
+			cpu_model = 4;
+			break;
+		case 6:
+			cpu_model = 6;
+			break;
+		default:
+			/* What error ?? */
+			aerr(SYNTAX_ERROR);
+		}
+		break;
 	/* Implicit one or two byte operation */
+	case TIMPL6:
+		if (cpu_model <= 4)
+			aerr(BADCPU);
 	case TIMPL:
 		if (opcode > 0x0100)
 			outab(opcode >> 8);
@@ -390,40 +441,89 @@ loop:
 		break;
 	/* ALU type one register operations. Add 0x10 for word format. If
 	   the register is A or AL then add 0x08 and omit the second byte */
+	case TREGA8:
+		force8 = 1;
 	case TREGA:
 		getaddr(&a1);
+		c = getnb();
+		if (c == ',') {
+			getaddr(&a2);
+			constify(&a2);
+			istuser(&a2);
+			/* Adjust value. Most ops are ,0 for once. clr however
+			   seems to be a straight load of 0-15 */
+			if (opcode != 0x22)
+				a2.a_value--;
+			if (a2.a_value < 0 || a2.a_value > 15)
+				aerr(RANGE);
+			disp = 1;
+			/* The EE200 doesn't have these extensions */
+			if (cpu_model <= 4)
+				aerr(BADCPU);
+		} else {
+			disp = 0;
+			unget(c);
+			a2.a_value = 0;
+		}
 		switch (a1.a_type & TMMODE) {
 		case TWR:
-			if ((a1.a_type & TMREG)  == RA)
+			if (force8)
+				aerr(BREGONLY);
+			if ((a1.a_type & TMREG)  == RA && !disp)
 				outab(opcode | 0x18);
-			else
-				outab(opcode | 0x10 | (a1.a_type & TMREG));
+			else {
+				outab(opcode | 0x10);
+				outab(a2.a_value | ((a1.a_type & TMREG) << 4));
+			}
 			break;
 		case TBR:
-			if ((a1.a_type & TMREG)  == RAL)
+			if ((a1.a_type & TMREG)  == RAL && !disp)
 				outab(opcode | 0x8);
-			else
-				outab(opcode | (a1.a_type & TMREG));
+			else {
+				outab(opcode);
+				outab(a2.a_value | ((a1.a_type & TMREG) << 4));
+			}
 			break;
 		default:
 			aerr(REGONLY);
 		}
 		break;
 	/* As with TREGA but no short form */
+	case TREG8:
+		force8 = 1;
 	case TREG:
 		getaddr(&a1);
+		c = getnb();
+		if (c == ',') {
+			getaddr(&a2);
+			constify(&a2);
+			istuser(&a2);
+			if (a2.a_value < 1 || a2.a_value > 16)
+				aerr(RANGE);
+			/* Adjust value */
+			a2.a_value--;
+			if (cpu_model <= 4)
+				aerr(BADCPU);
+		} else {
+			unget(c);
+			a2.a_value = 0;
+		}
 		switch (a1.a_type & TMMODE) {
 		case TWR:
-			outab(opcode | 0x10 | (a1.a_type & TMREG));
+			if (force8)
+				aerr(BREGONLY);
+			outab(opcode | 0x10);
+			outab(a2.a_value | ((a1.a_type & TMREG) << 4));
 			break;
 		case TBR:
-			outab(opcode | (a1.a_type & TMREG));
+			outab(opcode);
+			outab(a2.a_value | ((a1.a_type & TMREG) << 4));
 			break;
 		default:
 			aerr(REGONLY);
 		}
 		break;
-	/* mov reg,reg - lots of encodings
+	/* xfr[b] reg,reg - lots of encodings
 		word: 
 		word: 55 r1 r2	
 		X,A 5B
@@ -434,39 +534,55 @@ loop:
 		byte:	45 r1 r2
 			2E r1 r2	but not A,G
 		BL,AL	4D */
+		/* TODO PC move */
+	case TMOVE8:
+		force8 = 1;
 	case TMOVE:
 		getaddr(&a1);
 		comma();
 		getaddr(&a2);
 		r1 = a1.a_type & TMREG;
 		r2 = a2.a_type & TMREG;
-		switch(a1.a_type & TMMODE) {
-		case TWR:
-			if ((a2.a_type & TMMODE) != TWR) 
+		switch(a2.a_type & TMMODE) {
+		case TSR:
+			if (force8)
+				aerr(BREGONLY);
+			/* PC */
+			if ((a1.a_type & TMMODE) != TWR)
 				aerr(WREGONLY);
-			if (r1 == RX && r2 == RA)
+			if (r2 == RA && r1 == RPC)
+				outab(0x0D);
+			else
+				aerr(BADADDR);
+			break;
+		case TWR:
+			if (force8)
+				aerr(BREGONLY);
+			if ((a1.a_type & TMMODE) != TWR)
+				aerr(WREGONLY);
+			if (r2 == RX && r1 == RA)
 				outab(0x5B);
-			else if (r1 == RY && r2 == RA)
+			else if (r2 == RY && r1 == RA)
 				outab(0x5C);
-			else if (r1 == RB && r2 == RA)
+			else if (r2 == RB && r1 == RA)
 				outab(0x5D);
-			else if (r1 == RZ && r2 == RA)
-				outab(0x5D);
-			else if (r1 == RS && r2 == RA)
+			else if (r2 == RZ && r1 == RA)
+				outab(0x5E);
+			else if (r2 == RS && r1 == RA)
 				outab(0x5F);
 			else {
 				outab(0x55);
-				outab(r1 << 4 | r2);
+				outab(r2 | (r1 << 4));
 			}
 			break;
 		case TBR:
-			if ((a2.a_type & TMMODE) != TBR)
+			if ((a1.a_type & TMMODE) != TBR)
 				aerr(BREGONLY);
 			if (r1 == RBL && r2 == RAL)
 				outab(0x4D);
 			else {
 				outab(0x45);
-				outab(r1 << 4 | r2);
+				outab(r2 | (r1 << 4));
 			}
 			break;
 		default:
@@ -474,9 +590,23 @@ loop:
 		}
 		break;
 	case TMMU:
-		/* TODO */
+		if (cpu_model <= 4)
+			aerr(BADCPU);
+		getaddr(&a1);
+		istuser(&a1);
+		if (a1.a_value < 0 || a1.a_value > 7)
+			aerr(RANGE);
+		comma();
+		getaddr(&a2);
+		istuser(&a2);
+		outab(opcode >> 8);
+		outab(opcode);
+		outab(a1.a_value | 0xF8);
+		outraw(&a2);
 		break;
 	case TDMA:
+		if (cpu_model <= 4)
+			aerr(BADCPU);
 		/* regpair merged into top of lower byte */
 		getaddr(&a1);
 		if ((a1.a_type & TMMODE) != TWR) {
@@ -487,6 +617,8 @@ loop:
 		outab(opcode | ((a1.a_type & TMREG) << 4));
 		break;
 	case TDMAM:
+		if (cpu_model <= 4)
+			aerr(BADCPU);
 		/* DMA mode it's a value not a register encoding */
 		getaddr(&a1);
 		istuser(&a1);
@@ -498,16 +630,20 @@ loop:
 		outab(opcode | (a1.a_value << 4));
 		break;
 	/* Two register ALU operations with short forms */
+	case TREG2A8:
+		force8 = 1;
 	case TREG2A:
 		getaddr(&a1);
 		comma();
 		getaddr(&a2);
 		switch(a1.a_type & TMMODE) {
 		case TWR:
+			if (force8)
+				aerr(BREGONLY);
 			if ((a2.a_type & TMMODE) != TWR)
 				aerr(WREGONLY);
-			if ((a1.a_type & TMREG) == RB &&
-				(a2.a_type & TMREG) == RA)
+			if ((a2.a_type & TMREG) == RB &&
+				(a1.a_type & TMREG) == RA)
 				outab(opcode | 0x18);
 			else {
 				outab(opcode | 0x10);
@@ -517,8 +653,8 @@ loop:
 		case TBR:
 			if ((a2.a_type & TMMODE) != TBR)
 				aerr(BREGONLY);
-			if ((a1.a_type & TMREG) == RBL &&
-				(a2.a_type & TMREG) == RAL)
+			if ((a2.a_type & TMREG) == RBL &&
+				(a1.a_type & TMREG) == RAL)
 				outab(opcode | 0x08);
 			else {
 				outab(opcode);
@@ -539,13 +675,13 @@ loop:
 			if ((a2.a_type & TMMODE) != TWR)
 				aerr(WREGONLY);
 			outab(opcode | 0x10);
-			outab((a1.a_type & TMREG) << 4 | (a2.a_type & TMREG));
+			outab((a2.a_type & TMREG) << 4 | (a1.a_type & TMREG));
 			break;
 		case TBR:
 			if ((a2.a_type & TMMODE) != TBR)
 				aerr(BREGONLY);
-			if ((a1.a_type & TMREG) == RBL &&
-				(a2.a_type & TMREG) == RAL)
+			if ((a2.a_type & TMREG) == RBL &&
+				(a1.a_type & TMREG) == RAL)
 				outab(opcode | 0x08);
 			else {
 				outab(opcode);
@@ -557,8 +693,9 @@ loop:
 		}
 		break;		
 	case TJUMP:
-		/* Sort of like load/store but apparently not quite */
-		address_encoding(opcode, 2, 0);
+		/* Sort of like load/store but the address generated ends up
+		   in PC not read from into a register */
+		address_encoding(opcode, 2, 0, 2);
 		break;
 	case TSTORE:
 	case TLOAD:
@@ -575,18 +712,20 @@ loop:
 		switch(a1.a_type & TMMODE) {
 		case TBR:
 			if (r1 == RAL)
-				address_encoding(encoding, 0, store);
+				address_encoding(encoding, 0, store, 1);
 			else if (r1 == RBL)
-				address_encoding(encoding | 0x40, 0, store);
+				address_encoding(encoding | 0x40, 0, store, 1);
 			else
 				aerr(REGABBYTE);
 			break;	
 		case TWR:
+			if (force8)
+				aerr(BREGONLY);
 			encoding |= 0x10;
 			if (r1 == RA)
-				address_encoding(encoding, 0, store);
+				address_encoding(encoding, 0, store, 2);
 			else if (r1 == RB)
-				address_encoding(encoding | 0x40, 0, store);
+				address_encoding(encoding | 0x40, 0, store, 2);
 			else if (r1 == RX) {
 				/* X is a bit different. Own range and no
 				   shorter for register index */
@@ -594,7 +733,7 @@ loop:
 					encoding = 0x68;
 				else
 					encoding = 0x60;
-				address_encoding(encoding, 1, store);
+				address_encoding(encoding, 1, store, 2);
 			}
 			else
 				aerr(REGABXWORD);
@@ -604,6 +743,25 @@ loop:
 		}
 		break;
 	}
+	case TLOADEW:
+		address_encoding(opcode, 0, 0, 2);
+		break;
+	case TLOADEB:
+		address_encoding(opcode, 0, 0, 1);
+		break;
+	case TSTOREEW:
+		address_encoding(opcode, 0, 1, 2);
+		break;
+	case TSTOREEB:
+		address_encoding(opcode, 0, 1, 1);
+		break;
+	case TLOADX:
+		address_encoding(opcode, 1, 0, 2);
+		break;
+	case TSTOREX:
+		address_encoding(opcode, 1, 1, 2);
+		break;
+
 	case TREL8:
 		getaddr(&a1);
 		/* FIXME: do wo need to check this is constant ? */
@@ -652,7 +810,7 @@ loop:
 		if (c) {
 			outab(opcode^1);	/* Inverted branch */
 			outab(3);		/* Skip over the jump */
-			outab(0x7E);		/* Jump */
+			outab(0x71);		/* Jump */
 			outraw(&a1);
 		} else {
 			outab(opcode);
@@ -661,6 +819,58 @@ loop:
 				aerr(BRA_RANGE);
 			outab(disp);
 		}
+		break;
+	case TJUMP8:
+		/* Same but not conditional */
+		getaddr(&a1);
+		/* disp may change between pass1 and pass2 but we know it won't
+		   get bigger so we can be sure that we still fit the 8bit disp
+		   in pass 2 if we did in pass 1 */
+		disp = a1.a_value - dot[segment] - 2;
+		/* For pass 0 assume the worst case. Then we optimize on
+		   pass 1 when we know what may be possible */
+		if (pass == 3)
+			c = getnextrel();
+		else {
+			c = 0;
+			/* Cases we know it goes big */
+			if (pass == 0 || disp < -128 || disp > 127 || a1.a_segment != segment)
+				c = 1;
+			/* On pass 2 we lock down our choices in the table */
+			if (pass == 2)
+				setnextrel(c);
+		}
+		if (c) {
+			outab(0x71);		/* Jump */
+			outraw(&a1);
+		} else {
+			outab(opcode);
+			/* Should never happen */
+			if (disp < -128 || disp > 127)
+				aerr(BRA_RANGE);
+			outab(disp);
+		}
+		break;
+	case TBLOCK:
+		if (cpu_model <= 4)
+			aerr(BADCPU);
+		/* The forms we know */
+		getaddr(&a1);
+		istuser(&a1);
+		c = a1.a_value;
+		if (c < 1 || c > 256)
+			aerr(RANGE);
+		comma();
+		getaddr(&a1);
+		istuser(&a1);
+		comma();
+		getaddr(&a2);
+		istuser(&a2);
+		outab(opcode >> 8);
+		outab(opcode);
+		outab(c - 1);
+		outraw(&a1);
+		outraw(&a2);
 		break;
 	default:
 		aerr(SYNTAX_ERROR);

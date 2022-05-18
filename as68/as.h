@@ -1117,7 +1117,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	TUSER	0x0100			/* User name */
 #define	TBR	0x0200			/* Byte register */
 #define	TWR	0x0300			/* Word register */
-#define	TSR	0x0400			/* Special register (I, R) */
+#define	TSR	0x0400			/* Special register (PC) */
 #define	TDEFB	0x0500			/* defb */
 #define	TDEFW	0x0600			/* defw */
 #define	TDEFS	0x0700			/* defs */
@@ -1145,6 +1145,20 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TJUMP	0x1B00			/* Jump/call */
 #define TLOAD	0x1C00			/* Load */
 #define TSTORE	0x1D00			/* Store */
+#define TJUMP8	0x1E00			/* Extending 8bit branch */
+#define TREGA8	0x1F00			/* TREGA 8bit only */
+#define TREG8	0x2000			/* TREG 8bit only */
+#define TREG2A8	0x2100			/* TREG2 8bit only */
+#define TMOVE8	0x2200			/* TMOVE 8bit only */
+#define TLOADEB	0x2300
+#define TLOADEW	0x2400
+#define TLOADX	0x2500
+#define TSTOREEB 0x2600
+#define TSTOREEW 0x2700
+#define TSTOREX 0x2800
+#define	TSETCPU	0x2900			/* setcpu */
+#define TIMPL6	0x2A00			/* Not present on CPU4 */
+#define TBLOCK	0x2B00			/* Block operations CPU6 only */
 
 /*
  * Registers.
@@ -1155,8 +1169,8 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	RY	6
 #define RZ	8
 #define RS	10
-#define RG	12
-#define	RH	14
+#define RC	12
+#define	RP	14
 
 #define RAH	0
 #define RAL	1
@@ -1170,10 +1184,13 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define RZL	9
 #define RSH	10
 #define RSL	11
-#define RGH	12
-#define RGL	13
-#define RHH	14
-#define RHL	15
+#define RCH	12
+#define RCL	13
+#define RPH	14
+#define RPL	15
+
+#define RPC	0
+
 
 /*
  *	Error message numbers
@@ -1211,6 +1228,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define BADADDR		35
 #define RANGE		36
 #define AREGONLY	37
+#define BADCPU		38
 
 #else
 #error "Unknown target"
