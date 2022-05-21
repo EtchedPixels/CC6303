@@ -78,7 +78,7 @@ SYM	sym[] = {
 	{	0,	"ldhi",		TI8_85,		0x0028  },
 	{	0,	"lhld",		TI16,		0x002A  },
 	{	0,	"cma",		TIMPL,		0x002F  },
-	{	0,	"sim",		TI8_85,		0x0030  },
+	{	0,	"sim",		TIMPL85,	0x0030  },
 	{	0,	"sta",		TI16,		0x0032	},
 	{	0,	"stc",		TIMPL,		0x0037  },
 	{	0,	"ldsi",		TI8_85,		0x0038  },
