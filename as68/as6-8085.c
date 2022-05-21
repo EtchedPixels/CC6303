@@ -72,7 +72,7 @@ SYM	sym[] = {
 	{	0,	"ral",		TIMPL,		0x0017  },
 	{	0,	"rdel",		TIMPL85,	0x0018  },
 	{	0,	"rar",		TIMPL,		0x001F  },
-	{	0,	"rim",		TI8_85,		0x0020  },
+	{	0,	"rim",		TIMPL85,	0x0020  },
 	{	0,	"shld",		TI16,		0x0022  },
 	{	0,	"daa",		TIMPL,		0x0027  },
 	{	0,	"ldhi",		TI8_85,		0x0028  },
