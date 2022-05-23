@@ -562,8 +562,8 @@ static void set_segment_bases(void)
 		if (split_id && !baseset[2])
 			base[2] = 0;
 		else {
-			append_segment(4, 1);
-			append_segment(2, 4);
+			append_segment(7, 1);
+			append_segment(2, 7);
 			append_segment(3, 2);
 		}
 	} else {
@@ -571,8 +571,8 @@ static void set_segment_bases(void)
 		/* Where to put stuff. Try and be helpful. This is a shade
 		   Fuzix oriented */
 		/* Default literals then data after code */
-		append_segment(4, 1);
-		append_segment(2, 4);
+		append_segment(7, 1);
+		append_segment(2, 7);
 		append_segment(3, 2);
 		/* ZP we leave alone */
 		/* Discard after BSS */
