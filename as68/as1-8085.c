@@ -81,7 +81,7 @@ int xlat_reg(ADDR *ap, int bad)
 			return 3;
 		case TBR:
 			/* B D or H for BC DE HL pairs */
-			reg = ap->a_value;
+			reg = ap->a_type & TMREG;
 			if (reg & 1)
 				aerr(INVALID_REG);
 			if (reg > H)
@@ -255,7 +255,7 @@ loop:
 		if (a1.a_value < 0 || a1.a_value > 7)
 			aerr(INVALID_CONST);
 		else
-			outab(c|(a1.a_value << 3));
+			outab(opcode|(a1.a_value << 3));
 		break;
 	case TI8_85:
 		require_8085();
@@ -263,7 +263,7 @@ loop:
 		getaddr(&a1);
 		constify(&a1);
 		istuser(&a1);
-		outab(c);
+		outab(opcode);
 		outrab(&a1);
 		break;
 	case TI16_85:
@@ -272,12 +272,12 @@ loop:
 		getaddr(&a1);
 		constify(&a1);
 		istuser(&a1);
-		outab(c);
+		outab(opcode);
 		outraw(&a1);
 		break;
 	case TREG8:
 		getaddr(&a1);
-		reg = a1.a_value;
+		reg = a1.a_type & TMREG;
 		if ((a1.a_type & TMMODE) == TBR)
 			outab(opcode| (reg << 3));
 		else
@@ -300,13 +300,13 @@ loop:
 		if ((a1.a_type & TMMODE) != TBR ||
 		   ((a2.a_type & TMMODE) != TBR))
 		   	aerr(INVALID_REG);
-		if (a1.a_value == M && a2.a_value == M)
+		if ((a1.a_type & TMREG) == M && (a2.a_type & TMREG) == M)
 			aerr(INVALID_REG);
-		outab(opcode | (a1.a_value << 3) | (a2.a_value));
+		outab(opcode | ((a1.a_type & TMREG) << 3) | (a2.a_type & TMREG));
 		break;
 	case TREG8_I8:
 		getaddr(&a1);
-		reg = a1.a_value;
+		reg = a1.a_type & TMREG;
 		if ((a1.a_type & TMMODE) == TBR)
 			outab(opcode| (reg << 3));
 		else
