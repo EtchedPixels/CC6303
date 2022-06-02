@@ -117,7 +117,7 @@ SYM	sym[] = {
 	{	0,	"jnc",		TI16,		0x00D2  },
 	{	0,	"out",		TI8,		0x00D3  },
 	{	0,	"cnc",		TI16,		0x00D4  },
-	{	0,	"sui",		TI8,		0x00D5  },
+	{	0,	"sui",		TI8,		0x00D6  },
 	{	0,	"rc",		TIMPL,		0x00D8  },
 	{	0,	"shlx",		TIMPL85,	0x00D9  },
 	{	0,	"jc",		TI16,		0x00DA  },
