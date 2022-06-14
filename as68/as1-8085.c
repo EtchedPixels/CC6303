@@ -275,11 +275,19 @@ loop:
 		outab(opcode);
 		outraw(&a1);
 		break;
+	case TREG8H:
+		getaddr(&a1);
+		reg = a1.a_type & TMREG;
+		if ((a1.a_type & TMMODE) == TBR)
+			outab(opcode | (reg << 3));
+		else
+			aerr(INVALID_REG);
+		break;
 	case TREG8:
 		getaddr(&a1);
 		reg = a1.a_type & TMREG;
 		if ((a1.a_type & TMMODE) == TBR)
-			outab(opcode| (reg << 3));
+			outab(opcode | reg);
 		else
 			aerr(INVALID_REG);
 		break;
@@ -291,6 +299,13 @@ loop:
 	case TREG16_P:
 		getaddr(&a1);
 		reg = xlat_reg(&a1, SP);
+		outab(opcode | (reg << 4));
+		break;
+	case TREG16BD:
+		getaddr(&a1);
+		reg = xlat_reg(&a1, SP);
+		if (reg > 1)
+			aerr(INVALID_REG);
 		outab(opcode | (reg << 4));
 		break;
 	case TMOV:
