@@ -77,6 +77,16 @@ static int segment_incompatible(ADDR *ap)
 	return 1;
 }
 
+/* Can we make a reference via direct page ? */
+static unsigned can_dp(ADDR *ap)
+{
+	if (ap->a_segment == ZP)
+		return 1;
+	if (ap->a_segment == ABSOLUTE && ap->a_value < 256)
+		return 1;
+	return 0;
+}
+
 /*
  * Read in an address
  * descriptor, and fill in
@@ -154,11 +164,12 @@ void getaddr(ADDR *ap)
 	}
 	unget(c);
 	constant_to_zp(ap, dp);
-	if (ap->a_segment == ZP)
+	if (can_dp(ap))
 		ap->a_type = TDIRECT|TUSER|TMINDIR;
 	else
 		ap->a_type = TUSER|TMINDIR;
 }
+
 
 /*
  * Assemble one line.
