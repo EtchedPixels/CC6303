@@ -222,13 +222,11 @@ loop:
 			sp->s_value = dot[segment];
 			sp->s_segment = segment;
 		} else {
-			/* Phase 1 defined the values so a misalignment here
+			/* Phase 2 defined the values so a misalignment here
 			   is fatal */
 			if ((sp->s_type&TMMDF) != 0)
 				err('m', MULTIPLE_DEFS);
 			if (sp->s_value != dot[segment]) {
-				printf("Phase 2: Dot %x Should be %x\n",
-					dot[segment], sp->s_value);
 				err('p', PHASE_ERROR);
 			}
 		}

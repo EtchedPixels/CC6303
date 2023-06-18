@@ -2,6 +2,8 @@
  * Z-80 assembler.
  * Assemble one line of input.
  * Knows all the dirt.
+ *
+ * TODO: add jr/jp expansion
  */
 #include	"as.h"
 
@@ -33,12 +35,63 @@ static ADDR *getldaddr(ADDR *ap, int *modep, int *regp, ADDR *iap);
 static void outop(int op, ADDR *ap);
 static int ccfetch(ADDR *ap);
 
+/*
+ * CPU specific pass setup
+ */
+
+static int cputype;
+/* FIXME: we should malloc/realloc this on non 8bit machines */
+static uint8_t reltab[1024];
+static unsigned int nextrel;
+
+int passbegin(int pass)
+{
+	cputype = 80;
+	segment = 1;		/* Default to code */
+	if (pass == 3)
+		nextrel = 0;
+	return 1;		/* All passes required */
+}
+
+static void setnextrel(int flag)
+{
+	if (nextrel == 8 * sizeof(reltab))
+		aerr(TOO_MANY_JR);
+	if (flag)
+		reltab[nextrel >> 3] |= (1 << (nextrel & 7));
+	nextrel++;
+}
+
+static unsigned int getnextrel(void)
+{
+	unsigned int n = reltab[nextrel >> 3] & (1 << (nextrel & 7));
+	nextrel++;
+	return n;
+}
+
+
 static void require_z180(void)
 {
 	if (!(cpu_flags & OA_8080_Z180)) {
 		cpu_flags |= OA_8080_Z180;
-		err('1',REQUIRE_Z180);
+		if (cputype != 180)
+			err('1',REQUIRE_Z180);
 	}
+}
+
+static unsigned jr_to_jp(unsigned opcode)
+{
+	/* DJNZ - we don't turn this into inc/jp as it's not quite the same */
+	if (opcode == OPDJNZ) {
+		aerr(BRA_RANGE);
+		return opcode;
+	}
+	/* JR to JP */
+	if (opcode == 0x18)
+		return 0xC3;
+	/* JR cc - extract relevant bits  and add them to the JP c base */
+	opcode &= 0x38;
+	return 0xC2|opcode;
 }
 
 /*
@@ -135,6 +188,11 @@ loop:
 	getid(id, c);
 	if ((c=getnb()) == ':') {
 		sp = lookup(id, uhash, 1);
+		/* Pass 0 we compute the worst cases
+		   Pass 1 we generate according to those 
+		   Pass 2 we set them in stone (the shrinkage from pass 1
+					        allowing us a lot more)
+		   Pass 3 we output accodingly */
 		if (pass == 0) {
 			if ((sp->s_type&TMMODE) != TNEW
 			&&  (sp->s_type&TMASG) == 0)
@@ -143,7 +201,17 @@ loop:
 			sp->s_type |= TUSER;
 			sp->s_value = dot[segment];
 			sp->s_segment = segment;
+		} else if (pass != 3) {
+			/* Don't check for duplicates, we did it already
+			   and we will confuse ourselves with the pass
+			   before. Instead blindly update the values */
+			sp->s_type &= ~TMMODE;
+			sp->s_type |= TUSER;
+			sp->s_value = dot[segment];
+			sp->s_segment = segment;
 		} else {
+			/* Phase 2 defined the values so a misalignment here
+			   is fatal */
 			if ((sp->s_type&TMMDF) != 0)
 				err('m', MULTIPLE_DEFS);
 			if (sp->s_value != dot[segment])
@@ -242,6 +310,14 @@ loop:
 			outab(0);
 		break;
 
+	case TSETCPU:
+		getaddr(&a1);
+		istuser(&a1);
+		if (a1.a_value != 180 && a1.a_value != 80)
+			aerr(SYNTAX_ERROR);
+		cputype = a1.a_value;
+		break;
+
 	case TNOP180:
 		require_z180();
 		/* Fall through */
@@ -271,12 +347,30 @@ loop:
 		}
 		istuser(&a1);
 		disp = a1.a_value-dot[segment]-2;
-		if (a1.a_segment == UNKNOWN)
-			aerr(UNKNOWN_SYMBOL);
-		else if (disp<-128 || disp>127 || a1.a_segment != segment)
-			aerr(BRA_RANGE);
-		outab(opcode);
-		outab(disp);
+		if (pass == 3)
+			c = getnextrel();
+		else {
+			c = 0;
+			if (pass == 0 || a1.a_segment != segment || disp < -128 || disp > 127)
+				c = 1;
+			/* On pass 2 we lock down our choice in the table */
+			if (pass == 2)
+				setnextrel(c);
+		}
+		if (c) {
+			opcode = jr_to_jp(opcode);
+			outab(opcode);
+			outraw(&a1);
+		} else {
+			/* These shoudl never happen */
+			if (a1.a_segment == UNKNOWN)
+				aerr(UNKNOWN_SYMBOL);
+			else if (disp<-128 || disp>127 || a1.a_segment != segment)
+				aerr(BRA_RANGE);
+			/* Write the relative form */
+			outab(opcode);
+			outab(disp);
+		}
 		break;
 
 	case TRET:
@@ -353,7 +447,7 @@ loop:
 		getaddr(&a1);
 		istuser(&a1);
 		outab(opcode);
-		outabchk(value);
+		outabchk2(value);
 		break;
 
 	case TIO180:	/* out0 and in0 */
@@ -367,7 +461,7 @@ loop:
 				aerr(INVALID_REG);
 			outab(opcode << 8);
 			outab(opcode | (reg << 3));
-			outabchk(a2.a_value);
+			outabchk2(a2.a_value);
 			break;
 		}
 		aerr(INVALID_REG);
@@ -378,7 +472,7 @@ loop:
 		getaddr(opcode==OPIN ? &a2 : &a1);
 		if (a1.a_type==(TBR|A) && a2.a_type==(TUSER|TMINDIR)) {
 			outab(opcode);
-			outabchk(a2.a_value);
+			outabchk2(a2.a_value);
 			break;
 		}
 		if ((a1.a_type&TMMODE)==TBR && a2.a_type==(TBR|TMINDIR|C)) {
@@ -501,7 +595,7 @@ loop:
 		getaddr(&a1);
 		if (a1.a_type == TUSER) {
 			outab(opcode | OPSUBI);
-			outabchk(a1.a_value);
+			outabchk2(a1.a_value);
 			break;
 		}
 		if ((a1.a_type&TMMODE) == TBR) {
@@ -520,7 +614,7 @@ loop:
 		if (a1.a_type == (TBR|A)) {
 			if (a2.a_type == TUSER) {
 				outab(opcode | OPSUBI);
-				outabchk(a2.a_value);
+				outabchk2(a2.a_value);
 				break;
 			}
 			if ((a2.a_type&TMMODE) == TBR) {

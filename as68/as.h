@@ -89,6 +89,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TIMMED8	0x2300			/* TSTIO m */
 #define	TMUL	0x2400			/* MUL */
 #define TIO180	0x2500			/* IN0/OUT0 */
+#define TSETCPU 0x2600			/* .setcpu */
 
 /*
  * Registers.
@@ -127,7 +128,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	CM	7
 
 /*
- *	Error message numbers: FIXME - sort general first
+ *	Error message numbers
  */
 
 #define BRACKET_EXPECTED 1
@@ -155,6 +156,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define REQUIRE_Z180	28
 #define	SEGMENT_CLASH	29
 #define UNKNOWN_SYMBOL	30
+#define TOO_MANY_JR	31
 
 #elif TARGET_8085
 

@@ -60,6 +60,10 @@ SYM	sym[] = {
 	{	0,	".code",	TSEGMENT,	CODE	},
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
+	{	0,	".discard",	TSEGMENT,	DISCARD	},
+	{	0,	".common",	TSEGMENT,	COMMON	},
+	{	0,	".literal",	TSEGMENT,	LITERAL	},
+	{	0,	".setcpu",	TSETCPU,	XXXX	},
 	{	0,	"nop",		TNOP,		0x0000	},
 	{	0,	"rlca",		TNOP,		0x0007	},
 	{	0,	"rrca",		TNOP,		0x000F	},
@@ -183,7 +187,8 @@ char *etext[] = {
 	"",
 	"Z180 instruction",
 	"segment conflict",
-	"unknown symbol"
+	"unknown symbol",
+	"Too many relative branches"
 };
 
 /*
