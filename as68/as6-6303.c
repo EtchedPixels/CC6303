@@ -3,8 +3,6 @@
  *
  * Tables
  *
- *	TODO: Add aliased branches etc for 6803
- *	      Add 6303 specific instructions (AIM etc)
  */
 
 #include	"as.h"
