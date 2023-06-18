@@ -74,7 +74,7 @@ static int nextbyte(int fd)
 }
 
 static int bytect;
-static char relbuf[33];
+static char relbuf[64];
 static char *relptr;
 static uint16_t dot;
 
