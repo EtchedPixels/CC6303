@@ -1237,6 +1237,75 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define AREGONLY	37
 #define BADCPU		38
 
+#elif TARGET_BYTECODE
+
+typedef	uint16_t	VALUE;		/* For symbol values */
+
+#define ARCH OA_BYTE
+#define ARCH_FLAGS 0
+#define ARCH_CPUFLAGS 0
+
+/* We generate intentionally wrapping 16bit maths for relocations */
+#define TARGET_RELOC_OVERFLOW_OK
+
+/*
+ * Types. These are used
+ * in both symbols and in address
+ * descriptions. Observe the way the
+ * symbol flags hide in the register
+ * field of the address.
+ */
+#define	TMREG	0x007F			/* Register code */
+#define	TMMDF	0x0001			/* Multidef */
+#define	TMASG	0x0002			/* Defined by "=" */
+#define	TMMODE	0xFF00			/* Mode */
+#define	TMINDIR	0x8000			/* Indirect flag in mode */
+#define TPUBLIC	0x0080			/* Exported symbol */
+
+#define	TNEW	0x0000			/* Virgin */
+#define	TUSER	0x0100			/* User name */
+#define	TBR	0x0200			/* Byte register */
+#define	TWR	0x0300			/* Word register */
+#define	TSR	0x0400			/* Special register (I, R) */
+#define	TDEFB	0x0500			/* defb */
+#define	TDEFW	0x0600			/* defw */
+#define	TDEFS	0x0700			/* defs */
+#define	TDEFM	0x0800			/* defm */
+#define	TORG	0x0900			/* org */
+#define	TEQU	0x0A00			/* equ */
+#define	TCOND	0x0B00			/* conditional */
+#define	TENDC	0x0C00			/* end conditional */
+#define TSEGMENT 0x0D00			/* segments by number */
+#define TEXPORT 0x0E00			/* symbol export */
+#define	TSETCPU	0x0F00			/* setcpu */
+#define	TIMPL	0x1000			/* implicit */
+#define	TBYTE	0x1100			/* data byte */
+#define	TWORD	0x1200			/* data word */
+#define	TLONG	0x1300			/* data long */
+
+/*
+ *	Error message numbers: FIXME - sort general first
+ */
+
+#define BRACKET_EXPECTED 1
+#define MISSING_COMMA	2
+#define SQUARE_EXPECTED 3
+#define PERCENT_EXPECTED 4
+#define UNEXPECTED_CHR	10
+#define PHASE_ERROR	11
+#define MULTIPLE_DEFS	12
+#define SYNTAX_ERROR	13
+#define MUST_BE_ABSOLUTE	14
+#define MISSING_DELIMITER 15
+#define INVALID_CONST	16
+#define ADDR_REQUIRED	17
+#define INVALID_ID	18
+#define DIVIDE_BY_ZERO	19
+#define CONSTANT_RANGE  20
+#define DATA_IN_BSS	21
+#define SEGMENT_OVERFLOW 22
+#define DATA_IN_ZP	23
+
 #else
 #error "Unknown target"
 #endif

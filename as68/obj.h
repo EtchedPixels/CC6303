@@ -30,6 +30,7 @@ struct objhdr
 #define OA_INS8060	9
 #define OA_INS8070	10
 #define OA_WARREX	11
+#define OA_BYTE		12	/* Bytecode */
     uint8_t o_flags;
 #define OF_BIGENDIAN	1
 #define OF_WORDMACHINE	2	/* 16bit word addressed */
@@ -100,6 +101,22 @@ struct objhdr
 #define REL_HIGH	(REL_SPECIAL| (3 << 4))	/* 30 */
 /* Indicate a change in address for ABS areas */
 #define REL_ORG		(REL_SPECIAL| (4 << 4))	/* 40 */
+/* Relocation modifier block. Not yet implemented. Needed
+   for things like B pointers and page addressing (eg 1802 branches) */
+#define REL_MOD		(REL_SPECIAL| (5 << 4)) /* 50 */
+/* Followed by
+   7: highbit (set if mask is high bits used)
+   6: error if cannot resolve
+   5-0: mask number of bits 0-63 - 0 no mask
+
+   byte 2 (bits 5-3 0 for now)
+   7: scale direction
+   6: error if cannot resolve
+   2-0: scale (1,2,4,8)
+ */
+#define RELMOD_RELH	0x80
+#define RELMOD_RELERR	0x40
+#define RELMOD_RELBITS	0x3F
 
 /* symbols and debug are in the format 
     uint8_t flags
