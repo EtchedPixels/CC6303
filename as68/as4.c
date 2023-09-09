@@ -202,7 +202,7 @@ static void outreloc(ADDR *a, int bytes)
 			outab2(a->a_value >> 8);
 		} else if (a->a_flags & A_LOW) {
 			if (bytes == 1)
-				outabyte(a->a_value & 0xFF);
+				outab2(a->a_value & 0xFF);
 			else
 				outab2(a->a_value & 0xFF);
 		} else {
