@@ -636,6 +636,7 @@ loop:
 		getaddr(&a1);
 		constify(&a1);
 		istuser(&a1);
+		outab(opcode);
 		outraw(&a1);
 		break;
 	case TSTZ:
