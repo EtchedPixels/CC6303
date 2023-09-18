@@ -669,7 +669,7 @@ loop:
 		getaddr(&a1);
 		switch(a1.a_type & TMADDR) {
 		case 0:
-			if (a1.a_type & TMINDIR)
+			if (!(a1.a_type & TMINDIR))
 				qerr(BADMODE);
 			outab(opcode >> 8);
 			outraw(&a1);
