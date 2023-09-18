@@ -198,7 +198,7 @@ uint8_t class2_mask(uint8_t opcode, uint16_t type, uint8_t mode)
 				r = 3;
 			else {
 				r = 0;
-				if (opcode != 0xA2)
+				if (opcode != 0xA2 && opcode != 0xE0)
 					qerr(BADMODE);
 			}
 			break;
