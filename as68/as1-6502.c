@@ -701,7 +701,7 @@ loop:
 	case TPEI:
 		require_cpu(CPU_65C816);
 		getaddr(&a1);
-		if ((a1.a_type & TMADDR) != TZP)
+		if ((a1.a_type & TMADDR) != TZP_IND)
 			qerr(BADMODE);
 		outab(opcode);
 		outrab(&a1);
