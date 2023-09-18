@@ -189,7 +189,7 @@ void syminit(void)
 }
 
 char *etext[] = {
-	"unexpected character",
+	"unexpected character",		/* 10 */
 	"phase error",
 	"multiple definitions",
 	"syntax error",
@@ -199,7 +199,7 @@ char *etext[] = {
 	"Bcc out of range",
 	"condition required",
 	"invalid register for operation",
-	"address required",
+	"address required",		/* 20 */
 	"invalid id",
 	"bad addressing mode",
 	"divide by 0",
@@ -207,6 +207,7 @@ char *etext[] = {
 	"data in BSS",
 	"segment overflow",
 	"segment conflict",
+	"data in zero page",
 	"out of range",
 	"unsupported by this cpu",
 	"too many resizable branches"

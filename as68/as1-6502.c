@@ -128,14 +128,19 @@ void getaddr(ADDR *ap)
 		if (getnb() != ')')
 			qerr(BRACKET_EXPECTED);
 		/* For 65C02 we need to add the commaless mode */
-		comma();
-		expr1(&tmp, LOPRI, 0);
-		if ((reg = requirexy(&tmp)) == 0)
-			aerr(INVALID_REG);
-		if (reg == X)
-			ap->a_type |= TZPX_IND;
-		else
-			ap->a_type |= TZPY_IND;
+		c = getnb();
+		if (c  == ',') {
+			expr1(&tmp, LOPRI, 0);
+			if ((reg = requirexy(&tmp)) == 0)
+				aerr(INVALID_REG);
+			if (reg == X)
+				ap->a_type |= TZPX_IND;
+			else
+				ap->a_type |= TZPY_IND;
+			return;
+		}
+		unget(c);
+		ap->a_type = TZP_IND;
 		return;
 	}
 	unget(c);
