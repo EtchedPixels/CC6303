@@ -513,7 +513,7 @@ loop:
 			case 0:	/* #imm or abs */
 				if (a1.a_type & TMINDIR) {
 					/* Absolute */
-					reg = 0x1C;
+					reg = 0x0C;
 					size = 2;
 				} else {
 					/* Immediate */
