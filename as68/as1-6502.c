@@ -657,7 +657,7 @@ loop:
 			outrab(&a1);
 			break;
 		case 0:
-			if (a1.a_type & TMINDIR)
+			if (!(a1.a_type & TMINDIR))
 				qerr(BADMODE);
 			outab(0x9C);
 			outraw(&a1);
