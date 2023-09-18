@@ -135,7 +135,7 @@ SYM	sym[] = {
         /* 65C816 - 16bit modes, rep/sep and direct page
            adds 24bit addressing and indexing */
         {	0,	"brl",		TREL16,		0x82	},
-        {	0,	"cop",		TIMPLC,		0x02	},
+        {	0,	"cop",		TBRK,		0x02	},
         {	0,	"jml",		TJML,		0x5C	},
         {	0,	"jsl",		TLONG,		0x22	},
         {	0,	"mvn",		TMVN,		0x54	},
