@@ -61,7 +61,7 @@ SYM	sym[] = {
 	{	0,	"dob",		TIO,		0x6400	},
 	{	0,	"dic",		TIO,		0x6500	},
 	{	0,	"doc",		TIO,		0x6600	},
-	{	0,	"skip",		TDEV,		0x6700	},
+	{	0,	"skp",		TDEV,		0x6700	},
 	
 	
 	/* Then the post NOVA 1 operations that are less elegant being
