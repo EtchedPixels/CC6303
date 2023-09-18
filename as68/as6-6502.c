@@ -163,6 +163,7 @@ SYM	sym[] = {
         {	0,	"wait",		TIMPL16,	0xCB	},
         {	0,	"wdm",		TIMPL16,	0x42	},
         {	0,	"xba",		TIMPL16,	0xEB	},
+        {	0,	"swa",		TIMPL16,	0xEB	},
         {	0,	"xce",		TIMPL16,	0xFB	}
 };
 

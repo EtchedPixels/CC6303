@@ -146,6 +146,7 @@ void getaddr(ADDR *ap)
 	unget(c);
 	
 	expr1(ap, LOPRI, 1);
+	
 	c = getnb();
 	
 	/* foo,[x|y] */
@@ -196,11 +197,8 @@ uint8_t class2_mask(uint8_t opcode, uint16_t type, uint8_t mode)
 		case 0:
 			if (type & TMINDIR)
 				r = 3;
-			else {
+			else
 				r = 0;
-				if (opcode != 0xA2 && opcode != 0xE0 && opcode != 0xC0)
-					qerr(BADMODE);
-			}
 			break;
 		case TZP:
 			r = 1;
@@ -420,15 +418,42 @@ loop:
 			getaddr(&a1);
 			if (getnb() != ')')
 				qerr(BRACKET_EXPECTED);
+			if ((a1.a_type & TMADDR) == TABSX) {
+				require_cpu(CPU_65C02);
+				outab(0x7C);
+				outraw(&a1);
+				break;
+			}
+			if (a1.a_type != TZP && a1.a_type != (TUSER|TMINDIR))
+				aerr(BADMODE);
 			outab(0x60);
 			outraw(&a1);
 			break;
 		}
-		/* If not fall through */
-	case TJSR:
+		unget(c);
 		getaddr(&a1);
-		constify(&a1);
-		istuser(&a1);
+		if (a1.a_type != (TUSER|TMINDIR) && a1.a_type != TZP)
+			aerr(BADMODE);
+		outab(opcode);
+		outraw(&a1);
+		break;
+	case TJSR:
+		/* JSR has absolute indexed indirect as a special case */
+		c = getnb();
+		if (c == '(') {
+			getaddr(&a1);
+			if (getnb() != ')')
+				qerr(BRACKET_EXPECTED);
+			if ((a1.a_type & TMADDR) != TABSX)
+				aerr(BADMODE);
+			outab(0xFC);
+			outraw(&a1);
+			break;
+		}
+		unget(c);
+		getaddr(&a1);
+		if (a1.a_type != (TUSER|TMINDIR) && a1.a_type != TZP)
+			aerr(BADMODE);
 		outab(opcode);
 		outraw(&a1);
 		break;
@@ -453,16 +478,14 @@ loop:
 		break;
 
 	case TCLASS0:
+		/* 0x80 ldy 0xA0 sty 0xC0 cpy 0xE0 cpx */
 		getaddr(&a1);
 		reg = class2_mask(opcode, a1.a_type, 0);
+		/*  No accumulator */
 		if (reg == 2 || reg == 4 || reg == 6)
 			aerr(BADMODE);
-		/* Only a subset of these exist */
-		if (reg == 7 && opcode != 0xB0)
-			aerr(BADMODE);
-		else if (reg > 3 && opcode != 0x90)
-			aerr(BADMODE);
-		else if (reg == 7 && opcode < 0xA0)
+		/* No store immediate */
+		if (reg == 0 && opcode == 0x80)
 			aerr(BADMODE);
 		outab(opcode | reg << 2);
 		if (reg == 3 || reg == 7 || (reg == 0 && idx_size == 2))
@@ -594,6 +617,11 @@ loop:
 	case TCLASS2:
 		getaddr(&a1);
 		reg = class2_mask(opcode, a1.a_type, 0);
+		if (reg == 0)
+			aerr(BADMODE);
+		/* No store immediate */
+		if (reg == 3 && opcode == 0xA0)
+			aerr(BADMODE);
 		outab(opcode | (reg << 2));
 		if (reg == 0 && idx_size == 2)
 			outraw(&a1);
@@ -611,10 +639,11 @@ loop:
 			break;
 		}
 		reg = class2_mask(opcode, a1.a_type, 0);
+		/* No immediates */
+		if (reg == 0)
+			aerr(BADMODE);
 		outab((opcode  & 0xFF)| (reg << 2));
-		if (reg == 0 && idx_size == 2)
-			outraw(&a1);
-		else if (reg < 2)
+		if (reg < 2)
 			outrab(&a1);
 		else if (reg == 3 || reg == 7)
 			outraw(&a1);
@@ -624,9 +653,12 @@ loop:
 		getaddr(&a1);
 		reg = class2_mask(opcode, a1.a_type, 1);
 		outab(opcode | (reg << 2));
+		/* No stor eimmediate */
+		if (reg == 0 && opcode == 0x82)
+			aerr(BADMODE);
 		if (reg == 0 && idx_size == 2)
 			outraw(&a1);
-		else if (reg > 2)
+		else if (reg < 2)
 			outrab(&a1);
 		else if (reg == 3 || reg == 7)
 			outraw(&a1);
