@@ -411,6 +411,7 @@ loop:
 		disp = a1.a_value-dot[segment]-3;
 		outab(opcode);
 		outab(disp);
+		outab(disp >> 8);
 		break;
 	case TJMP:
 		/* jmp has the weird unique (xxxx) indirect */
