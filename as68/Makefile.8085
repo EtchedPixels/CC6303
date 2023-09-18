@@ -29,4 +29,4 @@ clean:
 	rm -f nm85 ld85 as85 osize85 dumprelocs85
 
 install:
-	cp nm85 ld85 as85 osize85 dumprelocs85 /opt/as85/bin/
+	cp nm85 ld85 as85 osize85 dumprelocs85 /opt/cc85/bin/
