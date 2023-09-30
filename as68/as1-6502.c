@@ -65,29 +65,40 @@ static void constify(ADDR *ap)
 		ap->a_type = TUSER;
 }
 
-static void constant_to_zp(ADDR *ap)
+static void make_zp(ADDR *ap)
 {
-	/* FIXME: if we meet 35,x how do we know whether its ZP or
-	   not. This matters on non 6502 variants. We can't just guess
-	   either if the value comes from a symbol because we might
-	   learn the value on phase 1 and then we'd change size and
-	   get a phase error.
-
-	   Worse yet there are cases where abs,y is valid but not zp
-	   (class 1 instructions), and where zp,y is but not abs,y (stx) */
-
-	/* If it's not a constant then don't play with it, but rely upon
-	   the segment of the symbol */
-	if (ap->a_segment != ABSOLUTE || ap->a_sym)
+	/* TODO: deal with non zero DP via some kind of option. Also
+	   we should check syms we know are not ZP and error them. Right now
+	   this will catch it anyway but for the wrong reasons */
+	if (ap->a_value > 255) {
+		qerr(RANGE);
 		return;
-	if (ap->a_value > 255)
-		return;
-	/* We will need to do something saner on 65C816 and some of the
-	   other weird variants */
+	}
 	ap->a_segment = ZP;
 	return;
 }
 
+/* Get an expression that is implicitly zero page */
+static void expr1_zp(ADDR *ap)
+{
+	unsigned c = getnb();
+	if (c != '@')
+		unget(c);
+	expr1(ap, LOPRI, 0);
+	make_zp(ap);
+}
+	
+/* Get an expression that might be zero page */
+static void expr1_maybe_zp(ADDR *ap)
+{
+	unsigned c = getnb();
+	if (c != '@')
+		unget(c);
+	expr1(ap, LOPRI, 0);
+	if (c == '@')
+		make_zp(ap);
+}
+	
 /*
  * Read in an address
  * descriptor, and fill in
@@ -118,14 +129,14 @@ void getaddr(ADDR *ap)
 			ap->a_flags |= A_HIGH;
 		else
 			unget(c);
-		expr1(ap, LOPRI, 0);
+		expr1_maybe_zp(ap);
 		istuser(ap);
 		return;
 	}
 	/* (foo),y and (foo,x) */
 	/* For 65C02 also (foo) */
 	if (c == '(') {
-		expr1(ap, LOPRI, 0);
+		expr1_zp(ap);
 		c = getnb();
 		/* (xxx) -- check for ,y */
 		if (c == ')') {
@@ -160,16 +171,13 @@ void getaddr(ADDR *ap)
 		aerr(BRACKET_EXPECTED);
 	}
 	unget(c);
-	
-	expr1(ap, LOPRI, 1);
+
+	expr1_maybe_zp(ap);
 	
 	c = getnb();
 	
 	/* foo,[x|y] */
 	if (c == ',') {
-		expr1(&tmp, LOPRI, 0);
-		if ((reg = requirexy(&tmp)) == 0)
-			aerr(INVALID_REG);
 		/* FIXME: if we meet 35,x how do we know whether its ZP or
 		   not. This matters on non 6502 variants. We can't just guess
 		   either if the value comes from a symbol because we might
@@ -179,7 +187,10 @@ void getaddr(ADDR *ap)
 		   Worse yet there are cases where abs,y is valid but not zp
 		   (class 1 instructions), and where zp,y is but not abs,y (stx) */
 
-		constant_to_zp(ap);
+		/* FIXME: in 16bit mode these are not ZP */
+		expr1(&tmp, LOPRI, 0);
+		if ((reg = requirexy(&tmp)) == 0)
+			aerr(INVALID_REG);
 		if (reg == X) {
 			if (ap->a_segment == ZP)
 				ap->a_type |= TZPX;
@@ -197,7 +208,6 @@ void getaddr(ADDR *ap)
 	if ((ap->a_type & TMMODE) == TBR && (ap->a_type & TMREG) == A)
 		ap->a_type = TACCUM;
 	else { /* absolute or zp */
-		constant_to_zp(ap);
 		if (ap->a_segment == ZP)
 			ap->a_type = TZP;
 		else
