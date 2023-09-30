@@ -122,26 +122,42 @@ void getaddr(ADDR *ap)
 		istuser(ap);
 		return;
 	}
-	/* (foo),[x|y] */
+	/* (foo),y and (foo,x) */
+	/* For 65C02 also (foo) */
 	if (c == '(') {
 		expr1(ap, LOPRI, 0);
-		if (getnb() != ')')
-			qerr(BRACKET_EXPECTED);
-		/* For 65C02 we need to add the commaless mode */
 		c = getnb();
-		if (c  == ',') {
-			expr1(&tmp, LOPRI, 0);
-			if ((reg = requirexy(&tmp)) == 0)
-				aerr(INVALID_REG);
-			if (reg == X)
-				ap->a_type |= TZPX_IND;
-			else
-				ap->a_type |= TZPY_IND;
+		/* (xxx) -- check for ,y */
+		if (c == ')') {
+			c = getnb();
+			if (c  == ',') {
+				expr1(&tmp, LOPRI, 0);
+				if ((reg = requirexy(&tmp)) == 0)
+					aerr(INVALID_REG);
+				if (reg == Y)
+					ap->a_type |= TZPY_IND;
+				else
+					aerr(INVALID_REG);
+				return;
+			}
+			unget(c);
+			ap->a_type = TZP_IND;
 			return;
 		}
-		unget(c);
-		ap->a_type = TZP_IND;
-		return;
+		/* (xxx,) check for X */
+		if (c == ',') {
+			expr1(&tmp, LOPRI, 0);
+			if (getnb() != ')')
+				aerr(BRACKET_EXPECTED);
+			if ((reg = requirexy(&tmp)) == 0)
+				aerr(INVALID_REG);
+			if (reg == Y)
+				aerr(INVALID_REG);
+			else
+				ap->a_type |= TZPX_IND;
+			return;
+		}
+		aerr(BRACKET_EXPECTED);
 	}
 	unget(c);
 	
