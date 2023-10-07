@@ -245,16 +245,17 @@ uint8_t class2_mask(uint8_t opcode, uint16_t type, uint8_t mode)
 			r = 5;
 			break;
 		case TABSX:
-			if (opcode != 0xB2)
+			if (mode == 0)
 				r = 7;
 			else
 				qerr(BADMODE);
 			break;
 		case TABSY:
-			if (opcode == 0xB2)
+			if (mode == 1)
 				r = 7;
 			else
 				qerr(BADMODE);
+			break;
 		default:
 			aerr(BADMODE);
 			break;
@@ -679,7 +680,7 @@ loop:
 		getaddr(&a1);
 		reg = class2_mask(opcode, a1.a_type, 1);
 		outab(opcode | (reg << 2));
-		/* No stor eimmediate */
+		/* No store immediate */
 		if (reg == 0 && opcode == 0x82)
 			aerr(BADMODE);
 		if (reg == 0 && idx_size == 2)
