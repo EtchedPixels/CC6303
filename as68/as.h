@@ -264,6 +264,9 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 
 #elif TARGET_6502
 
+/* We generate intentionally wrapping 16bit maths for relocations */
+#define TARGET_RELOC_OVERFLOW_OK
+
 typedef	uint16_t	VALUE;		/* For symbol values */
 
 #define ARCH OA_6502

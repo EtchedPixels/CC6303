@@ -48,6 +48,7 @@ struct objhdr
 #define OA_6502_65C816	16	/* 65C816 and relatives */
 #define OA_6502_ZPAT0	32	/* Binary Assumes ZP is at 0 */
 #define OA_6502_65CE02	64	/* Does anyone really care ? */
+#define OA_6502_65C816_16 128	/* 16bit mode binary */
 
 #define OA_DGNOVA_MUL	1
 #define OA_DGNOVA_FPU	2
