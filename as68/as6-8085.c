@@ -147,7 +147,7 @@ SYM	sym[] = {
 	{	0,	"jm",		TI16,		0x00FA  },
 	{	0,	"ei",		TIMPL,		0x00FB  },
 	{	0,	"cm",		TI16,		0x00FC  },
-	{	0,	"jk",		TI16,		0x00FD  },
+	{	0,	"jk",		TI16_85,	0x00FD  },
 	{	0,	"cpi",		TI8,		0x00FE  },
 };
 
