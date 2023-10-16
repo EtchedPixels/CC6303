@@ -3,7 +3,7 @@
  * Assemble one line of input.
  * Knows all the dirt.
  *
- * TODO: add jr/jp expansion
+ * FIXME: why is ld (ix) producing broken relocs while (ix + 0) is ok ??
  */
 #include	"as.h"
 
@@ -369,7 +369,7 @@ loop:
 				aerr(BRA_RANGE);
 			/* Write the relative form */
 			outab(opcode);
-			outab(disp);
+			outab(disp & 0xFF);
 		}
 		break;
 

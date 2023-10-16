@@ -47,7 +47,7 @@ static void chksegment(ADDR *left, ADDR *right, int op)
 {
 	uint16_t m = (left->a_type & TMMODE);
 	if (m == TBR || m == TWR) {
-		if (op != '+')
+		if (op != '+' && op != '-')
 			aerr(MUST_BE_ABSOLUTE);
 		if ((right->a_type & TMMODE) == TUSER) {
 			left->a_segment = right->a_segment;

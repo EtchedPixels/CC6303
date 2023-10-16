@@ -207,7 +207,7 @@ static void outreloc(ADDR *a, int bytes)
 				outab2(a->a_value & 0xFF);
 		} else {
 			if (bytes == 1)
-				outabchk2(a->a_value);
+				outab(a->a_value);
 			else {
 #ifdef TARGET_BIGENDIAN
 				outab2(a->a_value >> 8);
