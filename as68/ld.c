@@ -44,10 +44,11 @@
 #include <getopt.h>
 #include <ctype.h>
 #include <sys/stat.h>
-#include <ar.h>
 
 #include "obj.h"
 #include "ld.h"
+#include "ar.h"				/* Pick up our ar.h just in case the
+					   compiling OS has a weird ar.h */
 
 static char *arg0;			/* Command name */
 static struct object *processing;	/* Object being processed */
