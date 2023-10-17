@@ -80,6 +80,7 @@ static uint16_t dot;			/* Working address as we link */
 
 static uint8_t progress;		/* Did we make forward progress ?
 					   Used while library linking */
+static const char *segmentorder = "CLDBX";	/* Segment default order */
 
 /*
  *	Report an error, and if possible give the object or library that
@@ -371,7 +372,7 @@ static void print_symbol(struct symbol *s, FILE *fp)
 	if (s->type & S_UNKNOWN)
 		c = 'U';
 	else {
-		c = "acdbzxs7"[s->type & S_SEGMENT];
+		c = "ACDBZXSLsb"[s->type & S_SEGMENT];
 		if (s->type & S_PUBLIC)
 			c = toupper(c);
 	}
@@ -524,6 +525,30 @@ static void append_segment(int a, int b)
 		error("image too large");
 }
 
+static char segnames[] = "CDBZXSLsb";
+
+static void order_segments(void)
+{
+	const char *s = segmentorder;
+	unsigned last = 0xFF;
+	unsigned n;
+
+	while(*s) {
+		char *p = strchr(segnames, *s);
+		if (p == NULL) {
+			fprintf(stderr, "Unknown segment '%c'.\n", *s);
+			error("invalid segment order");
+		}
+		n = p - segnames + 1;
+		if (!baseset[n]) {
+			if (last != 0xFF)
+				append_segment(n, last);
+		}
+		last = n;
+		s++;
+	}
+}
+
 /*
  *	Once all the objects are loaded this function walks the list and
  *	assigns each object file a base address for each segment. We do
@@ -546,7 +571,7 @@ static void set_segment_bases(void)
 		for (i = 1; i < OSEG; i++) {
 			if (verbose)
 				printf("\t%c : %04X\n",
-					"ACDBZXc?"[i], o->oh.o_size[i]);
+					"ACDBZSXSLsb?"[i], o->oh.o_size[i]);
 			size[i] += o->oh.o_size[i];
 			if (size[i] < o->oh.o_size[i])
 				error("segment too large");
@@ -560,26 +585,13 @@ static void set_segment_bases(void)
 	/* We now know where to put the binary */
 	if (ldmode == LD_RELOC) {
 		/* Creating a binary - put the segments together */
-		if (split_id && !baseset[2])
+		if (split_id && !baseset[2]) {
 			base[2] = 0;
-		else {
-			append_segment(7, 1);
-			append_segment(2, 7);
-			append_segment(3, 2);
+			baseset[2] = 1;
 		}
-	} else {
-		/* FIXME: some kind of link scripts one day ? */
-		/* Where to put stuff. Try and be helpful. This is a shade
-		   Fuzix oriented */
-		/* Default literals then data after code */
-		append_segment(7, 1);
-		append_segment(2, 7);
-		append_segment(3, 2);
-		/* ZP we leave alone */
-		/* Discard after BSS */
-		append_segment(5, 3);
-		/* Common we can't really do much to guess a layout */
 	}
+	order_segments();
+
 	if (ldmode != LD_RFLAG) {
 		/* ZP if any is assumed to be set on input */
 		/* FIXME: check the literals fit .. make this a more sensible
@@ -597,6 +609,8 @@ static void set_segment_bases(void)
 		insert_internal_symbol("__zp", ZP, 0);
 		insert_internal_symbol("__discard", DISCARD, 0);
 		insert_internal_symbol("__common", COMMON, 0);
+		insert_internal_symbol("__buffers", BUFFERS, 0);
+		insert_internal_symbol("__commondata", COMMONDATA, 0);
 		insert_internal_symbol("__code_size", ABSOLUTE, size[CODE]);
 		insert_internal_symbol("__data_size", ABSOLUTE, size[DATA]);
 		insert_internal_symbol("__bss_size", ABSOLUTE, size[BSS]);
@@ -604,6 +618,8 @@ static void set_segment_bases(void)
 		insert_internal_symbol("__zp_size", ABSOLUTE, size[ZP]);
 		insert_internal_symbol("__discard_size", ABSOLUTE, size[DISCARD]);
 		insert_internal_symbol("__common_size", ABSOLUTE, size[COMMON]);
+		insert_internal_symbol("__buffers_size", ABSOLUTE, size[BUFFERS]);
+		insert_internal_symbol("__commondata_size", ABSOLUTE, size[COMMONDATA]);
 	}
 	/* Now set the base of each object appropriately */
 	memcpy(&pos, &base, sizeof(pos));
@@ -1090,7 +1106,7 @@ int main(int argc, char *argv[])
 
 	arg0 = argv[0];
 
-	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:A:B:C:D:S:X:Z:")) != -1) {
+	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:f:A:B:C:D:S:X:Z:")) != -1) {
 		switch (opt) {
 		case 'r':
 			ldmode = LD_RFLAG;
@@ -1120,6 +1136,9 @@ int main(int argc, char *argv[])
 		case 'i':
 			split_id = 1;
 			break;
+		case 'f':
+			segmentorder = optarg;
+			break;
 		case 'A':
 			align = xstrtoul(optarg);
 			if (align == 0)
@@ -1137,9 +1156,9 @@ int main(int argc, char *argv[])
 			base[2] = xstrtoul(optarg);
 			baseset[2] = 1;
 			break;
-		case 'L':
-			base[4] = xstrtoul(optarg);
-			baseset[4] = 1;
+		case 'L':	/* LITERAL */
+			base[7] = xstrtoul(optarg);
+			baseset[7] = 1;
 			break;
 		case 'S':	/* Shared/Common */
 			base[6] = xstrtoul(optarg);

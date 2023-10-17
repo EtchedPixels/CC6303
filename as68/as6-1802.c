@@ -31,6 +31,8 @@ SYM	sym[] = {
 	{	0,	".zp",		TSEGMENT,	ZP	},
 	{	0,	".discard",	TSEGMENT,	DISCARD	},
 	{	0,	".common",	TSEGMENT,	COMMON	},
+	{	0,	".commondata",	TSEGMENT,	COMMONDATA },
+	{	0,	".buffers",	TSEGMENT,	BUFFERS	},
 	{	0,	".literal",	TSEGMENT,	LITERAL	},
 	{	0,	"abs",		TSEGMENT,	ABSOLUTE},
 	{	0,	"code",		TSEGMENT,	CODE	},
@@ -40,6 +42,8 @@ SYM	sym[] = {
 	{	0,	"discard",	TSEGMENT,	DISCARD	},
 	{	0,	"common",	TSEGMENT,	COMMON	},
 	{	0,	"literal",	TSEGMENT,	LITERAL	},
+	{	0,	"commondata",	TSEGMENT,	COMMONDATA },
+	{	0,	"buffers",	TSEGMENT,	BUFFERS	},
 	
 	{	0,	"idl",		TIMPL,		0x00	},
 	{	0,	"ldn",		TREGNZ,		0x00	},
