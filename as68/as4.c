@@ -298,10 +298,18 @@ void outab2(uint8_t b)
 	list_addbyte(b);
 }
 
-void outabchk2(uint16_t b)
+void outabchk2(ADDR *a)
 {
-	if (b > 255)
-		err('o', CONSTANT_RANGE);
+	uint8_t b;
+	if (a->a_flags & A_LOW)
+		b = a->a_value;
+	else if (a->a_flags & A_HIGH)
+		b = a->a_value >> 8;
+	else  {
+		if (a->a_value > 255)
+			err('o', CONSTANT_RANGE);
+		b = a->a_value;
+	}
 	outab(b);
 }
 
