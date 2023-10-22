@@ -1118,6 +1118,8 @@ static void write_binary(FILE * op, FILE *mp)
 	if (ldmode != LD_FUZIX)
 		write_stream(op, ABSOLUTE);
 	write_stream(op, CODE);
+	if (ldmode == LD_FUZIX)
+		write_stream(op, LITERAL);
 	hdr.o_segbase[1] = ftell(op);
 	write_stream(op, DATA);
 	/* Absolute images may contain things other than code/data/bss */
