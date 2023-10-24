@@ -83,6 +83,8 @@ static unsigned progress;		/* Did we make forward progress ?
 					   Used while library linking */
 static const char *segmentorder = "CLDBX";	/* Segment default order */
 
+static FILE *relocf;
+
 /*
  *	Report an error, and if possible give the object or library that
  *	we were processing.
@@ -867,14 +869,25 @@ static uint16_t target_get(struct object *o, uint16_t size)
 	}
 }
 
-static void record_reloc(struct object *o, unsigned high, unsigned size, uint16_t addr)
+static void record_reloc(struct object *o, unsigned high, unsigned size, unsigned seg, uint16_t addr)
 {
+	if (!relocf)
+		return;
+
 	if (size == 2 && !(o->oh->o_flags & OF_BIGENDIAN))
 		addr++;
+	if (seg == ZP) {
+		fputc(0, relocf);
+		fputc(0, relocf);
+		fputc((addr & 0xFF), relocf);
+		return;
+	}
 	if (size == 1 && !high)
 		return;
 	/* Record the address of the high byte */
-	/* printf("%d, ", addr); */
+	fputc(1, relocf);
+	fputc((addr >> 8), relocf);
+	fputc(addr, relocf);
 }
 
 /*
@@ -893,6 +906,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op)
 	uint16_t r;
 	struct symbol *s;
 	uint8_t tmp;
+	uint8_t seg;
 
 	processing = o;
 
@@ -956,7 +970,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op)
 
 		/* Simple relocation - adjust versus base of a segment of this object */
 		if (code & REL_SIMPLE) {
-			uint8_t seg = code & S_SEGMENT;
+			seg = code & S_SEGMENT;
 			/* Check entry is valid */
 			if (seg == ABSOLUTE || seg >= OSEG || size > 2) {
 				fprintf(stderr, "%s invalid reloc %d %d\n",
@@ -991,7 +1005,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op)
 			}
 			target_put(o, r, size, op);
 			if (ldmode == LD_FUZIX)
-				record_reloc(o, high, size, dot);
+				record_reloc(o, high, size, seg, dot);
 			dot += size;
 			continue;
 		}
@@ -1071,7 +1085,7 @@ static void relocate_stream(struct object *o, int segment, FILE * op)
 					}
 				}
 				if (optype == REL_SYMBOL && ldmode == LD_FUZIX)
-					record_reloc(o, high, size, dot);
+					record_reloc(o, high, size, (s->type & S_SEGMENT), dot);
 				target_put(o, r, size, op);
 				dot += size;
 				break;
@@ -1280,7 +1294,7 @@ int main(int argc, char *argv[])
 
 	arg0 = argv[0];
 
-	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:f:A:B:C:D:S:X:Z:")) != -1) {
+	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:f:R:A:B:C:D:S:X:Z:")) != -1) {
 		switch (opt) {
 		case 'r':
 			ldmode = LD_RFLAG;
@@ -1312,6 +1326,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'f':
 			segmentorder = optarg;
+			break;
+		case 'R':
+			relocf = xfopen(optarg, "w");
 			break;
 		case 'A':
 			align = xstrtoul(optarg);
@@ -1368,12 +1385,15 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	if (ldmode == LD_FUZIX) {
-		/* Fuzix binaries are for now 0x100 based */
-		/* FIXME: this is really arch dependent so we ought to
-		   have a table (and eventually do relocatables anyway) */
+		/* Relocatable Fuzix binaries live at logical address 0 */
 		baseset[CODE] = 1;
-		base[CODE] = 0x0100;
-		base[ZP] = 0x28;	/* Skip I/O space */
+		if (relocf) {
+			base[CODE] = 0x0000;
+			base[ZP] = 0x00;	/* Will be relocated past I/O if needed */
+		} else {
+			base[CODE] = 0x0100;
+			base[ZP] = 0x00;
+		}
 	}
 	if (ldmode == LD_FUZIX || ldmode == LD_ABSOLUTE)
 		rawstream = 1;

@@ -1,7 +1,7 @@
 #
 #	Build z80 version of the tools
 #
-all: asz80 ldz80 nmz80 osizez80 dumprelocsz80
+all: asz80 ldz80 nmz80 osizez80 dumprelocsz80 relocz80
 
 HDR = as.h ld.h obj.h
 
@@ -18,6 +18,9 @@ ldz80: $(HDR) ld.o
 nmz80: $(HDR) nm.o
 	cc -o nmz80 nm.o
 
+relocz80: $(HDR) reloc.o
+	cc -o relocz80 reloc.o
+
 osizez80: $(HDR) osize.o
 	cc -o osizez80 osize.o
 
@@ -29,4 +32,4 @@ clean:
 	rm -f nmz80 ldz80 asz80 osizez80 dumprelocsz80
 
 install: all
-	cp nmz80 ldz80 asz80 osizez80 dumprelocsz80 /opt/ccz80/bin/
+	cp nmz80 ldz80 asz80 osizez80 dumprelocsz80 relocz80 /opt/ccz80/bin/
