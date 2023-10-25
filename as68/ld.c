@@ -725,7 +725,7 @@ static void set_segment_bases(void)
 		for (i = 1; i < OSEG; i++) {
 			if (verbose)
 				printf("\t%c : %04X\n",
-					"ACDBZSXSLsb?"[i], o->oh->o_size[i]);
+					"ACDBZXSLsb??????"[i], o->oh->o_size[i]);
 			size[i] += o->oh->o_size[i];
 			if (size[i] < o->oh->o_size[i])
 				error("segment too large");
@@ -1119,8 +1119,11 @@ static void write_stream(FILE * op, int seg)
 			xfseek(op, dot - base[1]);
 		/* In absolute mode we place segments wherever they should
 		   be in the binary space */
-		else if (ldmode == LD_ABSOLUTE)
+		else if (ldmode == LD_ABSOLUTE) {
+			if (verbose)
+				printf("Writing seg %d from %x\n", seg, dot);
 			xfseek(op, dot);
+		}
 		relocate_stream(o, seg, op);
 		put_object(o);
 		io_close();
@@ -1294,7 +1297,7 @@ int main(int argc, char *argv[])
 
 	arg0 = argv[0];
 
-	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:f:R:A:B:C:D:S:X:Z:")) != -1) {
+	while ((opt = getopt(argc, argv, "rbvtsiu:o:m:f:R:A:B:C:D:S:X:Z:8:")) != -1) {
 		switch (opt) {
 		case 'r':
 			ldmode = LD_RFLAG;
@@ -1362,6 +1365,10 @@ int main(int argc, char *argv[])
 		case 'Z':	/* ZP / DP */
 			base[4] = xstrtoul(optarg);
 			baseset[4] = 1;
+			break;
+		case '8':
+			base[8] = xstrtoul(optarg);
+			baseset[8] = 1;
 			break;
 		default:
 			fprintf(stderr, "%s: name ...\n", argv[0]);
