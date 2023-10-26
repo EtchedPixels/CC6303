@@ -73,7 +73,11 @@ SYM	sym[] = {
 	{	0,	".literal",	TSEGMENT,	LITERAL	},
 	{	0,	".commondata",	TSEGMENT,	COMMONDATA },
 	{	0,	".buffers",	TSEGMENT,	BUFFERS	},
-	{	0,	".setcpu",	TSETCPU,	XXXX	},
+	{	0,	".z80"	,	TSETCPU,	CPU_Z80	},
+	{	0,	".z180"	,	TSETCPU,	CPU_Z180	},
+	{	0,	".z280"	,	TSETCPU,	CPU_Z280	},
+	{	0,	".z80n"	,	TSETCPU,	CPU_Z80N	},
+	{	0,	".ez80"	,	TSETCPU,	CPU_EZ80	},
 	{	0,	"nop",		TNOP,		0x0000	},
 	{	0,	"rlca",		TNOP,		0x0007	},
 	{	0,	"rrca",		TNOP,		0x000F	},
@@ -151,6 +155,31 @@ SYM	sym[] = {
 	{	0,	"mlt",		TMUL,		0xED4C  },
 	{	0,	"in0",		TIO180,		0xED00	},
 	{	0,	"out0",		TIO180,		0xED01	},
+	/* Z80N */
+	{	0,	"ldix",		TNOPN,		0xEDA4	},
+	{	0,	"ldws",		TNOPN,		0xEDA5	},
+	{	0,	"ldirx",	TNOPN,		0xEDB4	},
+	{	0,	"lddx",		TNOPN,		0xEDAC	},
+	{	0,	"lddrx",	TNOPN,		0xEDBC	},
+	{	0,	"ldpirx",	TNOPN,		0xEDB7	},
+	{	0,	"outinb",	TNOPN,		0xED90	},
+	{	0,	"mul",		TNOPN,		0xED30	},
+	/* ADD forms are handled in ADD */
+	{	0,	"swapnib",	TNOPN,		0xED23	},
+	{	0,	"mirror",	TNOPN,		0xED24	},
+	/* PUSH form is handled in PUSH (note immediate is backwards! */
+	{	0,	"nextreg",	TNEXT,		0xED91	},
+	{	0,	"pixelad",	TNOPN,		0xED94	},
+	{	0,	"pixeldn",	TNOPN,		0xED93	},
+	{	0,	"setae",	TNOPN,		0xED95	},
+	{	0,	"test",		TIMMED8N,	0xED27	},
+	/* Barrel shift - Z80N 2.0+ */
+	{	0,	"bsla",		TBS2,		0xED28	},
+	{	0,	"bsra",		TBS2,		0xED29	},
+	{	0,	"bsrl",		TBS2,		0xED2A	},
+	{	0,	"bsrf",		TBS2,		0xED2B	},
+	{	0,	"brlc",		TBS2,		0xED2C	},
+	/* JP (C) is handled in JP */
 	/* The joys of ld */
 	{	0,	"ld",		TLD,		XXXX    }
 };
@@ -198,7 +227,8 @@ char *etext[] = {
 	"Z180 instruction",
 	"segment conflict",
 	"unknown symbol",
-	"Too many relative branches"
+	"Too many relative branches",
+	"Z80N instruction"
 };
 
 /*

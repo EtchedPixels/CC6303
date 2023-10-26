@@ -42,6 +42,12 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define ARCH_FLAGS 0
 #define ARCH_CPUFLAGS OA_8080_Z80
 
+#define CPU_Z80		80
+#define CPU_Z180	180
+#define CPU_Z280	280
+#define CPU_Z80N	1
+#define CPU_EZ80	2
+
 /*
  * Types. These are used
  * in both symbols and in address
@@ -93,6 +99,10 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	TMUL	0x2400			/* MUL */
 #define TIO180	0x2500			/* IN0/OUT0 */
 #define TSETCPU 0x2600			/* .setcpu */
+#define TNOPN	0x2700			/* Z80N implied */
+#define TNEXT	0x2800			/* Z80N nextreg forms */
+#define TIMMED8N 0x2900			/* TIMMED8 Next only */
+#define TBS2	0x2A00			/* Barrel shifts DE,B */
 
 /*
  * Registers.
@@ -160,6 +170,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define	SEGMENT_CLASH	29
 #define UNKNOWN_SYMBOL	30
 #define TOO_MANY_JR	31
+#define REQUIRE_Z80N	32
 
 #elif TARGET_8085
 

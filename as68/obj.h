@@ -40,6 +40,8 @@ struct objhdr
 #define OA_8080_Z280	4
 #define OA_8080_R800	8
 #define OA_8080_8085	16
+#define OA_8080_Z80N	32
+#define OA_8080_EZ80	64
 
 #define OA_6502_BCD	1	/* Uses BCD instructions */
 #define OA_6502_NMOS	2	/* Uses NMOS undocumented */

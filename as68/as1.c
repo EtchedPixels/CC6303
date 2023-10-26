@@ -46,7 +46,7 @@ static unsigned int nextrel;
 
 int passbegin(int pass)
 {
-	cputype = 80;
+	cputype = CPU_Z80;
 	segment = 1;		/* Default to code */
 	if (pass == 3)
 		nextrel = 0;
@@ -73,9 +73,20 @@ static unsigned int getnextrel(void)
 static void require_z180(void)
 {
 	if (!(cpu_flags & OA_8080_Z180)) {
+		if (pass == 3)
 		cpu_flags |= OA_8080_Z180;
-		if (cputype != 180)
+		if (cputype != CPU_Z180)
 			err('1',REQUIRE_Z180);
+	}
+}
+
+static void require_z80n(void)
+{
+	if (!(cpu_flags & OA_8080_Z80N)) {
+		if (pass == 3)
+			cpu_flags |= OA_8080_Z80N;
+		if (cputype != CPU_Z80N)
+			err('1',REQUIRE_Z80N);
 	}
 }
 
@@ -310,11 +321,13 @@ loop:
 		break;
 
 	case TSETCPU:
-		getaddr(&a1);
-		istuser(&a1);
-		if (a1.a_value != 180 && a1.a_value != 80)
-			aerr(SYNTAX_ERROR);
-		cputype = a1.a_value;
+		cputype = opcode;
+		break;
+
+	case TNOPN:
+		require_z80n();
+		outab(opcode >> 8);
+		outab(opcode);
 		break;
 
 	case TNOP180:
@@ -399,6 +412,12 @@ loop:
 				break;
 			}
 		}
+		if (a1.a_type == (TMINDIR|TWR|BC) && opcode == OPJP) {
+			require_z80n();
+			outab(0xED);
+			outab(0x98);
+			break;
+		}
 		istuser(&a1);
 		outab(opcode);
 		outraw(&a1);
@@ -427,6 +446,20 @@ loop:
 			outab(opcode|(reg<<4));
 			break;
 		}
+		/* Z80N special case */
+		if (a1.a_type == TUSER) {
+			/* This is horrible as the bytes are wrong-ordered
+			   so all the relocations are a mess */
+			outab(0xED);
+			outab(0x8A);
+			/* Bit of a hack */
+			a1.a_flags &= ~A_LOW;
+			a1.a_flags |= A_HIGH;
+			outrab(&a1);
+			a1.a_flags ^= A_LOW | A_HIGH;
+			outrab(&a1);
+			break;
+		}
 		aerr(INVALID_REG);
 		break;
 
@@ -445,6 +478,16 @@ loop:
 		require_z180();
 		getaddr(&a1);
 		istuser(&a1);
+		outab(opcode >> 8);
+		outab(opcode);
+		outabchk2(&a1);
+		break;
+
+	case TIMMED8N:
+		require_z80n();
+		getaddr(&a1);
+		istuser(&a1);
+		outab(opcode >> 8);
 		outab(opcode);
 		outabchk2(&a1);
 		break;
@@ -610,6 +653,51 @@ loop:
 		getaddr(&a1);
 		comma();
 		getaddr(&a2);
+		/* Check for various extended forms first */
+		/* Z80N has add word immediate for BC DE HL but not IX IY */
+		/* Z80N has ADD A to BC,DE,HL */
+		if (opcode == OPADD && (a1.a_type == (TWR|HL) || a1.a_type == (TWR|DE) || a1.a_type == (TWR|BC))) {
+			if (a2.a_type == (TBR|A)) {
+				require_z80n();
+				outab(0xED);
+				switch(a1.a_type & TMREG) {
+				case BC:
+					outab(0x33);
+					break;
+				case DE:
+					outab(0x32);
+					break;
+				case HL:
+					outab(0x31);
+					break;
+				default:
+					/* Can't happen */
+					aerr(INVALID_REG);
+				}
+				break;
+			}
+			/* Handle add rr,imm */
+			if (a2.a_type == TUSER) {
+				require_z80n();
+				outab(0xED);
+				switch(a1.a_type & TMREG) {
+				case BC:
+					outab(0x36);
+					break;
+				case DE:
+					outab(0x35);
+					break;
+				case HL:
+					outab(0x34);
+					break;
+				default:
+					/* Can't happen */
+					aerr(INVALID_REG);
+				}
+				break;
+			}
+		}
+		/* Now check the normal Z80 operations */
 		if (a1.a_type == (TBR|A)) {
 			if (a2.a_type == TUSER) {
 				outab(opcode | OPSUBI);
@@ -673,6 +761,32 @@ loop:
 		asmld();
 		break;
 
+	case TNEXT:
+		require_z80n();
+		getaddr(&a1);
+		comma();
+		getaddr(&a2);
+		outab(0xED);
+		if (a1.a_type != TUSER)
+			aerr(SYNTAX_ERROR);
+		if (a2.a_type == (TBR|A))
+			outab(0x92);
+		else if (a2.a_type == TUSER)
+			outab(0x91);
+		else
+			aerr(INVALID_REG);
+
+		break;
+	case TBS2:
+		require_z80n();
+		getaddr(&a1);
+		comma();
+		getaddr(&a2);
+		if (a1.a_type != (TWR|DE) || a2.a_type != (TBR|B))
+			aerr(INVALID_REG);
+		outab(opcode >> 8);
+		outab(opcode);
+		break;
 	default:
 		aerr(SYNTAX_ERROR);
 	}
