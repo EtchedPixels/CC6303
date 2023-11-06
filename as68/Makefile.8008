@@ -1,0 +1,32 @@
+#
+#	Build 8008 version of the tools
+#
+all: as8008 ld8008 nm8008 osize8008 dumprelocs8008
+
+HDR = as.h ld.h obj.h
+
+AOBJ = as0.o as1-8008.o as2.o as3.o as4.o as6-8008.o
+
+CFLAGS = -DTARGET_8008 -Wall -pedantic
+
+as8008: $(HDR) $(AOBJ)
+	cc -o as8008 $(AOBJ)
+
+ld8008: $(HDR) ld.o
+	cc -o ld8008 ld.o
+
+nm8008: $(HDR) nm.o
+	cc -o nm8008 nm.o
+
+osize8008: $(HDR) osize.o
+	cc -o osize8008 osize.o
+
+dumprelocs8008: $(HDR) dumprelocs.o
+	cc -o dumprelocs8008 dumprelocs.o
+
+clean:
+	rm -f *.o *~
+	rm -f nm8008 ld8008 as8008 osize8008 dumprelocs8008
+
+install:
+	cp nm8008 ld8008 as8008 osize8008 dumprelocs8008 /opt/as8008/bin/
