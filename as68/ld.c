@@ -51,6 +51,10 @@
 #include "ar.h"				/* Pick up our ar.h just in case the
 					   compiling OS has a weird ar.h */
 
+#ifndef ENABLE_RESCAN
+#define ENABLE_REACAN	0
+#endif
+
 static char *arg0;			/* Command name */
 static struct object *processing;	/* Object being processed */
 static const char *libentry;		/* Library entry name if relevant */
@@ -1276,7 +1280,7 @@ static void add_object(const char *name, off_t off, int lib)
 			/* FIXME: if we counted unresolved symbols we might
 			   be able to exit earlier ? */
 			/* Don't rescan libs */
-			} while(0 && progress);
+			} while(ENABLE_RESCAN && progress);
 			io_close();
 			return;
 		}
