@@ -52,7 +52,7 @@
 					   compiling OS has a weird ar.h */
 
 #ifndef ENABLE_RESCAN
-#define ENABLE_REACAN	0
+#define ENABLE_RESCAN	0
 #endif
 
 static char *arg0;			/* Command name */
