@@ -435,6 +435,15 @@ loop:
 		break;
 
 	case TREL8:	/* Branch */
+		getaddr(&a1);
+		disp = a1.a_value - dot[segment] - 2;
+		outab(opcode);
+		if (disp < -128 || disp > 127)
+			aerr(BRA_RANGE);
+		outab(disp);
+		break;
+
+	case TREL8X:	/* Branch pseudo ops with automatic extension */
 		/* Algorithm:
 			Pass 0: generate worst case code. We then know things
 				that can safely be turned short because more

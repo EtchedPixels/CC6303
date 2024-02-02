@@ -172,7 +172,18 @@ SYM	sym[] = {
         {	0,	"wdm",		TIMPL16,	0x42	},
         {	0,	"xba",		TIMPL16,	0xEB	},
         {	0,	"swa",		TIMPL16,	0xEB	},
-        {	0,	"xce",		TIMPL16,	0xFB	}
+        {	0,	"xce",		TIMPL16,	0xFB	},
+
+	/* Jcc pseudo instructions */
+        {	0,	"jpl",		TREL8X,		0x10	},
+        {	0,	"jmi",		TREL8X,		0x30	},
+        {	0,	"jvc",		TREL8X,		0x50	},
+        {	0,	"jvs",		TREL8X,		0x70	},
+        {	0,	"jcc",		TREL8X,		0x90	},
+        {	0,	"jcs",		TREL8X,		0xB0	},
+        {	0,	"jne",		TREL8X,		0xD0	},
+        {	0,	"jeq",		TREL8X,		0xF0	}
+
 };
 
         

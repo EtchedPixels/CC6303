@@ -362,6 +362,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define TREL8C	0x2800			/* 8bit rel, 65C02 */
 #define TREL16	0x2900			/* 16bit rel, 65C816 */
 #define TCLASS0X 0x2A00			/* bit is slightly odd */
+#define TREL8X	0x2B00			/* Jcc pseudo ops */
 
 /*
  * Registers.
