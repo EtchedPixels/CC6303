@@ -67,8 +67,7 @@ SYM	sym[] = {
 	{	0,	"clrb",		TREGB,		0x11	},
 	{	0,	"notb",		TREGB,		0x12	},
 	{	0,	"negb",		TREGB,		0x13	},
-	{	0,	"xch",		TXCHBks
-	,		0x14	},
+	{	0,	"xch",		TXCHB,		0x14	},
 	{	0,	"decb",		TREGB,		0x15	},
 	{	0,	"extb",		TREG,		0x16	},
 	{	0,	"incb",		TREGB,		0x17	},
@@ -179,7 +178,7 @@ SYM	sym[] = {
 	{	0,	"div",		TDIV,		0xFE8C	},
 	{	0,	"divu",		TDIV,		0x8C	},
 	{	0,	"mulb",		TMULB,		0xFE5C	},
-	{	0,	"mulubn",	TMULB,		0x5C	},
+	{	0,	"mulub",	TMULB,		0x5C	},
 	{	0,	"divb",		TDIVB,		0xFE9C	},
 	{	0,	"divub",	TDIVB,		0x9C	},
 };
