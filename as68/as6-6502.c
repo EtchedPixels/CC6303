@@ -57,7 +57,7 @@ SYM	sym[] = {
 	  65C02/65C816 */
 	{	0,	"bit",		TCLASS0X,	0x20	},
 	/* JMP (x) is special .. so omit 0x60 entry */
-	{	0,	"jmp",		TJMP,		0x40	},
+	{	0,	"jmp",		TJMP,		0x4C	},
 	{	0,	"sty",		TCLASS0,	0x80	},
 	{	0,	"ldy",		TCLASS0,	0xA0	},
 	{	0,	"cpy",		TCLASS0,	0xC0	},
@@ -167,7 +167,7 @@ SYM	sym[] = {
         {	0,	"tdc",		TIMPL16,	0x7B	},
         {	0,	"tsc",		TIMPL16,	0x3B	},
         {	0,	"txy",		TIMPL16,	0x9B	},
-        {	0,	"tyx",		TIMPL16,	0x98	},
+        {	0,	"tyx",		TIMPL16,	0xBB	},
         {	0,	"wait",		TIMPL16,	0xCB	},
         {	0,	"wdm",		TIMPL16,	0x42	},
         {	0,	"xba",		TIMPL16,	0xEB	},
