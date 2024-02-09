@@ -280,7 +280,7 @@ void outabyte(uint8_t b)
  * Output an absolute byte to the code and listing
  * streams. This version is used when the caller does not know the final
  * value until the last pass. In that case we allocate an extra byte for
- * unquoted values just in case. As the stream as an EOF marker a little bit
+ * unquoted values just in case. As the stream has an EOF marker a little bit
  * of padding is fine and does no harm.
  */
 void outab2(uint8_t b)
@@ -315,21 +315,22 @@ void outabchk2(ADDR *a)
 
 void outrabrel(ADDR *a)
 {
+	int16_t v = (int16_t)a->a_value;
 	check_store_allowed(segment, 1);
 	if (a->a_sym) {
 		outbyte(REL_ESC);
 		outbyte((0 << 4 ) | REL_PCREL);
 		outbyte(a->a_sym->s_number & 0xFF);
 		outbyte(a->a_sym->s_number >> 8);
-		outbyte(a->a_value);
+		outabyte(a->a_value);
 		outbyte(a->a_value >> 8);
 		return;
 	}
-	if (a->a_value < -128 || a->a_value > 127)
+	if (v < -128 || v > 127)
 		err('o', CONSTANT_RANGE);
 	/* relatives without a symbol don't need relocation but they
 	   still may need a pad byte */
-	outab2(a->a_value);
+	outab2(v);
 }
 
 static void putsymbol(SYM *s, FILE *ofp)
