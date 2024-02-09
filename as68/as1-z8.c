@@ -396,13 +396,20 @@ loop:
 
 	case TRRIR:
 		/* RR or IR format */
+		/* We accept both rr0 and r0 */
 		getaddr8(&a1);
 		switch(a1.a_type & TMADDR) {
+		case TRS:
+			a1.a_value |= 0xE0;
+		case TRR:
 		case TREG:
 			if (a1.a_value & 1)
 				aerr(ODD_REGISTER);
 			outab(opcode);
 			break;
+		case TSIND:
+			a1.a_value |= 0xE0;
+		case TRRIND:
 		case TIND:
 			outab(opcode + 0x10);
 			break;
@@ -415,9 +422,13 @@ loop:
 		/* R or IR format */
 		getaddr8(&a1);
 		switch(a1.a_type & TMADDR) {
+		case TRS:
+			a1.a_value |= 0xE0;
 		case TREG:
 			outab(opcode);
 			break;
+		case TSIND:
+			a1.a_value |= 0xE0;
 		case TIND:
 			outab(opcode + 0x10);
 			break;
@@ -491,12 +502,13 @@ loop:
 		getaddr8(&a1);
 		if ((a1.a_type & TMADDR) != TRS)
 			qerr(INVALID_FORM);
+		c = getnb();
+		if (c != ',')
+			qerr(MISSING_DELIMITER);
 		outab(0x0A | (a1.a_value << 4));
 		/* And then a relative address */
 		getaddr(&a2);
 		a2.a_value -= dot[segment] + 1;
-		if (a2.a_value < -128 || a2.a_value > 127)
-			aerr(BRA_RANGE);
 		outrabrel(&a2);
 		break;
 	case TLDC:
@@ -594,6 +606,12 @@ loop:
 			outab((a1.a_value >>  8) | (a2.a_value << 4));
 			a1.a_value &= 0xFF;
 			outrab(&a1);
+			break;
+		}
+		/* Partial short form. Turn r,r into r,R not R,R */
+		if (ta1 == TRS && ta2 == TRS) {
+			outab(0x08 | a1.a_value << 4);
+			outab(a2.a_value | 0xE0);
 			break;
 		}
 		/* If we get here in short form we need to try the long

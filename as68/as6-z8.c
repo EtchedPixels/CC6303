@@ -81,7 +81,7 @@ SYM	sym[] = {
 	{	0,	"jr",		TCRA,		0x0B	},
 	/* jp is an oddity as it's got two real forms 30 and xD */
 	{	0,	"jp",		TJMP,		0x0D	},
-	{	0,	"inc",		TRRIR,		0x0E	},
+	{	0,	"inc",		TRIR,		0x0E	},
 
 	/* Implicit */	
 	{	0,	"di",		TIMPL,		0x8F	},
