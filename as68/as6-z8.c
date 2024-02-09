@@ -1,8 +1,13 @@
 /*
  * Z8 assembler.
-
  *
- * Tables: FIXME -  we want an address space of 'register' ?
+ * The base Z8 is a one or two operation machine with a fairly simple and
+ * regular instruction set. Confusingly unlike it's other Zilog cousins it
+ * is big endian.
+ *
+ * The eZ8 looks very similar and has many identical instruction encodings
+ * but some differ and they are not compatible at the binary level (so don't
+ * expect this assembler to work with one)
  */
 
 #include	"as.h"
@@ -53,15 +58,17 @@ SYM	sym[] = {
 	{	0,	"eq",		TCC,		0x06	},
 	{	0,	"z",		TCC,		0x06	},
 	{	0,	"c",		TCC,		0x07	},
+	{	0,	"ult",		TCC,		0x07	},
 	/* 0x08 is 'true' */
 	{	0,	"ge",		TCC,		0x09	},
 	{	0,	"gt",		TCC,		0x0A	},
-	{	0,	"uge",		TCC,		0x0B	},
+	{	0,	"ugt",		TCC,		0x0B	},
 	{	0,	"nov",		TCC,		0x0C	},
 	{	0,	"pl",		TCC,		0x0D	},
 	{	0,	"ne",		TCC,		0x0E	},
 	{	0,	"nz",		TCC,		0x0E	},
 	{	0,	"nc",		TCC,		0x0F	},
+	{	0,	"uge",		TCC,		0x0F	},
 
 	/* The Z8 has a gloriously clean instruction set */
 	
@@ -85,6 +92,9 @@ SYM	sym[] = {
 	{	0,	"inc",		TRIR,		0x0E	},
 
 	/* Implicit */	
+	{	0,	"wdh",		TIMPL,		0x4F	},
+	{	0,	"wdt",		TIMPL,		0x5F	},
+	{	0,	"stop",		TIMPL,		0x6F	},
 	{	0,	"di",		TIMPL,		0x8F	},
 	{	0,	"ei",		TIMPL,		0x9F	},
 	{	0,	"ret",		TIMPL,		0xAF	},

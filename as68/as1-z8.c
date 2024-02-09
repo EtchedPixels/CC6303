@@ -400,18 +400,18 @@ loop:
 		getaddr8(&a1);
 		switch(a1.a_type & TMADDR) {
 		case TRS:
-			a1.a_value |= 0xE0;
 		case TRR:
+			a1.a_value |= 0xE0;
 		case TREG:
 			if (a1.a_value & 1)
 				aerr(ODD_REGISTER);
 			outab(opcode);
 			break;
 		case TSIND:
-			a1.a_value |= 0xE0;
 		case TRRIND:
+			a1.a_value |= 0xE0;
 		case TIND:
-			outab(opcode + 0x10);
+			outab(opcode + 0x01);
 			break;
 		default:
 			qerr(INVALID_FORM);
@@ -430,7 +430,7 @@ loop:
 		case TSIND:
 			a1.a_value |= 0xE0;
 		case TIND:
-			outab(opcode + 0x10);
+			outab(opcode + 0x01);
 			break;
 		default:
 			qerr(INVALID_FORM);
