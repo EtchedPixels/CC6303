@@ -423,19 +423,25 @@ loop:
 		getaddr8(&a1);
 		switch(a1.a_type & TMADDR) {
 		case TRS:
+			if (opcode == 0x20) {	/* INC has an r form */
+				opcode = 0x0E | (a1.a_value << 4);
+				outab(opcode);
+				break;
+			}
 			a1.a_value |= 0xE0;
 		case TREG:
 			outab(opcode);
+			outab(a1.a_value);
 			break;
 		case TSIND:
 			a1.a_value |= 0xE0;
 		case TIND:
 			outab(opcode + 0x01);
+			outab(a1.a_value);
 			break;
 		default:
 			qerr(INVALID_FORM);
 		}
-		outab(a1.a_value);
 		break;
 
 	case TIMM8:

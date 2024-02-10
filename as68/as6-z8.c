@@ -84,12 +84,11 @@ SYM	sym[] = {
 	{	0,	"cp",		TOP4BIT,	0xA0	},
 	{	0,	"xor",		TOP4BIT,	0xB0	},
 	/* C is LD */
-
+	/* E is a subset of inc */
 
 	{	0,	"jr",		TCRA,		0x0B	},
 	/* jp is an oddity as it's got two real forms 30 and xD */
 	{	0,	"jp",		TJMP,		0x0D	},
-	{	0,	"inc",		TRIR,		0x0E	},
 
 	/* Implicit */	
 	{	0,	"wdh",		TIMPL,		0x4F	},
@@ -107,6 +106,9 @@ SYM	sym[] = {
 	/* R / IR */
 	{	0,	"dec",		TRIR,		0x00	},
 	{	0,	"rlc",		TRIR,		0x10	},
+	/* inc is weird and has two forms - we handle the r form in the code
+	   as a special case */
+	{	0,	"inc",		TRIR,		0x20	},
 	/* 30 is used for jump IRR */
 	{	0,	"da",		TRIR,		0x40	},
 	{	0,	"pop",		TRIR,		0x50	},
