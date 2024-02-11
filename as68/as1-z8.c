@@ -95,6 +95,8 @@ void getaddr_r(ADDR *ap)
 		expr1(ap, LOPRI, 0);
 		istuser(ap);
 		constify(ap);
+		if (ap->a_sym)
+			qerr(SYNTAX_ERROR);
 		if (ap->a_value < 0 || ap->a_value > 15)
 			aerr(RSHORT_RANGE);
 		if (pair == 0) {
@@ -389,7 +391,7 @@ loop:
 			outrab(&a2);
 		} else {
 			/* src dst */
-			outab(a2.a_value);
+			outrab(&a2);
 			outab(a1.a_value);
 		}
 		break;
@@ -416,7 +418,7 @@ loop:
 		default:
 			qerr(INVALID_FORM);
 		}
-		outab(a1.a_value);
+		outrab(&a1);
 		break;
 	case TRIR:
 		/* R or IR format */
@@ -431,13 +433,13 @@ loop:
 			a1.a_value |= 0xE0;
 		case TREG:
 			outab(opcode);
-			outab(a1.a_value);
+			outrab(&a1);
 			break;
 		case TSIND:
 			a1.a_value |= 0xE0;
 		case TIND:
 			outab(opcode + 0x01);
-			outab(a1.a_value);
+			outrab(&a1);
 			break;
 		default:
 			qerr(INVALID_FORM);
@@ -450,7 +452,7 @@ loop:
 		if ((a1.a_type & TMADDR) != TIMMED)
 			qerr(INVALID_FORM);
 		outab(opcode);
-		outab(a1.a_value);
+		outrab(&a1);
 		break;
 
 	case TCRA:
@@ -484,7 +486,7 @@ loop:
 				qerr(INVALID_FORM);
 			/* JP @RR */
 			outab(0x30);
-			outab(a1.a_value);
+			outrab(&a1);
 		} else {
 			outab(opcode + (cc << 4));
 			/* Relocatable label */
@@ -497,7 +499,7 @@ loop:
 		if ((a1.a_type & TMADDR) == TRRIND) {
 			/* CALL @RR */
 			outab(0xD4);
-			outab(a1.a_value);
+			outrab(&a1);
 		} else {
 			outab(0xD6);
 			/* Relocatable label */
@@ -548,12 +550,12 @@ loop:
 			/* dst, src */
 			outab(opcode);
 			outab((a1.a_value << 4) | a2.a_value);
-			outab(a2.a_value);
+			outrab(&a2);
 		} else if (ta1 == TRRIND && ta2 == TSIND) {
 			outab(opcode + 0x10);
 			/* src, dst */
 			outab((a1.a_value << 4) | a2.a_value);
-			outab(a2.a_value);
+			outrab(&a2);
 		} else
 			qerr(INVALID_FORM);
 		break;
@@ -577,13 +579,13 @@ loop:
 		if (ta1 == TRS && ta2 == TREG) {
 			/* dst|mode , src */
 			outab(0x08 | (a1.a_value << 4));
-			outab(a2.a_value);
+			outrab(&a2);
 			break;
 		}
 		if (ta1 == TREG && ta2 == TRS) {
 			/* src|mode , dst */
 			outab(0x09 | (a2.a_value << 4));
-			outab(a1.a_value);
+			outrab(&a1);
 			break;
 		}
 		if (ta1 == TRS && ta2 == TSIND) {
@@ -641,36 +643,36 @@ loop:
 		if (ta1 == TREG && ta2 == TREG) {
 			/* op, src, dst */
 			outab(0xE4);
-			outab(a2.a_value);
-			outab(a1.a_value);
+			outrab(&a2);
+			outrab(&a1);
 			break;
 		}
 		if (ta1 == TREG && ta2 == TIND) {
 			/* op, src, dst */
 			outab(0xE5);
-			outab(a2.a_value);
-			outab(a1.a_value);
+			outrab(&a2);
+			outrab(&a1);
 			break;
 		}
 		if (ta1 == TREG && ta2 == TIMMED) {
 			/* op, dst, src */
 			outab(0xE6);
-			outab(a1.a_value);
+			outrab(&a1);
 			outrab(&a2);
 			break;
 		}
 		if (ta1 == TIND && ta2 == TIMMED) {
 			/* op, dst, src */
 			outab(0xE7);
-			outab(a1.a_value);
+			outrab(&a1);
 			outrab(&a2);
 			break;
 		}
 		if (ta1 == TIND && ta2 == TREG) {
 			/* op, src, dst */
 			outab(0xF5);
-			outab(a2.a_value);
-			outab(a1.a_value);
+			outrab(&a2);
+			outrab(&a1);
 			break;
 		}
 		qerr(INVALID_FORM);
