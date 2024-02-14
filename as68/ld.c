@@ -727,10 +727,11 @@ static void set_segment_bases(void)
 		if (verbose)
 			printf("%s:\n", o->path);
 		for (i = 1; i < OSEG; i++) {
-			if (verbose)
-				printf("\t%c : %04X\n",
-					"ACDBZXSLsb??????"[i], o->oh->o_size[i]);
 			size[i] += o->oh->o_size[i];
+			if (verbose)
+				printf("\t%c : %04X  %04X\n",
+					"ACDBZXSLsb??????"[i], o->oh->o_size[i],
+						size[i]);
 			if (size[i] < o->oh->o_size[i])
 				error("segment too large");
 		}
