@@ -32,6 +32,7 @@ SYM	sym[] = {
 	{	0,	"code",		TSEGMENT,	CODE	},
 	{	0,	"data",		TSEGMENT,	DATA	},
 	{	0,	"bss",		TSEGMENT,	BSS	},
+	{	0,	"discard",	TSEGMENT,	DISCARD	},
 	{	0,	"zp",		TSEGMENT,	ZP	},
 	{	0,	"common",	TSEGMENT,	COMMON	},
 	{	0,	"literal",	TSEGMENT,	LITERAL	},
@@ -41,6 +42,7 @@ SYM	sym[] = {
 	{	0,	".code",	TSEGMENT,	CODE	},
 	{	0,	".data",	TSEGMENT,	DATA	},
 	{	0,	".bss",		TSEGMENT,	BSS	},
+	{	0,	".discard",	TSEGMENT,	DISCARD	},
 	{	0,	".zp",		TSEGMENT,	ZP	},
 	{	0,	".common",	TSEGMENT,	COMMON	},
 	{	0,	".literal",	TSEGMENT,	LITERAL	},
@@ -179,7 +181,8 @@ char *etext[] = {
 	"segment overflow",		/* 25 */
 	"data in ZP",			/* 26 */
 	"segment conflict",		/* 27 */
-	"register must be even"		/* 28 */
+	"register must be even",	/* 28 */
+	"too manj jr instructions"	/* 29 */
 };
 
 /*

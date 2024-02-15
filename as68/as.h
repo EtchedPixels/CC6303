@@ -803,6 +803,7 @@ typedef	uint16_t	VALUE;		/* For symbol values */
 #define DATA_IN_ZP	26
 #define	SEGMENT_CLASH	27
 #define ODD_REGISTER	28
+#define TOOMANYJCC	29
 
 #elif TARGET_1802
 

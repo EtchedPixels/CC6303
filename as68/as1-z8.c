@@ -16,19 +16,45 @@
  */
 #include	"as.h"
 
+/* FIXME: we should malloc/realloc this on non 8bit machines */
+static uint8_t reltab[1024];
+static unsigned int nextrel;
+
 int passbegin(int pas)
 {
 	segment = 1;
-	/* No branch adjustment passes */
-	if (pass == 1 || pass == 2)
-		return 0;
+	if (pass == 3)
+		nextrel = 0;
 	return 1;
+}
+
+static void setnextrel(int flag)
+{
+	if (nextrel == 8 * sizeof(reltab))
+		aerr(TOOMANYJCC);
+	if (flag)
+		reltab[nextrel >> 3] |= (1 << (nextrel & 7));
+	nextrel++;
+}
+
+static unsigned int getnextrel(void)
+{
+	unsigned int n = reltab[nextrel >> 3] & (1 << (nextrel & 7));
+	nextrel++;
+	return n;
 }
 
 static void constify(ADDR *ap)
 {
 	if ((ap->a_type & TMMODE) == (TUSER|TMINDIR))
 		ap->a_type = TUSER;
+}
+
+static int segment_incompatible(ADDR *ap)
+{
+	if (ap->a_segment == segment)
+		return 0;
+	return 1;
 }
 
 /*
@@ -123,7 +149,7 @@ void getaddr_r(ADDR *ap)
 	expr1(ap, LOPRI, 1);
 
 	/* Must be an 8bit result */
-	if (ap->a_value < -128 || ap->a_value > 255)
+	if (!(ap->a_flags & (A_HIGH|A_LOW)) && (ap->a_value < -128 || ap->a_value > 255))
 		qerr(CONSTANT_RANGE);
 	c = getnb();
 	if (c == '(') {
@@ -151,7 +177,7 @@ void getaddr_r(ADDR *ap)
 void getaddr8(ADDR *ap)
 {
 	getaddr_r(ap);
-	if (ap->a_value < -128 || ap->a_value > 255)
+	if (!(ap->a_flags & (A_HIGH|A_LOW)) && (ap->a_value < -128 || ap->a_value > 255))
 		aerr(CONSTANT_RANGE);
 }
 		
@@ -201,6 +227,7 @@ void asmline(void)
 	ADDR a2;
 	int ta1;
 	int ta2;
+	int disp;
 
 loop:
 	if ((c=getnb())=='\n' || c==';')
@@ -214,6 +241,14 @@ loop:
 			if ((sp->s_type&TMMODE) != TNEW
 			&&  (sp->s_type&TMASG) == 0)
 				sp->s_type |= TMMDF;
+			sp->s_type &= ~TMMODE;
+			sp->s_type |= TUSER;
+			sp->s_value = dot[segment];
+			sp->s_segment = segment;
+		} else if (pass != 3) {
+			/* Don't check for duplicates, we did it already
+			   and we will confuse ourselves with the pass
+			   before. Instead blindly update the values */
 			sp->s_type &= ~TMMODE;
 			sp->s_type |= TUSER;
 			sp->s_value = dot[segment];
@@ -465,11 +500,29 @@ loop:
 			getaddr(&a1);
 		} else
 			cc = 0x08; /* True */
-		outab(opcode + (cc << 4));
-		a1.a_value -= dot[segment] + 1;
-		/* Relative branches are always in segment and within our
-		   generated space so don't relocate */
-		outrabrel(&a1);
+		disp = a1.a_value - dot[segment] - 2;
+		if (pass == 3)
+			c = getnextrel();
+		else {
+			c = 0;
+			if (pass == 0 || segment_incompatible(&a1) ||
+				disp < -128 || disp > 127)
+				c = 1;
+			if (pass == 2)
+				setnextrel(c);
+		}
+		if (c) {
+			/* Write a JP cc instead */
+			outab(0x0D + (cc << 4));
+			outraw(&a1);
+		} else {
+			outab(opcode + (cc << 4));
+			if (disp < -128 || disp > 127)
+				aerr(BRA_RANGE);
+			/* Relative branches are always in segment and within our
+			   generated space so don't relocate */
+			outab(disp);
+		}
 		break;
 	case TJMP:
 		getaddr(&a1);
