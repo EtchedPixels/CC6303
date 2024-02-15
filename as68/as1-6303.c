@@ -72,7 +72,7 @@ static int segment_incompatible(ADDR *ap)
 {
 	if (ap->a_segment == segment)
 		return 0;
-	if (ap->a_segment == 4 && segment == 0 && ap->a_value < 256)
+	if (ap->a_segment == ZP && segment == 0 && ap->a_value < 256)
 		return 0;
 	return 1;
 }
