@@ -1,0 +1,19 @@
+# Intermediary files
+**/*.o
+**/*.a
+
+# Artifact files
+as68/a.out
+as68/as68
+as68/dumprelocs68
+as68/ld68
+as68/nm68
+as68/osize68
+cc68/cc68
+copt/copt
+copt/killdeadlabel
+frontend/cc68
+target-flex/tools/binify
+target-flex/tools/flexfs
+target-mc10/tools/tapeify
+
