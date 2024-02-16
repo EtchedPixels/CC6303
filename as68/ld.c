@@ -895,6 +895,14 @@ static void record_reloc(struct object *o, unsigned high, unsigned size, unsigne
 	fputc(addr, relocf);
 }
 
+static unsigned is_code(unsigned seg)
+{
+	/* TODO: when we add banking/overlays this will need to change */
+	if (seg == CODE || seg == DISCARD || seg == COMMON)
+		return 1;
+	return 0;
+}
+
 /*
  *	Relocate the stream of input from ip to op
  *
@@ -958,7 +966,12 @@ static void relocate_stream(struct object *o, int segment, FILE * op)
 				exit(1);
 			}
 			dot = io_read16();
-			xfseek(op, dot);
+			/* Image has code bank raw then data raw */
+			/* TODO: assumes 16bit */
+			if (!is_code(segment) && split_id)
+				xfseek(op, dot + 0x10000);
+			else
+				xfseek(op, dot);
 			continue;
 		}
 		if (code == REL_OVERFLOW) {
@@ -1127,7 +1140,11 @@ static void write_stream(FILE * op, int seg)
 		else if (ldmode == LD_ABSOLUTE) {
 			if (verbose)
 				printf("Writing seg %d from %x\n", seg, dot);
-			xfseek(op, dot);
+			/* TODO: assumes 16bit */
+			if (!is_code(seg) && split_id)
+				xfseek(op, dot + 0x10000);
+			else
+				xfseek(op, dot);
 		}
 		relocate_stream(o, seg, op);
 		put_object(o);
@@ -1390,11 +1407,6 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 		}
-	}
-	if (ldmode == LD_ABSOLUTE && split_id) {
-		fprintf(stderr, "%s: split I/D absolute is not yet supported.\n", argv[0]);
-		/* TODO */
-		exit(1);
 	}
 	if (ldmode == LD_FUZIX) {
 		/* Relocatable Fuzix binaries live at logical address 0 */
