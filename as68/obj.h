@@ -147,7 +147,7 @@ struct objhdr
 #define COMMON		6		/* Common for things like kernels */
 #define LITERAL		7		/* Literals (mostly a compiler helper) */
 #define COMMONDATA	8		/* Common for writables */
-#define BUFFERS		9		/* Bufferrs for kernel */
+#define BUFFERS		9		/* Buffers for kernel */
 /* Special cases 10+ don't exist as real segments */
 #define PCREL		14		/* assumed signed */
 /* and 15 is 'any' */
