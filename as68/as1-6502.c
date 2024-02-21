@@ -800,6 +800,8 @@ loop:
 			outab(0x9C);
 			outraw(&a1);
 			break;
+		default:
+			qerr(BADMODE);
 		}
 		break;
 	case TABDP:
