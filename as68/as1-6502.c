@@ -590,8 +590,8 @@ loop:
 		/*  No accumulator */
 		if (reg == 2 || reg == 4 || reg == 6)
 			aerr(BADMODE);
-		/* No store immediate */
-		if (reg == 0 && opcode == 0x80)
+		/* No store immediate or sty a,x */
+		if (opcode == 0x80 && (reg == 0 || reg == 7))
 			aerr(BADMODE);
 		outab(opcode | reg << 2);
 		if (reg == 3 || reg == 7 || (reg == 0 && idx_size == 2))
@@ -725,8 +725,8 @@ loop:
 		reg = class2_mask(opcode, a1.a_type, 0);
 		if (reg == 0)
 			aerr(BADMODE);
-		/* No store immediate */
-		if (reg == 3 && opcode == 0xA0)
+		/* No store immediate or stx a,y */
+		if (opcode == 0xA0 && (reg == 3 || reg == 7))
 			aerr(BADMODE);
 		outab(opcode | (reg << 2));
 		if (reg == 0 && idx_size == 2)
@@ -756,11 +756,12 @@ loop:
 		break;
 	case TCLASS2Y:
 		/* Like class 2 but has ,y not ,x forms */
+		/* There is no store a,y form (it's used for stz) */
 		getaddr(&a1);
 		reg = class2_mask(opcode, a1.a_type, 1);
 		outab(opcode | (reg << 2));
-		/* No store immediate */
-		if (reg == 0 && opcode == 0x82)
+		/* No store immediate or STX a,Y */
+		if (opcode == 0x82 && (reg == 0 || reg == 7))
 			aerr(BADMODE);
 		if (reg == 0 && idx_size == 2)
 			outraw(&a1);
