@@ -1,7 +1,6 @@
 #ifndef __STRING_H
 #define __STRING_H
 
-#include <types.h>
 #include <stddef.h>
 
 /* Only a small subset so far */
