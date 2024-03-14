@@ -73,9 +73,4 @@ typedef uint32_t uintmax_t;
 #define WCHAR_MIN		0
 #define WCHAR_MAX		UINT8_MAX
 
-/* TODO: PTRDIFF_* */
-
-typedef int16_t ssize_t;
-typedef uint16_t size_t;
-
 #endif

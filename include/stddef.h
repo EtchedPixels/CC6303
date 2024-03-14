@@ -4,6 +4,7 @@
 typedef int ptrdiff_t;
 typedef char wchar_t;
 typedef unsigned int size_t;
+typedef int16_t ssize_t;
 
 /* offsetof macro */
 #define offsetof(type, member)  (size_t) (&((type*) 0)->member)
