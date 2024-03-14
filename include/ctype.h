@@ -3,8 +3,6 @@
 #ifndef __CTYPE_H
 #define __CTYPE_H
 
-#include <stdint.h>
-
 extern int toupper(int __c);
 extern int tolower(int __c);
 
