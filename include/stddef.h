@@ -1,6 +1,8 @@
 #ifndef __STDDEF_H
 #define __STDDEF_H
 
+#include <stdint.h>
+
 typedef int ptrdiff_t;
 typedef char wchar_t;
 typedef unsigned int size_t;
