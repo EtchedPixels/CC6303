@@ -232,9 +232,8 @@ static void InvalidateX(void)
     XState = 0;
 }
 
-/* Assign a value to D in the most efficient way possible. This is mostly
-   ready for when we add 6800 support */
-
+/* Assign a value to D in the most efficient way possible. It also
+   needs to ensure EQ/NE is set correctly */
 static void AssignD(unsigned short value, int keepc)
 {
     uint8_t hi = value >> 8;
@@ -251,8 +250,9 @@ static void AssignD(unsigned short value, int keepc)
             AddCodeLine("ldab #$%02X", lo);
             return;
         } else if (CPU == CPU_6800 && !lo) {
-            AddCodeLine("ldaa #$%02X", value >> 8);
+            /* Load the possible non zero byte last to force EQ/NE */
             AddCodeLine("clrb");
+            AddCodeLine("ldaa #$%02X", value >> 8);
             return;
         }
     }
@@ -264,8 +264,15 @@ static void AssignD(unsigned short value, int keepc)
             return;
         }
         /* No 16bit ops on a 6800 */
-        AddCodeLine("ldaa #$%02X", hi);
-        AddCodeLine("ldab #$%02X", lo);
+        /* Ensure EQ/NE are set correctly by loading any non zero byte
+           last */
+        if (hi == 0) {
+            AddCodeLine("ldaa #$%02X", hi);
+            AddCodeLine("ldab #$%02X", lo);
+        } else {
+            AddCodeLine("ldab #$%02X", hi);
+            AddCodeLine("ldaa #$%02X", lo);
+        }
         return;
     }
     /* We have LDD */
@@ -2598,6 +2605,8 @@ void g_addeqlocal (unsigned flags, int Offs, unsigned long val)
 {
     NotViaX();
     
+    /* FIXME: check semantics - if its adding tos then char option below
+       is wrong for non const. if it's adding A then char case is wrong */
     /* Check the size and determine operation */
     switch (flags & CF_TYPEMASK) {
 
@@ -4941,7 +4950,7 @@ void g_le (unsigned flags, unsigned long val)
                         } else {
                             /* Always true */
                             Warning ("Condition is always true");
-                            AddCodeLine ("jsr return1");
+                            AssignD(1, 0);
                         }
                     } else {
                         /* Signed compare */
@@ -4953,7 +4962,7 @@ void g_le (unsigned flags, unsigned long val)
                         } else {
                             /* Always true */
                             Warning ("Condition is always true");
-                            AddCodeLine ("jsr return1");
+                            AssignD(1, 0);
                         }
                     }
                     return;
@@ -4971,7 +4980,7 @@ void g_le (unsigned flags, unsigned long val)
                     } else {
                         /* Always true */
                         Warning ("Condition is always true");
-                        AddCodeLine ("jsr return1");
+                        AssignD(1, 0);
                     }
                 } else {
                     /* Signed compare */
@@ -4980,7 +4989,7 @@ void g_le (unsigned flags, unsigned long val)
                     } else {
                         /* Always true */
                         Warning ("Condition is always true");
-                        AddCodeLine ("jsr return1");
+                        AssignD(1, 0);
                     }
                 }
                 return;
@@ -4996,7 +5005,7 @@ void g_le (unsigned flags, unsigned long val)
                     } else {
                         /* Always true */
                         Warning ("Condition is always true");
-                        AddCodeLine ("jsr return1");
+                        AssignD(1, 0);
                     }
                 } else {
                     /* Signed compare */
@@ -5005,7 +5014,7 @@ void g_le (unsigned flags, unsigned long val)
                     } else {
                         /* Always true */
                         Warning ("Condition is always true");
-                        AddCodeLine ("jsr return1");
+                        AssignD(1, 0);
                     }
                 }
                 return;
@@ -5245,7 +5254,7 @@ void g_ge (unsigned flags, unsigned long val)
             /* Give a warning in some special cases */
             if (val == 0) {
                 Warning ("Condition is always true");
-                AddCodeLine ("jsr return1");
+                AssignD(1, 0);
                 return;
             }
 
