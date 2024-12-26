@@ -10,18 +10,10 @@
 		.code
 
 tosmodeax:
-		; make working space
-		psha
-		; Arrange stack for the divide helper. TOS is already right
-		; so push the other 4 bytes we need. The divide helper knows
-		; about the fact there is junk (return address) between the
-		; two
-		ldaa @sreg
-		staa @tmp4
+		tst @sreg
 		bpl nosignfix
 		jsr negeax
 nosignfix:
-		pula
 		pshb
 		psha
 		ldaa @sreg
@@ -32,26 +24,21 @@ nosignfix:
 		;	Sign rules
 		;
 		tsx
-		ldaa 6,x		; sign of TOS
+		ldaa 6,x	; sign of TOS
+		staa @tmp4
 		bpl nosignfix2
-		ldaa 8,x
-		ldab 9,x
-		subb #1
-		sbca #0
-		staa 8,x
-		stab 9,x
-		ldaa 5,x
-		ldab 7,x
-		sbcb #0
-		sbca #0
-		coma
-		comb
-		staa 6,x
-		stab 7,x
-		com 8,x
 		com 9,x
+		com 8,x
+		com 7,x
+		com 6,x
+		inc 9,x
+		bne nosignfix2
+		inc 8,x
+		bne nosignfix2
+		inc 7,x
+		bne nosignfix2
+		inc 6,x
 nosignfix2:
-		tsx
 		jsr div32x32
 		ins
 		ins
@@ -61,18 +48,14 @@ nosignfix2:
 		;	At this point @tmp2/@tmp3 hold the positive signed
 		;	dividend
 		;
-		ldaa @tmp2
 		ldab @tmp2+1
-		staa @sreg
+		ldaa @tmp2
 		stab @sreg+1
-		ldaa @tmp4
-		bita #0x80		; check if negative dividend
-		beq nonega
-		ldaa @tmp3
+		staa @sreg
 		ldab @tmp3+1
+		ldaa @tmp3
+		tst @tmp4	; check if negative dividend
+		bpl nonega
 		jsr negeax
-		jmp pop4
 nonega:
-		ldaa @tmp3
-		ldab @tmp3+1
 		jmp pop4

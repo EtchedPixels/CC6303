@@ -6,20 +6,14 @@
 	.code
 
 negeax:
-	subb #1
-	sbca #0
-	staa @tmp
-	stab @tmp+1
-	ldaa @sreg
-	ldab @sreg+1
-	sbcb #0
-	sbca #0
-	coma
 	comb
-	staa @sreg
-	stab @sreg+1
-	ldaa @tmp
-	ldab @tmp+1
 	coma
-	comb
-	rts
+	com @sreg+1
+	com @sreg
+	addb #1
+	adca #0
+	bcc ret
+	inc @sreg+1
+	bne ret
+	inc @sreg
+ret:	rts

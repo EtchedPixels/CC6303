@@ -2,49 +2,48 @@
 ;	A dummy minimal crt0.s for now
 ;
 	.code
-
-	.export _exit
-
 start:
-	ldaa #1
-	staa @one+1
-	deca
-	staa @zero
-	staa @zero+1
-	ldx #__bss
-	ldaa #>__bss_size
-	orab #<__bss_size
+	ldx #__bss_size
 	beq nobss
-	ldaa #>__bss_size
-	ldab #<__bss_size
+	ldx #__bss
+	ldab #<__bss
+	ldaa #>__bss
+	addb #<__bss_size
+	adca #>__bss_size
+	stab @tmp+1
+	staa @tmp
+	clrb
+	bra clear_bss_1
 clear_bss:
-	clr ,x
+	stab 0,x
 	inx
-	decb
-	bcc clear_bss
-	deca
-	bcc clear_bss
+clear_bss_1:
+	cpx @tmp
+	bne clear_bss
 nobss:
 	sts exitsp
+	lds #$7fff
+	;
+	; Runtime DP constants
+	;
+	clra
+	staa @zero
+	staa @zero+1
+	inca
+	staa @one+1
+	clra
 	psha
 	psha
 	psha
 	psha
-	ldab #4
 	jsr _main
-	bra doexit
-
-_exit:
-	tsx
-	ldaa 3,x
-	ldab 4,x
-doexit:
 ;
 ;	No atexit support yet
 ;
+doexit:
 	lds exitsp
+	stab $FEFF
 	rts
-
 	.bss
 exitsp:
 	.word 0

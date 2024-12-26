@@ -2637,3 +2637,9 @@ L%1:
 =
 L%1:
 	tsx
+
+	ldaa %1
+	ldab %1+1
+	jsr dtox
+=
+	ldx %1

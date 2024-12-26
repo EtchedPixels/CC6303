@@ -3490,7 +3490,17 @@ static void opeq (const GenDesc* Gen, ExprDesc* Expr, const char* Op)
         }
 
         /* Adjust the types of the operands if needed */
-        Gen->Func (g_typeadjust (flags, TypeOf (Expr2.Type)), 0);
+	if (Gen->Func == g_asr || Gen->Func == g_asl){
+		// For shift operators, the type depends on the lhs
+		unsigned r = TypeOf (Expr2.Type);
+		unsigned f = (flags & ~CF_CONST)|(flags & r & CF_CONST);
+		if ((f & CF_TYPEMASK)!=CF_LONG){
+		    f = (f & ~CF_TYPEMASK)|CF_INT;
+		}
+		Gen->Func (f, 0);
+	}else{
+		Gen->Func (g_typeadjust (flags, TypeOf (Expr2.Type)), 0);
+	}
     }
     Store (Expr, 0);
     ED_MakeRValExpr (Expr);

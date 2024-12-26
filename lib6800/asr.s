@@ -4,11 +4,14 @@
 	.export tosasrax
 	.code
 tosasrax:
+	tstb
+	beq ret
 	tsx
 asraxsh:
 	asr 2,x
 	ror 3,x
 	decb
 	bne asraxsh
+ret:
 	jmp pop2get
 

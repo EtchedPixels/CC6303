@@ -14,6 +14,8 @@ saveeax:
 	ldab @sreg+1
 	staa @regsaveh
 	stab @regsaveh+1
+	ldaa @regsave
+	ldab @regsave+1
 	rts
 resteax:
 	ldaa @regsaveh

@@ -17,6 +17,7 @@ tosumuleax:
 		psha		; We will iteratively add to this for each 1 bit
 		psha
 		psha		; workspace is ,x argument is now 6,x
+		tsx
 		;
 		;	Now work bitwise through it
 		;
@@ -50,12 +51,24 @@ zero4:
 ;	Process an 8x32 slice of the multiply. We could optimize this if we un-inlined it as we can do 32bit, 24bit, 16bit, 8bit
 ;	because we know there are zeros at the end.
 ;
-bits8:		ldaa #8
-		staa @tmp2
+bits8:		ldab #8
+		stab @tmp2
 next8:
-		rola
+		lsra
 		bcc noadd
 		; 32bit add
+		ldab 3,x
+		addb 9,x
+		stab 3,x
+		ldab 2,x
+		adcb 8,x
+		stab 2,x
+		ldab 1,x
+		adcb 7,x
+		stab 1,x
+		ldab 0,x
+		adcb 6,x
+		stab 0,x
 noadd:
 		lsl 9,x		; left shift each time we move up a bit
 		rol 8,x		; through the number

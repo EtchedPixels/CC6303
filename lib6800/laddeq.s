@@ -11,49 +11,42 @@
 
 ; In this form X is the stack offset. Turn that into X is a pointer and
 ; fall into the static form
+; (IX),SP += @sreg:D
 laddeqysp:
-	stx @tmp
+	stx @tmp	; IX = IX+SP+3
 	sts @tmp2
-	ldaa @tmp2
+	pshb
+	psha
 	ldab @tmp2+1
-	addb @tmp2+1
-	adca @tmp
-	staa @tmp
-	stab @tmp+1
-	ldx @tmp
-	inx
-laddeqa:
-	staa @tmp
-	stab @tmp+1
-	ldaa 2,x	; do the low 16bits
-	ldab 3,x
+	ldaa @tmp2
 	addb @tmp+1
 	adca @tmp
-	bcc l1
-	inc sreg	; carry - we don't have abcd
-l1:
-	staa 2,x
-	stab 3,x
-	ldaa ,x
-	ldab 1,x
-	addb @sreg+1
-	adca @sreg
-	staa ,x
-	stab 1,x
+	addb #3
+	adca #0
+	stab @tmp+1
+	staa @tmp
+	ldx @tmp
+	pula
+	pulb
+	bsr laddeq
+;	The caller of laddeqysp expects the result of the addition to be in @sreg:D
+	staa @sreg
+	stab @sreg+1
+	ldaa 2,x
+	ldab 3,x
 	rts
-
-;
-;	Add the 32bit sreg/d to the variable at X
-;
-laddeq:
-	addb 3,x		; Add the low word
+laddeqa:
+	clr @tmp+1
+	clr @tmp
+laddeq:			; Add the 32bit sreg/d to the variable at X
+	addb 3,x	; do the low 16bits
 	stab 3,x
 	adca 2,x
 	staa 2,x
-	ldaa ,x			; High word
-	ldab 1,x
-	adcb @sreg+1		; 1,x + sreg+1 (byte 3)
-	adca @sreg		; ,x + sreg (byte 4)
-	staa ,x
+	ldab @sreg+1
+	adcb 1,x
 	stab 1,x
+	ldaa @sreg
+	adca 0,x
+	staa 0,x 
 	rts

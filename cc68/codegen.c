@@ -270,8 +270,8 @@ static void AssignD(unsigned short value, int keepc)
             AddCodeLine("ldaa #$%02X", hi);
             AddCodeLine("ldab #$%02X", lo);
         } else {
-            AddCodeLine("ldab #$%02X", hi);
-            AddCodeLine("ldaa #$%02X", lo);
+            AddCodeLine("ldab #$%02X", lo);
+            AddCodeLine("ldaa #$%02X", hi);
         }
         return;
     }
@@ -698,6 +698,7 @@ static int AddXRange(int value, int maxoff, int save_d)
 /* ASR is much harder to shortcut */
 static void AsrD(void)
 {
+printf("; AsrD\n");
     AddCodeLine("asra");
     AddCodeLine("rorb");
 }
@@ -2326,9 +2327,14 @@ void g_scale (unsigned flags, long val)
                         LsrDBy(p2);
                     } else  {
                         InvalidateX();
-                        if (p2 == 1)
+                        if (p2 == 1){
+			    AddCodeLine("asra");
+			    AddCodeLine("rola");
+			    AddCodeLine("adcb #0");
+			    AddCodeLine("adca #0");
+printf("; DIV by %d\n",p2);
                             AsrD();
-                        else
+			}else
                             /* There is no asrd */
                             AddCodeLine ("jsr asrax%d", p2);
                     }
@@ -3826,8 +3832,16 @@ void g_div (unsigned flags, unsigned long val)
 
     NotViaX();
 
-    if ((flags & CF_CONST) && (p2 = PowerOf2 (val)) >= 0) {
+    if ((flags & CF_CONST) && (p2 = PowerOf2 (val)) >= 0
+    &&  (flags & CF_TYPEMASK)==CF_INT) {
         /* Generate a shift instead */
+	unsigned L = GetLocalLabel();
+	unsigned v = val-1;
+	AddCodeLine ("tsta");
+	AddCodeLine ("bpl %s", LocalLabelName (L));
+	AddCodeLine ("addb #<%04x",v);
+	AddCodeLine ("adca #>%04x",v);
+    	g_defcodelabel (L);
         g_asr (flags, p2);
     } else {
         /* Generate a division */
@@ -4168,9 +4182,9 @@ void g_asr (unsigned flags, unsigned long val)
                     unsigned L = GetLocalLabel();
                     AddCodeLine ("tab");
                     AddCodeLine ("clra");
-                    AddCodeLine ("cmpb #$80");   /* Sign bit into carry */
-                    AddCodeLine ("bcc %s", LocalLabelName (L));
-                    AddCodeLine ("coma");        /* Make $FF */
+                    AddCodeLine ("asrb");
+                    AddCodeLine ("rolb");
+                    AddCodeLine ("sbca #0");
                     g_defcodelabel (L);
                     val -= 8;
                 }
@@ -4761,7 +4775,6 @@ void g_lt (unsigned flags, unsigned long val)
         "tosltax", "tosultax", "toslteax", "tosulteax"
     };
 
-//    AddCodeLine(";g_lt");
     NotViaX();
     /* If the right hand side is const, the lhs is not on stack but still
     ** in the primary register.

@@ -14,67 +14,56 @@
 
 tosmodax:
 	tsx
-	bsr absd
-	psha
-	ldaa 2,x
-	bita #$80
-	beq negmod
-	pula
+	tsta
+	bpl tosmod2
+	bsr negd
+tosmod2:
 	ldx 2,x
+	bmi negmod
 	jsr div16x16		; do the unsigned divide
 				; X = quotient, D = remainder
 	jmp pop2
 negmod:
-	pshb
-	ldab 3,x
-	bsr negd
-	stab 3,x
-	staa 2,x
+	tsx
+	com 2,x
+	neg 3,x
+	bne negmod2
+	inc 2,x
+negmod2:
 	ldx 2,x
-	pulb
-	pula
 	jsr div16x16
+negdret:
 	bsr negd
 	jmp pop2
 	
-
 tosdivax:
 	tsx
-	clr @tmp4
-	bsr absd
-	pshb
-	psha
-	ldaa 2,x
-	ldab 3,x
-	bsr absd
-	staa 2,x
-	stab 3,x
+	staa @tmp4
+	bpl posdiv1
+	bsr negd
+posdiv1:
 	ldx 2,x
-	pula
-	pulb
+	bpl posdiv3
+	com @tmp4
+	tsx
+	com 2,x
+	neg 3,x
+	bne negdiv2
+	inc 2,x
+negdiv2:
+	ldx 2,x
+posdiv3:
 	jsr div16x16		; do the unsigned divide
 				; X = quotient, D = remainder
 	stx @tmp
-	ldaa @tmp4
-	rora
-	bcs negdiv
-	ldaa @tmp
 	ldab @tmp+1
-	jmp pop2
-negdiv:
 	ldaa @tmp
-	ldab @tmp+1
-	bsr negd
+	tst @tmp4
+	bmi negdret
 	jmp pop2
-
-absd:
-	bita #$80
-	beq ispos
-	inc @tmp4
 negd:
-	decb
+	nega
+	negb
 	sbca #0
-	coma
-	comb
 ispos:
 	rts

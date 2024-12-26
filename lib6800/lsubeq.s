@@ -8,35 +8,44 @@
 
 ; In this form X is the stack offset. Turn that into X is a pointer and
 ; fall into the static form
+;	IX,S -= sreg:D
 lsubeqysp:
 	stx @tmp
 	sts @tmp2
-	ldaa @tmp2
+	pshb
+	psha
 	ldab @tmp2+1
+	ldaa @tmp2
 	addb @tmp+1
 	adca @tmp
-	staa @tmp
+	addb #3
+	adca #0
 	stab @tmp+1
+	staa @tmp
 	ldx @tmp
-lsubeq:
-	staa @tmp
-	stab @tmp+1
-	ldaa 5,x	; do the low 16bits
-	ldab 6,x
-	subb @tmp+1
-	sbca @tmp
-	staa 5,x
-	stab 6,x
-	ldaa 3,x
-	ldab 4,x
-	sbcb @sreg+1
-	sbca @sreg
-	staa 3,x
-	stab 4,x
-	ldaa 5,x
-	ldab 6,x
+	pula
+	pulb
+; The caller of lsubeqysp expects the result of the addition to be in @sreg:D
+	bsr lsubeq
+	stab @sreg+1
+	staa @sreg
+	ldab 3,x
+	ldaa 2,x
 	rts
 lsubeqa:
-	clr @tmp
 	clr @tmp+1
-	bra lsubeq
+	clr @tmp
+;	(0-3,X) -=  sreg:D
+lsubeq:
+	jsr negeax
+	addb 3,x
+	stab 3,x
+	adca 2,x
+	staa 2,x
+	ldab @sreg+1
+	adcb 1,x
+	stab 1,x
+	ldaa @sreg
+	adca 0,x
+	staa 0,x
+	rts

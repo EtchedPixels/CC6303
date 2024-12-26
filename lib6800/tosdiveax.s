@@ -14,16 +14,13 @@ tosdiveax:
 		; so push the other 4 bytes we need. The divide helper knows
 		; about the fact there is junk (return address) between the
 		; two
-		clr @tmp4		; sign tracking
 		ldaa @sreg
-		bpl nosignfix
+		staa @tmp4		; sign tracking
 		pula
+		bpl signfixed
 		jsr negeax
-		inc @tmp4		; remember how many negations
 		bra signfixed
-nosignfix:
 		;	Stack the 32bit working register
-		pula
 signfixed:
 		pshb
 		psha
@@ -35,39 +32,32 @@ signfixed:
 		;	Sign rules
 		;
 		tsx
-		ldaa 6,x		; sign of TOS
+		tst 6,x		; sign of TOS
 		bpl nosignfix2
-		inc @tmp4
-		ldaa 8,x
-		ldab 9,x
-		subb #1
-		sbca #0
-		staa 8,x
-		stab 9,x
-		ldaa 6,x
-		ldab 7,x
-		sbcb #0
-		sbca #0
-		coma
-		comb
-		staa 6,x
-		stab 7,x
-		com 8,x
+		com @tmp4
 		com 9,x
+		com 8,x
+		com 7,x
+		com 6,x
+		inc 9,x
+		bne nosignfix2
+		inc 8,x
+		bne nosignfix2
+		inc 7,x
+		bne nosignfix2
+		inc 6,x
 nosignfix2:
-		tsx
 		jsr div32x32
 		; We now have the positive result. Bit 0 of @tmp4 tells us
 		; if we need to negate the answer
-		ldab @tmp4
-		anda #1
-		beq nosignfix3
 		ldaa 6,x
 		ldab 7,x
 		staa @sreg
 		stab @sreg+1
 		ldaa 8,x
 		ldab 9,x
+		tst @tmp4
+		bpl popout
 		jsr negeax
 popout:
 		ins
@@ -75,13 +65,3 @@ popout:
 		ins
 		ins
 		jmp pop4
-nosignfix3:
-		ldaa 6,x
-		ldab 7,x
-		staa @sreg
-		stab @sreg+1
-		ldaa 8,x
-		ldab 9,x
-		bra popout
-
-
