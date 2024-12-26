@@ -941,7 +941,13 @@ static int GenOffset(unsigned Flags, int Offs, int save_d, int exact)
         }
         AddCodeLine("sts @tmp");
         AssignD(Offs + 1, 0);		/* So it matches a TSX based offset */
-        AddCodeLine("addd @tmp");
+	if (CPU != CPU_6800){
+	    AddCodeLine("addd @tmp");
+	}else{
+	    AddCodeLine("addb @tmp+1");
+	    AddCodeLine("adca @tmp");
+	}
+
         DToX();
         if (save_d) {
             AddCodeLine("pula");
@@ -2386,7 +2392,12 @@ void g_addlocal (unsigned flags, int offs)
 
         case CF_INT:
             offs = GenOffset(flags, offs, 1, 0);
-            AddCodeLine ("addd $%02X,x", offs & 0xFF);
+	    if (CPU != CPU_6800){
+                AddCodeLine ("addd $%02X,x", offs & 0xFF);
+	    }else{
+		AddCodeLine ("addb $%02X+1,x", offs & 0xFF);
+		AddCodeLine ("adca $%02X,x", offs & 0xFF);
+	    }
             break;
 
         case CF_LONG:
@@ -2935,7 +2946,12 @@ void g_addaddr_local (unsigned flags attribute ((unused)), int offs)
     NotViaX();		/* For now: can improve on this due to abx */
     
     if (offs > 0 && FramePtr) {
-        AddCodeLine("addd @fp");
+	if (CPU != CPU_6800){
+            AddCodeLine("addd @fp");
+	}else{
+	     AddCodeLine("addb @fp+1");
+	     AddCodeLine("adca @fp+1");
+	}
         offs += 2;
         if (offs != 0)
             AddDConst(offs);
