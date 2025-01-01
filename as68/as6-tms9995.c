@@ -94,8 +94,8 @@ SYM	sym[] = {
 
         /* 10 bits of opcode and a mode/reg pair */
         /* TMS9900/9995 TMS990/12 and later only */
-        {	0,	"mpys",		TSMD,		0x08C0	},
-        {	0,	"divs",		TSMD,		0x0880	},
+        {	0,	"mpys",		TSMD,		0x01C0	},
+        {	0,	"divs",		TSMD,		0x0180	},
         
         /* 4.5.4 XOP */
         
