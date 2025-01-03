@@ -1,3 +1,12 @@
+# THIS IS NO LONGER AN ACTIVE PROJECT
+
+For the current compiler and tools work please see
+- https://github.com/EtchedPixels/Fuzix-Bintools
+- https://github.com/EtchedPixels/Fuzix-Compiler-Kit
+
+For a 6800 specific fork of this code under development by Zu2 please see
+- https://github.com/zu2/CC6303
+
 # CC6303
 A C compiler for the 6800/6803/6303 processors
 
